@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Learning Disorder Intelligence Dashboard</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css?v=3" />
 </head>
 <body>
@@ -20,12 +21,12 @@
       <aside class="col-12 col-lg-3 col-xl-2">
         <div class="card border-0 shadow-sm">
           <div class="card-body p-2 d-grid gap-1" id="tabNav">
-            <button class="btn btn-primary text-start tab-btn active" data-tab="screening">Screening</button>
-            <button class="btn btn-light text-start tab-btn" data-tab="therapy">Speech Therapy</button>
-            <button class="btn btn-light text-start tab-btn" data-tab="eye">Eye Tracking</button>
-            <button class="btn btn-light text-start tab-btn" data-tab="testlab">End-User Test Lab</button>
-            <button class="btn btn-light text-start tab-btn" data-tab="biomarkers">Biomarkers</button>
-            <button class="btn btn-light text-start tab-btn" data-tab="records">Records</button>
+            <button class="btn btn-primary text-start tab-btn active" data-tab="screening"><i class="bi bi-clipboard2-pulse me-2"></i>Screening</button>
+            <button class="btn btn-light text-start tab-btn" data-tab="therapy"><i class="bi bi-soundwave me-2"></i>Speech Therapy</button>
+            <button class="btn btn-light text-start tab-btn" data-tab="eye"><i class="bi bi-eye me-2"></i>Eye Tracking</button>
+            <button class="btn btn-light text-start tab-btn" data-tab="testlab"><i class="bi bi-bar-chart-steps me-2"></i>End-User Test Lab</button>
+            <button class="btn btn-light text-start tab-btn" data-tab="biomarkers"><i class="bi bi-activity me-2"></i>Biomarkers</button>
+            <button class="btn btn-light text-start tab-btn" data-tab="records"><i class="bi bi-journal-text me-2"></i>Records</button>
           </div>
         </div>
       </aside>
@@ -41,41 +42,52 @@
               <div class="alert alert-primary py-2">Automatic feature extraction mode: result is generated from test performance, reading timing, and audio behavior.</div>
               <div class="row g-2">
                 <div class="col-md-4"><label class="form-label">Sample Language</label><select id="sampleLanguage" class="form-select"><option>Bengali</option><option>Hindi</option><option>English</option><option>Multilingual</option></select></div>
-                <div class="col-md-8"><label class="form-label">Reading Prompt</label><input type="text" id="readingPrompt" class="form-control" value="আমি বাংলা পড়ি এবং ধীরে ধীরে স্পষ্ট উচ্চারণ করি।"></div>
+                <div class="col-md-8"><label class="form-label">Reading Prompt</label><input type="text" id="readingPrompt" class="form-control" value="??? ????? ???? ??? ???? ???? ?????? ??????? ????"></div>
               </div>
               <div class="row g-2 mt-1">
                 <div class="col-md-6">
                   <div class="result-card">
                     <p class="mb-2"><strong>Reading Fluency Test</strong></p>
+                    <div class="alert alert-info py-1 px-2 mb-2 small">
+                      <strong>Auto Mode:</strong> Click <strong>Start</strong> and allow microphone access. The system will listen automatically and score the reading when you click <strong>Stop</strong>.
+                    </div>
                     <div class="d-flex gap-2 flex-wrap">
                       <button id="startReadingTest" class="btn btn-outline-primary btn-sm">Start</button>
-                      <button id="markHesitation" class="btn btn-outline-warning btn-sm">Mark Hesitation</button>
+                      <button id="markHesitation" class="btn btn-outline-warning btn-sm" disabled>Auto Hesitation</button>
                       <button id="stopReadingTest" class="btn btn-outline-danger btn-sm">Stop</button>
                     </div>
+                    <div id="readingListeningIndicator" class="mt-2 d-none">
+                      <span class="mic-pill">
+                        <span class="mic-dot"></span>
+                        <span class="mic-dot"></span>
+                        <span class="mic-dot"></span>
+                        <span class="mic-text">Listening...</span>
+                      </span>
+                    </div>
                     <p id="readingTestStatus" class="mt-2 mb-0">Not started.</p>
+                    <p class="mt-2 mb-1 small"><strong>Auto Score:</strong> <span id="readingAutoScore">-</span></p>
+                    <p class="mb-1 small"><strong>Passing Threshold:</strong> <span id="readingPassThreshold">60%</span></p>
+                    <p class="mb-0 small"><strong>Result:</strong> <span id="readingPassResult">-</span></p>
                   </div>
                 </div>
                 <div class="col-md-6">
                   <div class="result-card">
                     <p class="mb-2"><strong>Audio Test (Automatic)</strong></p>
-                    <p class="small mb-2">Listen to the voice prompt. At the end, one question is asked in audio.</p>
-                    <div class="row g-2 mb-2">
-                      <div class="col-md-8">
-                        <label class="form-label">Voice Assistant</label>
-                        <select id="voiceSelect" class="form-select form-select-sm"></select>
-                      </div>
-                      <div class="col-md-4 d-flex align-items-end">
-                        <button id="testVoiceButton" class="btn btn-outline-dark btn-sm w-100">Test Voice</button>
-                      </div>
+                    <div class="alert alert-info py-1 px-2 mb-2 small">
+                      <strong>Auto Mode:</strong> Click <strong>Play Audio</strong>, listen once, then choose the best answer. The score is generated automatically.
                     </div>
                     <audio id="promptAudioPlayer" class="w-100 mb-2" controls preload="metadata"></audio>
+                    <p id="audioQuestion" class="small fw-semibold mb-2">Question will appear here after the sample loads.</p>
                     <div id="audioOptions" class="d-grid gap-2 mb-2"></div>
                     <div class="d-flex gap-2 mt-2">
-                      <button id="playAudioParagraph" class="btn btn-outline-primary btn-sm">Play Voice Prompt</button>
-                      <button id="verifyAudioAnswer" class="btn btn-outline-success btn-sm">Verify Answer</button>
-                      <button id="reloadAudioParagraph" class="btn btn-outline-secondary btn-sm">Reload Paragraph</button>
+                      <button id="playAudioParagraph" class="btn btn-outline-primary btn-sm">Play Audio</button>
+                      <button id="verifyAudioAnswer" class="btn btn-outline-success btn-sm">Manual Check</button>
+                      <button id="reloadAudioParagraph" class="btn btn-outline-secondary btn-sm">Next Sample</button>
                     </div>
-                    <p id="audioTestStatus" class="mt-2 mb-0">No audio analyzed.</p>
+                    <p id="audioTestStatus" class="mt-2 mb-0">Load a sample and listen carefully.</p>
+                    <p class="mt-2 mb-1 small"><strong>Listening Score:</strong> <span id="audioAutoScore">-</span></p>
+                    <p class="mb-1 small"><strong>Passing Threshold:</strong> <span id="audioPassThreshold">70%</span></p>
+                    <p class="mb-0 small"><strong>Result:</strong> <span id="audioPassResult">-</span></p>
                   </div>
                 </div>
               </div>
@@ -88,12 +100,34 @@
                       <div class="col-md-4"><label id="spellLabel2" class="form-label">2) Correct spelling:</label><input id="spellQ2" class="form-control" placeholder="Type answer"></div>
                       <div class="col-md-4"><label id="spellLabel3" class="form-label">3) Correct spelling:</label><input id="spellQ3" class="form-control" placeholder="Type answer"></div>
                     </div>
-                    <button id="scoreSpellingTest" class="btn btn-outline-primary btn-sm mt-2">Score Spelling Test</button>
+                    <button id="scoreSpellingTest" class="btn btn-outline-primary btn-sm mt-2">Manual Score</button>
                     <p id="spellingTestStatus" class="mt-2 mb-0">Not scored.</p>
+                    <p class="mt-2 mb-1 small"><strong>Spelling Score:</strong> <span id="spellingAutoScore">-</span></p>
+                    <p class="mb-1 small"><strong>Passing Threshold:</strong> <span id="spellingPassThreshold">67%</span></p>
+                    <p class="mb-0 small"><strong>Result:</strong> <span id="spellingPassResult">-</span></p>
                   </div>
                 </div>
               </div>
-              <button id="runScreening" class="btn btn-primary mt-3">Run Screening</button>
+              <div class="result-card mt-3">
+                <p class="mb-2"><strong>Segment-wise Scoring Matrix</strong></p>
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle score-matrix-table mb-2">
+                    <thead>
+                      <tr><th>Segment</th><th>Score</th><th>Threshold</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td>Reading</td><td id="matrixReadingScore">-</td><td id="matrixReadingThreshold">60%</td><td id="matrixReadingStatus">Pending</td></tr>
+                      <tr><td>Audio</td><td id="matrixAudioScore">-</td><td id="matrixAudioThreshold">70%</td><td id="matrixAudioStatus">Pending</td></tr>
+                      <tr><td>Spelling</td><td id="matrixSpellingScore">-</td><td id="matrixSpellingThreshold">67%</td><td id="matrixSpellingStatus">Pending</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="score-overall">
+                  <p class="mb-1"><strong>Overall Score:</strong> <span id="overallSegmentScore">-</span></p>
+                  <p class="mb-0"><strong>Overall Status:</strong> <span id="overallSegmentStatus">Pending</span></p>
+                </div>
+              </div>
+              <button id="runScreening" class="btn btn-primary mt-3">Manual Refresh Screening</button>
               <div class="row g-3 mt-2">
                 <div class="col-xl-6"><div id="screeningResult" class="result-card"></div></div>
                 <div class="col-xl-6"><div class="chart-wrap"><canvas id="screeningChart"></canvas></div></div>
@@ -106,18 +140,66 @@
           <div class="card border-0 shadow-sm">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 class="mb-0">Speech Therapy Session Scoring</h5>
+                <h5 class="mb-0">Speech Therapy Session Analyzer</h5>
                 <button class="btn btn-outline-primary btn-sm user-guide-btn" data-guide="therapy">User Guidance</button>
               </div>
-              <div class="alert alert-primary py-2">Score one therapy session, then use recommendation to advance, repeat, or simplify practice intensity.</div>
+              <div class="alert alert-primary py-2">This section runs a guided speaking practice round. Start the round, say the prompt aloud, and the dashboard will collect the result automatically.</div>
               <div class="row g-2">
-                <div class="col-md-4"><label class="form-label">Duration (s)</label><input type="number" id="therapyDuration" class="form-control" min="0" value="20"></div>
-                <div class="col-md-4"><label class="form-label">Pronunciation Errors</label><input type="number" id="therapyPron" class="form-control" min="0" value="0"></div>
-                <div class="col-md-4"><label class="form-label">Syllable Repetitions</label><input type="number" id="therapyRep" class="form-control" min="0" value="0"></div>
-                <div class="col-md-6"><label class="form-label">Sound Substitutions</label><input type="number" id="therapySub" class="form-control" min="0" value="0"></div>
-                <div class="col-md-6"><label class="form-label">Attention Rating (1-5)</label><input type="number" id="therapyAttention" class="form-control" min="1" max="5" value="3"></div>
+                <div class="col-md-3"><label class="form-label">Therapy Language</label><select id="therapyLanguage" class="form-select"><option>Bengali</option><option>Hindi</option><option>English</option><option>Multilingual</option></select></div>
+                <div class="col-md-3"><label class="form-label">Session Type</label><select id="therapyType" class="form-select"><option>Sound Drill</option><option>Syllable Drill</option><option>Word Reading</option><option>Phrase Practice</option><option>Sentence Reading</option></select></div>
+                <div class="col-md-3"><label class="form-label">Practice Sound</label><select id="therapyTarget" class="form-select"></select></div>
+                <div class="col-md-3"><label class="form-label">Difficulty</label><select id="therapyDifficulty" class="form-select"><option>Foundation</option><option selected>Guided</option><option>Independent</option></select></div>
+                <div class="col-md-3"><label class="form-label">Cue Support</label><select id="therapyCueLevel" class="form-select"><option>High Cueing</option><option selected>Moderate Cueing</option><option>Low Cueing</option></select></div>
               </div>
-              <button id="runTherapy" class="btn btn-primary mt-3">Score Session</button>
+              <div class="result-card mt-3">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                  <p class="mb-0"><strong>Live Therapy Round</strong></p>
+                  <div class="d-flex gap-2 flex-wrap">
+                    <button id="startTherapyRound" class="btn btn-outline-primary btn-sm">1. Start Round</button>
+                    <button id="captureTherapyResponse" class="btn btn-outline-success btn-sm">2. Retry Listening</button>
+                  </div>
+                </div>
+                <div id="therapyListeningIndicator" class="mt-2 d-none">
+                  <span class="mic-pill">
+                    <span class="mic-dot"></span>
+                    <span class="mic-dot"></span>
+                    <span class="mic-dot"></span>
+                    <span class="mic-text">Therapy mic active...</span>
+                  </span>
+                </div>
+                <div class="guide-box mt-2">
+                  <h6 class="mb-2">Easy Steps</h6>
+                  <ol class="mb-2 small ps-3">
+                    <li>Click <strong>Start Round</strong> once.</li>
+                    <li>Read the shown prompt aloud when the mic starts listening.</li>
+                    <li>After each response, the prompt changes automatically.</li>
+                    <li>The system then listens for the next prompt automatically.</li>
+                  </ol>
+                </div>
+                <div class="guide-box mt-2">
+                  <h6 class="mb-2">Current Prompt</h6>
+                  <p id="therapyPromptText" class="mb-1">Press Start Round to generate the first therapy prompt.</p>
+                  <p id="therapyRoundProgress" class="mb-1 small text-muted">Round not started.</p>
+                  <p id="therapyRoundStatus" class="mb-0 small text-muted">The system will listen to each spoken response and fill the session values automatically.</p>
+                </div>
+                <div class="guide-box mt-2">
+                  <h6 class="mb-2">Recognized Response</h6>
+                  <p id="therapyTranscriptText" class="mb-0 small text-muted">No response captured yet.</p>
+                </div>
+              </div>
+              <div class="row g-2 mt-1">
+                <div class="col-md-3"><label class="form-label">Duration (Auto Seconds)</label><input type="number" id="therapyDuration" class="form-control" min="0" step="0.1" value="0.0" readonly></div>
+                <div class="col-md-3"><label class="form-label">Successful Trials (Auto)</label><input type="number" id="therapySuccess" class="form-control" min="0" value="0" readonly></div>
+                <div class="col-md-3"><label class="form-label">Total Trials (Auto)</label><input type="number" id="therapyTrials" class="form-control" min="1" value="0" readonly></div>
+                <div class="col-md-3"><label class="form-label">Pronunciation Errors (Auto)</label><input type="number" id="therapyPron" class="form-control" min="0" value="0" readonly></div>
+                <div class="col-md-3"><label class="form-label">Syllable Repetitions (Auto)</label><input type="number" id="therapyRep" class="form-control" min="0" value="0" readonly></div>
+                <div class="col-md-3"><label class="form-label">Sound Substitutions (Auto)</label><input type="number" id="therapySub" class="form-control" min="0" value="0" readonly></div>
+                <div class="col-md-3"><label class="form-label">Self-Corrections (Auto)</label><input type="number" id="therapySelfCorrect" class="form-control" min="0" value="1" readonly></div>
+                <div class="col-md-3"><label class="form-label">Attention Rating (Auto 1-5)</label><input type="number" id="therapyAttention" class="form-control" min="1" max="5" value="3" readonly></div>
+                <div class="col-md-6"><label class="form-label">Breath/Voice Control (Auto 1-5)</label><input type="number" id="therapyBreath" class="form-control" min="1" max="5" value="3" readonly></div>
+                <div class="col-md-6"><label class="form-label">Intelligibility Rating (Auto 1-5)</label><input type="number" id="therapyIntelligibility" class="form-control" min="1" max="5" value="3" readonly></div>
+              </div>
+              <p class="small text-muted mt-2 mb-0">These session values are filled automatically from the live round. The result is analyzed automatically when the round finishes.</p>
               <div class="row g-3 mt-2">
                 <div class="col-xl-6"><div id="therapyResult" class="result-card"></div></div>
                 <div class="col-xl-6"><div class="chart-wrap"><canvas id="therapyChart"></canvas></div></div>
@@ -130,22 +212,79 @@
           <div class="card border-0 shadow-sm">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 class="mb-0">Eye-Tracking Analytics</h5>
+                <h5 class="mb-0">Eye Tracking Check</h5>
                 <button class="btn btn-outline-primary btn-sm user-guide-btn" data-guide="eye">User Guidance</button>
               </div>
-              <div class="alert alert-primary py-2">Use the template button, upload gaze trace CSV in required format, then compute reading speed, regressions, and gaze stability.</div>
+              <div class="alert alert-primary py-2">Run the eye check directly in this window. Start the live check, follow the reading passage with your mouse or finger, and the result will be analyzed automatically.</div>
+              <div class="guide-box mb-2">
+                <h6 class="mb-2">How To Use</h6>
+                <ol class="mb-0 small ps-3">
+                  <li>Choose the reading activity type first.</li>
+                  <li>Click <strong>Start Live Check</strong>.</li>
+                  <li>Read the on-screen passage and follow it with your mouse or finger.</li>
+                  <li>Wait for the timer to finish.</li>
+                  <li>The dashboard analyzes the result automatically and explains it below.</li>
+                </ol>
+              </div>
               <div class="row g-2">
-                <div class="col-md-4"><label class="form-label">Word Count</label><input type="number" id="wordCount" class="form-control" min="1" value="6"></div>
-                <div class="col-md-8"><label class="form-label">Trace CSV</label><input type="file" id="traceFile" class="form-control" accept=".csv"></div>
+                <div class="col-md-4"><label class="form-label">Reading Activity</label><select id="eyePreset" class="form-select"><option value="short_passage">Short Passage</option><option value="sentence_drill">Sentence Drill</option><option value="long_passage">Long Passage</option></select></div>
+                <div class="col-md-8"><label class="form-label">Preset Guidance</label><input id="eyePresetHint" class="form-control" type="text" value="Short passage: balanced settings for a typical reading sample." readonly></div>
+                <div class="col-md-3"><label class="form-label">Words In Passage</label><input type="number" id="wordCount" class="form-control" min="1" value="6"></div>
+                <div class="col-md-3"><label class="form-label">Expected Time (seconds)</label><input type="number" id="eyeExpectedTime" class="form-control" min="1" value="18"></div>
+                <div class="col-md-3"><label class="form-label">Allowed Backward Jumps</label><input type="number" id="eyeRegressionLimit" class="form-control" min="0" value="4"></div>
+                <div class="col-md-3"><label class="form-label">Steadiness Target</label><input type="number" id="eyeDispersionTarget" class="form-control" min="0.01" step="0.01" value="0.18"></div>
+                <div class="col-md-12"><label class="form-label">Optional Advanced CSV Import</label><input type="file" id="traceFile" class="form-control" accept=".csv"></div>
+              </div>
+              <div class="guide-box mt-3">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                  <h6 class="mb-0">Live On-Screen Tracking Check</h6>
+                  <div class="d-flex gap-2 flex-wrap">
+                    <button id="startEyeLiveCheck" class="btn btn-primary btn-sm">Start Live Check</button>
+                    <button id="resetEyeLiveCheck" class="btn btn-outline-secondary btn-sm">Reset Live Check</button>
+                  </div>
+                </div>
+                <p class="small mb-2">This is the easiest mode for end users. Start the live check, then follow the passage with your mouse or finger while reading. The result will be analyzed automatically.</p>
+                <div id="eyeLiveTrackArea" class="eye-live-area">
+                  <div class="eye-live-toolbar">
+                    <span class="eye-live-badge">Live Window Check</span>
+                    <p id="eyeLiveStatus" class="small text-muted mb-0">Press Start Live Check, then follow the passage using your mouse or finger while reading.</p>
+                  </div>
+                  <div id="eyeLivePassage" class="eye-live-passage"></div>
+                  <div id="eyeLiveCursor" class="eye-live-cursor d-none"></div>
+                </div>
               </div>
               <div class="d-flex gap-2 flex-wrap mt-2">
                 <button id="downloadEyeTemplate" class="btn btn-outline-secondary btn-sm">Download CSV Template</button>
-                <span class="text-muted small align-self-center">Required columns: <code>timestamp_ms,gaze_x,gaze_y</code></span>
+                <button id="loadEyeDemo" class="btn btn-outline-primary btn-sm">Load Demo Sample</button>
+                <span class="text-muted small align-self-center">CSV import is optional. Use it only if you already have saved gaze data.</span>
               </div>
-              <button id="runEye" class="btn btn-primary mt-3">Compute Eye Metrics</button>
+              <p id="eyeUploadStatus" class="small text-muted mt-2 mb-0">No gaze trace uploaded yet.</p>
+              <div id="eyeTraceQuickStats" class="result-card mt-2">
+                <p class="mb-0 text-muted small">After a live check or CSV import, this area will show trace duration, point count, and movement range.</p>
+              </div>
+              <div id="eyeChecklist" class="result-card mt-2">
+                <p class="mb-0 text-muted small">After analysis, this area will show a simple quality checklist for pace, steadiness, and backward eye jumps.</p>
+              </div>
+              <div class="guide-box mt-2">
+                <h6 class="mb-2">Optional CSV Format</h6>
+                <pre id="eyeTemplatePreview" class="mb-0 small">timestamp_ms,gaze_x,gaze_y
+0,0.42,0.51
+120,0.45,0.52
+240,0.47,0.50
+360,0.44,0.49
+480,0.40,0.50</pre>
+              </div>
+              <button id="runEye" class="btn btn-primary mt-3">Analyze Again</button>
+              <div id="eyeSummaryBand" class="score-overall mt-3">
+                <p class="mb-1"><strong>Eye Tracking Score:</strong> <span id="eyeOverallScore">-</span></p>
+                <p class="mb-0"><strong>Overall Reading Status:</strong> <span id="eyeOverallStatus">Pending</span></p>
+              </div>
               <div class="row g-3 mt-2">
                 <div class="col-xl-6"><div id="eyeResult" class="result-card"></div></div>
                 <div class="col-xl-6"><div class="chart-wrap"><canvas id="eyeChart"></canvas></div></div>
+              </div>
+              <div id="eyeRecommendation" class="result-card mt-3">
+                <p class="mb-0 text-muted">A plain-language recommendation will appear here after the file is analyzed.</p>
               </div>
             </div>
           </div>
@@ -163,11 +302,16 @@
                 <button id="runComparison" class="btn btn-primary">Run Model Comparison</button>
                 <button id="generateFinal" class="btn btn-success">Generate Final Report</button>
               </div>
+              <div class="row g-2 mt-2">
+                <div class="col-md-4"><div class="score-overall"><p class="mb-1"><strong>Consensus Level:</strong> <span id="labConsensusLevel">-</span></p><p class="mb-0"><strong>Average Risk:</strong> <span id="labAverageRisk">-</span></p></div></div>
+                <div class="col-md-4"><div class="score-overall"><p class="mb-1"><strong>Most Cautious Model:</strong> <span id="labMostCautious">-</span></p><p class="mb-0"><strong>Most Confident Model:</strong> <span id="labMostConfident">-</span></p></div></div>
+                <div class="col-md-4"><div class="score-overall"><p class="mb-1"><strong>Decision Stability:</strong> <span id="labDecisionStability">-</span></p><p class="mb-0"><strong>Readiness:</strong> <span id="labReadinessStatus">Pending</span></p></div></div>
+              </div>
               <div class="row g-3 mt-2">
                 <div class="col-xl-7">
                   <div class="table-responsive">
                     <table class="table table-sm table-hover align-middle">
-                      <thead><tr><th>Model</th><th>Predicted Level</th><th>Confidence</th><th>Risk Score</th></tr></thead>
+                      <thead><tr><th>Model</th><th>Predicted Level</th><th>Confidence</th><th>Risk Score</th><th>Clinical Note</th></tr></thead>
                       <tbody id="modelCompareTable"></tbody>
                     </table>
                   </div>
@@ -192,13 +336,16 @@
               <div class="row g-2">
                 <div class="col-md-8"><label class="form-label">Manifest CSV</label><input type="file" id="manifestFile" class="form-control" accept=".csv"></div>
                 <div class="col-md-4"><label class="form-label">Risk Label Column</label><input type="text" id="labelColumn" class="form-control" value="label"></div>
+                <div class="col-md-4"><label class="form-label">Top Biomarkers</label><input type="number" id="biomarkerTopN" class="form-control" min="3" max="20" value="10"></div>
+                <div class="col-md-4"><label class="form-label">Minimum Importance</label><input type="number" id="biomarkerMinImportance" class="form-control" min="0" max="1" step="0.01" value="0.10"></div>
+                <div class="col-md-4"><label class="form-label">Feature Family</label><select id="biomarkerFamily" class="form-select"><option value="all">All</option><option value="reading">Reading</option><option value="speech">Speech</option><option value="handwriting">Handwriting</option><option value="eye_tracking">Eye Tracking</option><option value="timing">Timing</option></select></div>
               </div>
               <button id="runBiomarkers" class="btn btn-primary mt-3">Analyze Biomarkers</button>
               <div id="biomarkerSummary" class="result-card mt-3"></div>
               <div class="chart-wrap mt-3"><canvas id="biomarkerChart"></canvas></div>
               <div class="table-responsive mt-3">
                 <table class="table table-sm table-hover align-middle">
-                  <thead><tr><th>Biomarker</th><th>Correlation</th><th>Importance</th></tr></thead>
+                  <thead><tr><th>Biomarker</th><th>Family</th><th>Correlation</th><th>Importance</th><th>Interpretation</th></tr></thead>
                   <tbody id="biomarkerTable"></tbody>
                 </table>
               </div>
@@ -213,11 +360,44 @@
                 <h5 class="mb-0">Session Records</h5>
                 <button class="btn btn-outline-primary btn-sm user-guide-btn" data-guide="records">User Guidance</button>
               </div>
+              <div class="alert alert-primary py-2">Review saved screening, therapy, eye-tracking, biomarker, and final report sessions in one place. Select any record to see a cleaner breakdown.</div>
+              <div class="row g-2 mb-2">
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong>Total Records</strong></p><p class="mb-0" id="recordTotalCount">0</p></div></div>
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong>Filtered Results</strong></p><p class="mb-0" id="recordFilteredCount">0</p></div></div>
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong>Latest Entry</strong></p><p class="mb-0" id="recordLatestType">-</p></div></div>
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong>Last Saved</strong></p><p class="mb-0" id="recordLatestTime">-</p></div></div>
+              </div>
               <div class="d-flex gap-2 flex-wrap">
+                <select id="recordTypeFilter" class="form-select form-select-sm" style="max-width: 220px;">
+                  <option value="all">All record types</option>
+                  <option value="screening">Screening</option>
+                  <option value="therapy">Therapy</option>
+                  <option value="eye_tracking">Eye Tracking</option>
+                  <option value="biomarkers">Biomarkers</option>
+                  <option value="final_report">Final Report</option>
+                </select>
+                <input id="recordSearch" class="form-control form-control-sm" style="max-width: 240px;" placeholder="Search records">
                 <button id="exportJson" class="btn btn-outline-primary">Export JSON</button>
                 <button id="clearRecords" class="btn btn-outline-danger">Clear Records</button>
               </div>
-              <pre id="recordsView" class="mt-3"></pre>
+              <div class="row g-3 mt-2">
+                <div class="col-xl-7">
+                  <div id="recordsEmptyState" class="result-card mb-2">
+                    <p class="mb-0 text-muted">No saved sessions yet. Run a test to start building your local history.</p>
+                  </div>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle">
+                      <thead><tr><th>Time</th><th>Type</th><th>Summary</th><th>Status</th></tr></thead>
+                      <tbody id="recordsTableBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+                <div class="col-xl-5">
+                  <div class="result-card" id="recordDetailCard">
+                    <p class="mb-0 text-muted">Select a record from the table to inspect details.</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -237,6 +417,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-  <script src="./app.js?v=3"></script>
+  <script src="./app.js?v=4"></script>
 </body>
 </html>

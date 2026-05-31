@@ -1,0 +1,20 @@
+.app-shell {
+  min-height: 100vh;
+  background: #f3f4f6;
+}
+
+.result-box {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 140px;
+}
+
+.chart-box {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 260px;
+}

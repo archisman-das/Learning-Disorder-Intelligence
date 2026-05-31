@@ -1,0 +1,40 @@
+{
+  "language": "Bengali",
+  "items": [
+    {
+      "id": "bn_q1",
+      "audioPath": "./assets/audio/bn_q1.wav",
+      "question": "রিমি সকালে কত মিনিট গল্প শোনে?",
+      "options": ["দশ মিনিট", "পাঁচ মিনিট", "বিশ মিনিট"],
+      "correctIndex": 0
+    },
+    {
+      "id": "bn_q2",
+      "audioPath": "./assets/audio/bn_q2.wav",
+      "question": "আরিফ কঠিন শব্দ পেলে কী করে?",
+      "options": ["শব্দ ভেঙে ধীরে পড়ে", "বই বন্ধ করে", "লেখা শুরু করে"],
+      "correctIndex": 0
+    },
+    {
+      "id": "bn_q3",
+      "audioPath": "./assets/audio/bn_q3.wav",
+      "question": "মিতা পড়া শুরুর আগে কী দেখে?",
+      "options": ["শিরোনাম ও প্রথম লাইন", "শেষ অনুচ্ছেদ", "ছবির নিচের লেখা"],
+      "correctIndex": 0
+    },
+    {
+      "id": "bn_q4",
+      "audioPath": "./assets/audio/bn_q4.wav",
+      "question": "সোহান কখন অনুশীলন করে?",
+      "options": ["সন্ধ্যায়", "ভোরে", "দুপুরে"],
+      "correctIndex": 0
+    },
+    {
+      "id": "bn_q5",
+      "audioPath": "./assets/audio/bn_q5.wav",
+      "question": "তৃষা পড়ার সময় কীভাবে পড়ে?",
+      "options": ["ধীরে ও স্পষ্টভাবে", "খুব তাড়াতাড়ি", "একটানা থেমে থেমে নয়"],
+      "correctIndex": 0
+    }
+  ]
+}

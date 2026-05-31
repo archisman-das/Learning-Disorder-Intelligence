@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.venv/
+data/demo/
+data/collection/
+data/collection_test/
+checkpoints/
+exports/
+.streamlit/
+streamlit*.log

@@ -1,0 +1,85 @@
+body {
+  background: #f3f4f6;
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+.result-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f8fafc;
+  min-height: 140px;
+  padding: 12px;
+}
+
+.result-card p {
+  margin-bottom: 0.5rem;
+}
+
+.chart-wrap {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px;
+  height: 280px;
+}
+
+.guide-box {
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #eff6ff;
+  padding: 10px 12px;
+}
+
+.guide-box h6 {
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.guide-box ol {
+  padding-left: 1.1rem;
+  margin-bottom: 0;
+}
+
+.guide-modal[hidden] {
+  display: none;
+}
+
+.guide-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+}
+
+.guide-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.guide-modal-content {
+  position: relative;
+  width: min(760px, 92vw);
+  max-height: 82vh;
+  overflow: auto;
+  margin: 7vh auto 0;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 14px;
+}
+
+#recordsView {
+  background: #111827;
+  color: #d1fae5;
+  padding: 12px;
+  border-radius: 8px;
+  max-height: 420px;
+  overflow: auto;
+}

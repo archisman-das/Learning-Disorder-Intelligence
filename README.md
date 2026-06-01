@@ -2,6 +2,8 @@
 
 An early-stage, multimodal deep learning system for dyslexia screening and end-user assistance, with emphasis on Bengali, multilingual, and low-resource settings.
 
+For a fuller project walkthrough, see [docs/PROJECT_DOCUMENTATION.md](/abs/path/c:/Dyslexia_Detection_System/docs/PROJECT_DOCUMENTATION.md).
+
 The codebase supports handwriting images, reading audio features, multilingual text samples, reading-behavior indicators, explainability hooks, and lightweight deployment through a local Streamlit dashboard.
 
 ## Features

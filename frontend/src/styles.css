@@ -18,3 +18,62 @@
   padding: 12px;
   min-height: 260px;
 }
+
+.report-card {
+  background: #f8fafc;
+  border: 1px solid #dbe4f0;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.report-note {
+  background: #eef4ff;
+  border: 1px solid #c7dbff;
+  border-radius: 10px;
+  color: #1d4ed8;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+}
+
+.report-status-list {
+  display: grid;
+  gap: 10px;
+}
+
+.status-pill {
+  background: #e5e7eb;
+  border-radius: 999px;
+  color: #334155;
+  padding: 10px 14px;
+  font-weight: 600;
+}
+
+.status-pill.done {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.report-preview {
+  display: grid;
+  gap: 16px;
+}
+
+.report-preview-block {
+  display: grid;
+  gap: 8px;
+}
+
+.report-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px 16px;
+}
+
+.report-preview-grid .full-row {
+  grid-column: 1 / -1;
+}
+
+.report-list {
+  margin: 0;
+  padding-left: 1.1rem;
+}

@@ -23,6 +23,7 @@ let modelCompareChart;
 let latestScreening = null;
 let latestTherapy = null;
 let latestEye = null;
+let reportSourceVersion = 0;
 let therapyRecognition = null;
 let therapyRecognitionRunning = false;
 let therapyRecognitionPrimed = false;
@@ -109,6 +110,8 @@ let currentListeningLanguage = "Bengali";
 let currentListeningAudioPath = "";
 let selectedAudioOptionIndex = null;
 let audioPlaybackCompleted = false;
+let audioPlaybackStarted = false;
+let audioPlaybackInProgress = false;
 let audioAnswerLocked = false;
 let selectedVoiceURI = "";
 let bengaliListeningSet = [];
@@ -121,6 +124,19 @@ let eyeLiveTraceState = {
   points: [],
   timer: null,
   lastPointTs: 0,
+};
+let eyeTestState = {
+  active: false,
+  roundIndex: 0,
+  totalRounds: 8,
+  roundTypes: [],
+  results: [],
+  startedAt: 0,
+  roundStartedAt: 0,
+  target: "",
+  choices: [],
+  wrongClicks: 0,
+  locked: false,
 };
 let spellingAutoScoreTimer = null;
 let screeningAutoRunTimer = null;
@@ -150,36 +166,29 @@ const THERAPY_DIFFICULTY_BONUS = {
 };
 
 const EYE_PRESETS = {
-  short_passage: {
-    label: "Short Passage",
-    description: "Short passage: balanced settings for a typical reading sample.",
-    wordCount: 6,
-    expectedTime: 18,
-    regressionLimit: 4,
-    dispersionTarget: 0.18,
+  letters: {
+    label: "Alphabet Match",
+    description: "Find the matching letter quickly. Best for a simple classroom-ready attention check.",
+    targetResponseMs: 2200,
+    totalRounds: 8,
+    symbolPool: ["A", "B", "D", "E", "F", "H", "K", "M", "N", "P", "R", "S", "T", "Y"],
   },
-  sentence_drill: {
-    label: "Sentence Drill",
-    description: "Sentence drill: shorter reading with tighter pace and steadiness expectations.",
-    wordCount: 4,
-    expectedTime: 10,
-    regressionLimit: 2,
-    dispersionTarget: 0.14,
+  digits: {
+    label: "Digit Match",
+    description: "Find the matching number. Useful for a low-language visual speed check.",
+    targetResponseMs: 1900,
+    totalRounds: 8,
+    symbolPool: ["2", "3", "4", "5", "6", "7", "8", "9"],
   },
-  long_passage: {
-    label: "Long Passage",
-    description: "Long passage: more words, a longer expected duration, and a little more movement tolerance.",
-    wordCount: 12,
-    expectedTime: 32,
-    regressionLimit: 6,
-    dispersionTarget: 0.22,
+  mixed: {
+    label: "Mixed Symbols",
+    description: "A slightly harder mode with letters and digits mixed together.",
+    targetResponseMs: 2400,
+    totalRounds: 10,
+    symbolPool: ["A", "C", "E", "H", "K", "M", "P", "R", "3", "4", "5", "7", "8", "9"],
+    letterPool: ["A", "C", "E", "H", "K", "M", "P", "R"],
+    digitPool: ["3", "4", "5", "7", "8", "9"],
   },
-};
-
-const EYE_LIVE_PASSAGES = {
-  short_passage: "The child reads one short passage slowly from left to right and keeps attention on each line.",
-  sentence_drill: "Read each short sentence carefully and move across the line in one smooth direction.",
-  long_passage: "This longer passage asks the reader to keep a steady left to right pattern, reduce backward jumps, and maintain focus across several lines.",
 };
 
 const THERAPY_TARGET_OPTIONS = {
@@ -420,7 +429,7 @@ function recordTypeLabel(type) {
   const labels = {
     screening: "Screening",
     therapy: "Therapy",
-    eye_tracking: "Eye Tracking",
+    eye_tracking: "Visual Focus Test",
     biomarkers: "Biomarkers",
     final_report: "Final Report",
   };
@@ -535,12 +544,12 @@ const GUIDE_CONTENT = {
     `,
   },
   eye: {
-    title: "Eye Tracking Guidance",
+    title: "Visual Focus Test Guidance",
     html: `
       <ol>
-        <li>Prepare CSV with: timestamp_ms, gaze_x, gaze_y. / নির্দিষ্ট কলামসহ CSV দিন।</li>
-        <li>Set word count for reading prompt. / শব্দ সংখ্যা দিন।</li>
-        <li>Upload CSV and compute metrics. / CSV আপলোড করে মেট্রিক্স বের করুন।</li>
+        <li>Choose a mode: letters, digits, or mixed symbols.</li>
+        <li>Press Start Test and tap the matching symbol in each round.</li>
+        <li>The result is analyzed and saved automatically after the final round.</li>
       </ol>
     `,
   },
@@ -548,7 +557,7 @@ const GUIDE_CONTENT = {
     title: "Test Lab Guidance",
     html: `
       <ol>
-        <li>Complete Screening + Therapy + Eye Tracking first. / আগে ৩টি টেস্ট শেষ করুন।</li>
+        <li>Complete Screening + Therapy + Visual Focus Test first. / আগে ৩টি টেস্ট শেষ করুন।</li>
         <li>Run Model Comparison. / Model Comparison চালান।</li>
         <li>Generate Final Report for aggregated outcome. / Final Report তৈরি করুন।</li>
       </ol>
@@ -575,11 +584,204 @@ const GUIDE_CONTENT = {
   },
 };
 
+const GUIDE_CONTENT_V2 = {
+  screening: {
+    title: "Screening Guidance",
+    html: `
+      <p><strong>English</strong></p>
+      <ol>
+        <li>Start the reading test, read the sentence aloud, and stop after finishing.</li>
+        <li>Play the listening audio and let the system check the answer automatically.</li>
+        <li>Complete the spelling answers and wait for the score.</li>
+        <li>Click <strong>Run Screening</strong> to see the final screening result.</li>
+      </ol>
+      <p><strong>বাংলা</strong></p>
+      <ol>
+        <li>রিডিং টেস্ট শুরু করুন, বাক্যটি জোরে পড়ুন, এবং শেষ হলে বন্ধ করুন।</li>
+        <li>লিসেনিং অডিও চালান এবং সিস্টেমকে উত্তর যাচাই করতে দিন।</li>
+        <li>স্পেলিং-এর উত্তরগুলো পূরণ করুন এবং স্কোরের জন্য অপেক্ষা করুন।</li>
+        <li><strong>Run Screening</strong> চাপুন, তাহলে চূড়ান্ত স্ক্রিনিং ফল দেখাবে।</li>
+      </ol>
+      <p><strong>हिंदी</strong></p>
+      <ol>
+        <li>रीडिंग टेस्ट शुरू करें, वाक्य को जोर से पढ़ें, और पूरा होने पर रोक दें।</li>
+        <li>लिसनिंग ऑडियो चलाएँ और सिस्टम को उत्तर अपने आप जांचने दें।</li>
+        <li>स्पेलिंग के उत्तर भरें और स्कोर का इंतजार करें।</li>
+        <li><strong>Run Screening</strong> दबाएँ, तब अंतिम स्क्रीनिंग परिणाम दिखाई देगा।</li>
+      </ol>
+      <p><strong>Note:</strong> This is a support tool only. It is not a final medical diagnosis.</p>
+    `,
+  },
+  therapy: {
+    title: "Speech Therapy Guidance",
+    html: `
+      <p><strong>English</strong></p>
+      <ol>
+        <li>Choose the language, session type, practice item, difficulty, and cue level.</li>
+        <li>Click <strong>Start Round</strong>, read the shown prompt aloud, then click <strong>Speak Now</strong>.</li>
+        <li>After each response, the next practice item will appear automatically.</li>
+        <li>When finished, click <strong>Finish Round</strong> to view the result.</li>
+      </ol>
+      <p><strong>বাংলা</strong></p>
+      <ol>
+        <li>ভাষা, সেশন টাইপ, প্র্যাকটিস আইটেম, কঠিনতার মাত্রা, এবং সহায়তার স্তর বেছে নিন।</li>
+        <li><strong>Start Round</strong> চাপুন, দেখানো শব্দ বা বাক্যটি জোরে পড়ুন, তারপর <strong>Speak Now</strong> চাপুন।</li>
+        <li>প্রতিটি উত্তরের পরে পরের প্র্যাকটিস আইটেম নিজে থেকে আসবে।</li>
+        <li>শেষ হলে <strong>Finish Round</strong> চাপুন এবং ফল দেখুন।</li>
+      </ol>
+      <p><strong>हिंदी</strong></p>
+      <ol>
+        <li>भाषा, सेशन प्रकार, अभ्यास आइटम, कठिनाई स्तर और सहायता स्तर चुनें।</li>
+        <li><strong>Start Round</strong> दबाएँ, दिखाया गया शब्द या वाक्य जोर से पढ़ें, फिर <strong>Speak Now</strong> दबाएँ।</li>
+        <li>हर उत्तर के बाद अगला अभ्यास अपने आप दिखाई देगा।</li>
+        <li>अंत में <strong>Finish Round</strong> दबाकर परिणाम देखें।</li>
+      </ol>
+    `,
+  },
+  eye: {
+    title: "Visual Focus Test Guidance",
+    html: `
+      <p><strong>English</strong></p>
+      <ol>
+        <li>Choose a mode: letters, digits, or mixed symbols.</li>
+        <li>Click <strong>Start Test</strong>. The target and test board will activate together.</li>
+        <li>Look at the symbol shown in <strong>Round Target</strong>.</li>
+        <li>Tap the same symbol on the <strong>Interactive Test Board</strong> as quickly and carefully as possible.</li>
+        <li>After all rounds finish, the result will save automatically.</li>
+      </ol>
+      <p><strong>বাংলা</strong></p>
+      <ol>
+        <li>একটি মোড বেছে নিন: অক্ষর, সংখ্যা, বা মিশ্র চিহ্ন।</li>
+        <li><strong>Start Test</strong> চাপুন। তখন টার্গেট এবং টেস্ট বোর্ড একসাথে চালু হবে।</li>
+        <li><strong>Round Target</strong>-এ দেখানো চিহ্নটি ভালো করে দেখুন।</li>
+        <li><strong>Interactive Test Board</strong> থেকে একই চিহ্ন যত দ্রুত ও ঠিকভাবে পারেন চাপুন।</li>
+        <li>সব রাউন্ড শেষ হলে ফল নিজে থেকে সেভ হবে।</li>
+      </ol>
+      <p><strong>हिंदी</strong></p>
+      <ol>
+        <li>एक मोड चुनें: अक्षर, अंक, या मिक्स्ड सिंबल।</li>
+        <li><strong>Start Test</strong> दबाएँ। तब टारगेट और टेस्ट बोर्ड दोनों साथ में चालू होंगे।</li>
+        <li><strong>Round Target</strong> में दिखाया गया चिन्ह ध्यान से देखें।</li>
+        <li><strong>Interactive Test Board</strong> में वही चिन्ह जितना जल्दी और सही हो सके दबाएँ।</li>
+        <li>सभी राउंड पूरे होने के बाद परिणाम अपने आप सेव हो जाएगा।</li>
+      </ol>
+    `,
+  },
+  testlab: {
+    title: "Test Lab Guidance",
+    html: `
+      <p><strong>English</strong></p>
+      <ol>
+        <li>Complete Screening, Speech Therapy, and Visual Focus Test first.</li>
+        <li>Click <strong>Run Model Comparison</strong> to compare the saved test results.</li>
+        <li>Then click <strong>Generate Final Report</strong> to see the combined outcome.</li>
+      </ol>
+      <p><strong>বাংলা</strong></p>
+      <ol>
+        <li>আগে Screening, Speech Therapy, এবং Visual Focus Test শেষ করুন।</li>
+        <li>সেভ হওয়া ফলগুলো তুলনা করতে <strong>Run Model Comparison</strong> চাপুন।</li>
+        <li>তারপর মিলিত ফল দেখতে <strong>Generate Final Report</strong> চাপুন।</li>
+      </ol>
+      <p><strong>हिंदी</strong></p>
+      <ol>
+        <li>पहले Screening, Speech Therapy और Visual Focus Test पूरा करें।</li>
+        <li>सेव किए गए परिणामों की तुलना करने के लिए <strong>Run Model Comparison</strong> दबाएँ।</li>
+        <li>फिर संयुक्त परिणाम देखने के लिए <strong>Generate Final Report</strong> दबाएँ।</li>
+      </ol>
+    `,
+  },
+  biomarkers: {
+    title: "Biomarker Guidance",
+    html: `
+      <p><strong>English</strong></p>
+      <ol>
+        <li>Upload a CSV file with numeric feature columns and one label column.</li>
+        <li>Select the correct label column name if needed.</li>
+        <li>Click <strong>Run Analysis</strong> to find the most useful markers.</li>
+        <li>Read the summary and review the important features shown below.</li>
+      </ol>
+      <p><strong>বাংলা</strong></p>
+      <ol>
+        <li>একটি CSV ফাইল আপলোড করুন যেখানে সংখ্যাভিত্তিক ফিচার কলাম এবং একটি লেবেল কলাম আছে।</li>
+        <li>প্রয়োজনে সঠিক লেবেল কলামের নাম নির্বাচন করুন।</li>
+        <li><strong>Run Analysis</strong> চাপুন, সিস্টেম গুরুত্বপূর্ণ মার্কার বের করবে।</li>
+        <li>সারাংশ এবং নিচে দেখানো গুরুত্বপূর্ণ ফিচারগুলো দেখুন।</li>
+      </ol>
+      <p><strong>हिंदी</strong></p>
+      <ol>
+        <li>ऐसी CSV फाइल अपलोड करें जिसमें संख्यात्मक फीचर कॉलम और एक लेबल कॉलम हो।</li>
+        <li>ज़रूरत हो तो सही लेबल कॉलम का नाम चुनें।</li>
+        <li><strong>Run Analysis</strong> दबाएँ, सिस्टम महत्वपूर्ण मार्कर ढूँढेगा।</li>
+        <li>सारांश और नीचे दिखाए गए मुख्य फीचर्स को देखें।</li>
+      </ol>
+    `,
+  },
+  records: {
+    title: "Records Guidance",
+    html: `
+      <p><strong>English</strong></p>
+      <ol>
+        <li>All results are saved in this browser on this device.</li>
+        <li>Use <strong>Export JSON</strong> if you want a backup copy.</li>
+        <li>Use search or filters to find older records quickly.</li>
+        <li>Click <strong>Clear Records</strong> only if you want to remove the saved local history.</li>
+      </ol>
+      <p><strong>বাংলা</strong></p>
+      <ol>
+        <li>সব ফল এই ডিভাইসের এই ব্রাউজারেই সেভ থাকে।</li>
+        <li>ব্যাকআপ রাখতে চাইলে <strong>Export JSON</strong> ব্যবহার করুন।</li>
+        <li>পুরনো রেকর্ড খুঁজতে সার্চ বা ফিল্টার ব্যবহার করুন।</li>
+        <li>লোকাল হিস্ট্রি মুছতে চাইলে তবেই <strong>Clear Records</strong> চাপুন।</li>
+      </ol>
+      <p><strong>हिंदी</strong></p>
+      <ol>
+        <li>सभी परिणाम इसी डिवाइस के इसी ब्राउज़र में सेव होते हैं।</li>
+        <li>बैकअप रखना हो तो <strong>Export JSON</strong> का उपयोग करें।</li>
+        <li>पुराने रिकॉर्ड जल्दी ढूँढने के लिए सर्च या फ़िल्टर का उपयोग करें।</li>
+        <li>स्थानीय हिस्ट्री हटानी हो तभी <strong>Clear Records</strong> दबाएँ।</li>
+      </ol>
+    `,
+  },
+};
+
+GUIDE_CONTENT_V2.testlab = {
+  title: "Test Lab & Report Guidance",
+  html: `
+    <p><strong>English</strong></p>
+    <ol>
+      <li>First complete the Screening, Speech Therapy, and Visual Focus Test sections.</li>
+      <li>Then come to this section and fill in the student's details carefully.</li>
+      <li>Click <strong>Run Model Comparison</strong> to combine the saved results.</li>
+      <li>Check the comparison table and summary shown on the screen.</li>
+      <li>Click <strong>Generate Final Report</strong> to prepare the final report.</li>
+      <li>Finally, click <strong>Download Report PDF</strong> to save the report with the student details included automatically.</li>
+    </ol>
+    <p><strong>বাংলা</strong></p>
+    <ol>
+      <li>প্রথমে Screening, Speech Therapy, এবং Visual Focus Test অংশগুলো শেষ করুন।</li>
+      <li>তারপর এই অংশে এসে শিক্ষার্থীর তথ্য ঠিকভাবে পূরণ করুন।</li>
+      <li>সেভ হওয়া ফল একসাথে দেখতে <strong>Run Model Comparison</strong> চাপুন।</li>
+      <li>স্ক্রিনে দেখানো তুলনামূলক টেবিল ও সারাংশ দেখে নিন।</li>
+      <li>চূড়ান্ত রিপোর্ট তৈরি করতে <strong>Generate Final Report</strong> চাপুন।</li>
+      <li>সবশেষে <strong>Download Report PDF</strong> চাপলে শিক্ষার্থীর তথ্যসহ রিপোর্ট পিডিএফ আকারে সেভ হবে।</li>
+    </ol>
+    <p><strong>हिंदी</strong></p>
+    <ol>
+      <li>पहले Screening, Speech Therapy, और Visual Focus Test पूरे करें।</li>
+      <li>उसके बाद इस भाग में आकर छात्र की जानकारी ध्यान से भरें।</li>
+      <li>सेव हुए परिणामों को एक साथ देखने के लिए <strong>Run Model Comparison</strong> दबाएँ।</li>
+      <li>स्क्रीन पर दिख रही तुलना तालिका और सारांश को ध्यान से देखें।</li>
+      <li>अंतिम रिपोर्ट बनाने के लिए <strong>Generate Final Report</strong> दबाएँ।</li>
+      <li>अंत में <strong>Download Report PDF</strong> दबाएँ, ताकि छात्र की जानकारी के साथ रिपोर्ट पीडीएफ में सेव हो जाए।</li>
+    </ol>
+  `,
+};
+
 function openGuideModal(key) {
   const modal = document.getElementById("guideModal");
   const title = document.getElementById("guideTitle");
   const body = document.getElementById("guideBody");
-  const content = GUIDE_CONTENT[key] || { title: "User Guidance", html: "<p>No guidance available.</p>" };
+  const content = GUIDE_CONTENT_V2[key] || GUIDE_CONTENT[key] || { title: "User Guidance", html: "<p>No guidance available.</p>" };
   title.textContent = content.title;
   body.innerHTML = content.html;
   modal.hidden = false;
@@ -688,6 +890,119 @@ function setNodeText(id, text, className = "") {
   node.className = className;
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function getStudentReportInfo() {
+  return {
+    name: (document.getElementById("reportStudentName")?.value || "").trim(),
+    age: (document.getElementById("reportStudentAge")?.value || "").trim(),
+    studentClass: (document.getElementById("reportStudentClass")?.value || "").trim(),
+    rollNo: (document.getElementById("reportStudentRoll")?.value || "").trim(),
+    section: (document.getElementById("reportStudentSection")?.value || "").trim(),
+    schoolName: (document.getElementById("reportSchoolName")?.value || "").trim(),
+  };
+}
+
+function validateStudentReportInfo() {
+  const info = getStudentReportInfo();
+  const missing = [];
+  if (!info.name) missing.push("Student Name");
+  if (!info.age) missing.push("Age");
+  if (!info.studentClass) missing.push("Class");
+  if (!info.rollNo) missing.push("Roll No");
+  if (!info.section) missing.push("Section");
+  if (!info.schoolName) missing.push("School Name");
+  return { info, missing };
+}
+
+function setDownloadReportEnabled(enabled) {
+  const button = document.getElementById("downloadFinalPdf");
+  if (!button) return;
+  button.disabled = !enabled;
+}
+
+function getReportSourceReadiness() {
+  return {
+    screeningDone: !!latestScreening,
+    therapyDone: !!latestTherapy,
+    eyeDone: !!latestEye,
+    ready: !!latestScreening && !!latestTherapy && !!latestEye,
+  };
+}
+
+function invalidateReportFlow(message = "Report needs to be generated again.") {
+  window.__latestFinalReport = null;
+  setDownloadReportEnabled(false);
+  renderFinalReportPanel(null, message);
+}
+
+function markReportSourceChanged(sourceLabel) {
+  reportSourceVersion += 1;
+  const hasComparison = Array.isArray(window.__latestModelPredictions) && window.__latestModelPredictions.length > 0;
+  const comparisonVersion = Number(window.__latestComparisonVersion || 0);
+  if (!hasComparison) {
+    setDownloadReportEnabled(false);
+    renderFinalReportPanel();
+    return;
+  }
+  if (comparisonVersion !== reportSourceVersion) {
+    window.__latestModelPredictions = [];
+    window.__latestConsensus = null;
+    window.__latestComparisonVersion = 0;
+    invalidateReportFlow(`${sourceLabel} changed. Run model comparison again to refresh the report.`);
+  }
+}
+
+function isComparisonCurrent() {
+  return Number(window.__latestComparisonVersion || 0) === reportSourceVersion
+    && Array.isArray(window.__latestModelPredictions)
+    && window.__latestModelPredictions.length > 0;
+}
+
+function renderFinalReportPanel(reportData = null, message = "") {
+  const node = document.getElementById("finalReport");
+  if (!node) return;
+  const { info, missing } = validateStudentReportInfo();
+  if (reportData) {
+    const generatedText = reportData.generatedAt ? new Date(reportData.generatedAt).toLocaleString() : "-";
+    node.innerHTML = `
+      <p><strong>Student Name:</strong> ${escapeHtml(reportData.studentInfo.name)}</p>
+      <p><strong>Age:</strong> ${escapeHtml(reportData.studentInfo.age)} | <strong>Class:</strong> ${escapeHtml(reportData.studentInfo.studentClass)} | <strong>Roll No:</strong> ${escapeHtml(reportData.studentInfo.rollNo)}</p>
+      <p><strong>Section:</strong> ${escapeHtml(reportData.studentInfo.section)} | <strong>School Name:</strong> ${escapeHtml(reportData.studentInfo.schoolName)}</p>
+      <p><strong>Final Aggregated Outcome:</strong> ${reportData.finalLevel}</p>
+      <p><strong>Average Risk Score:</strong> ${reportData.avgRisk.toFixed(3)}</p>
+      <p><strong>Model Agreement:</strong> Severe votes ${reportData.severeVotes}, Moderate votes ${reportData.moderateVotes}, Mild votes ${reportData.predictions.length - reportData.severeVotes - reportData.moderateVotes}</p>
+      <p><strong>Decision Stability:</strong> ${reportData.consensus.decisionStability || "-"}</p>
+      <p><strong>Most Cautious Model:</strong> ${reportData.consensus.mostCautious ? `${reportData.consensus.mostCautious.modelName} (${reportData.consensus.mostCautious.level})` : "-"}</p>
+      <p><strong>Screening Summary:</strong> ${reportData.screening ? `${reportData.screening.label} (${(reportData.screening.confidence * 100).toFixed(1)}%)` : "-"}</p>
+      <p><strong>Speech Therapy Summary:</strong> ${reportData.therapy ? `${reportData.therapy.sessionBand} (${(reportData.therapy.overallScorePct || reportData.therapy.score * 100).toFixed(1)}%)` : "-"}</p>
+      <p><strong>Visual Focus Summary:</strong> ${reportData.visualFocus ? `${reportData.visualFocus.eyeStatus} (${(reportData.visualFocus.eyeOverallScore || 0).toFixed(1)}%)` : "-"}</p>
+      <p><strong>Recommended Next Step:</strong> ${reportData.recommendation}</p>
+      <p><strong>Generated At:</strong> ${generatedText}</p>
+    `;
+    return;
+  }
+  const readiness = getReportSourceReadiness();
+  const defaultMessage = missing.length
+    ? `Waiting for details: ${missing.join(", ")}`
+    : readiness.ready
+      ? "Student details ready. Run model comparison, then generate the final report."
+      : "Complete Screening, Speech Therapy, and the Visual Focus Test first.";
+  node.innerHTML = `
+    <p><strong>Student Name:</strong> ${escapeHtml(info.name || "-")}</p>
+    <p><strong>Age:</strong> ${escapeHtml(info.age || "-")} | <strong>Class:</strong> ${escapeHtml(info.studentClass || "-")} | <strong>Roll No:</strong> ${escapeHtml(info.rollNo || "-")}</p>
+    <p><strong>Section:</strong> ${escapeHtml(info.section || "-")} | <strong>School Name:</strong> ${escapeHtml(info.schoolName || "-")}</p>
+    <p><strong>Report Status:</strong> ${message || defaultMessage}</p>
+  `;
+}
+
 function maybeAutoRunScreening() {
   if (!readingTestState.done || !audioFeatures.analyzed || !spellingFeatures.scored) return;
   if (screeningAutoRunTimer) clearTimeout(screeningAutoRunTimer);
@@ -710,7 +1025,7 @@ function summarizeRecord(record) {
     case "therapy":
       return `${record.sessionType || "Session"} on ${record.target || "target"} scored ${(record.overallScorePct || (record.score || 0) * 100).toFixed(1)}%`;
     case "eye_tracking":
-      return `Reading speed ${Number(record.wpm || 0).toFixed(1)} WPM, backward eye jumps ${record.regressions ?? "-"}`;
+      return `Visual test ${record.preset || "session"} with ${Number(record.fixationScore || 0).toFixed(1)}% first-try accuracy`;
     case "biomarkers":
       return `${record.analyzed_samples || 0} samples analyzed, ${(record.biomarkers || []).length} biomarkers shown`;
     case "final_report":
@@ -735,6 +1050,132 @@ function biomarkerInterpretation(row) {
   if (row.importance >= 0.5) return `Strong marker linked with ${direction}.`;
   if (row.importance >= 0.25) return `Moderate marker linked with ${direction}.`;
   return `Weak but usable marker linked with ${direction}.`;
+}
+
+function setBiomarkerMetric(id, value) {
+  const node = document.getElementById(id);
+  if (!node) return;
+  node.textContent = value;
+}
+
+function resetBiomarkerView(message = "Upload a dataset and run the analysis to see a plain-language biomarker summary here.") {
+  const summaryNode = document.getElementById("biomarkerSummary");
+  const tableNode = document.getElementById("biomarkerTable");
+  if (summaryNode) summaryNode.innerHTML = `<p class="mb-0 text-muted">${message}</p>`;
+  if (tableNode) tableNode.innerHTML = `<tr><td colspan="5" class="text-muted">Run the analysis to see biomarker results.</td></tr>`;
+  setBiomarkerMetric("biomarkerSamplesMetric", "-");
+  setBiomarkerMetric("biomarkerEvaluatedMetric", "-");
+  setBiomarkerMetric("biomarkerShownMetric", "-");
+  setBiomarkerMetric("biomarkerStrongestMetric", "-");
+  if (biomarkerChart) {
+    biomarkerChart.destroy();
+    biomarkerChart = null;
+  }
+}
+
+function detectLikelyLabelColumns(header) {
+  const exactPriority = ["label", "risk_label", "class", "target", "outcome"];
+  const exactMatches = exactPriority.filter((name) => header.includes(name));
+  const fuzzyMatches = header.filter((name) => /(label|risk|class|target|outcome)/i.test(name) && !exactMatches.includes(name));
+  return [...exactMatches, ...fuzzyMatches];
+}
+
+function normalizeTableHeaderCell(value) {
+  return String(value || "").trim().replace(/\s+/g, "_");
+}
+
+function splitTableLine(line, delimiter) {
+  if (delimiter instanceof RegExp) {
+    return line.trim().split(delimiter).map((cell) => cell.trim());
+  }
+  return line.split(delimiter).map((cell) => cell.trim());
+}
+
+function detectTableDelimiter(lines) {
+  const sampleLine = lines.find((line) => String(line || "").trim()) || "";
+  if (sampleLine.includes("\t")) return "\t";
+  const candidates = [",", "|", ";"];
+  let best = null;
+  let bestScore = 0;
+  for (const candidate of candidates) {
+    const score = lines.slice(0, 5).reduce((sum, line) => sum + ((line.match(new RegExp(`\\${candidate}`, "g")) || []).length), 0);
+    if (score > bestScore) {
+      best = candidate;
+      bestScore = score;
+    }
+  }
+  if (best) return best;
+  if (/\s{2,}/.test(sampleLine)) return /\s{2,}/;
+  return ",";
+}
+
+function parseTabularText(text) {
+  const lines = String(text || "").replace(/^\uFEFF/, "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length < 2) {
+    return { error: "The uploaded file does not contain a readable table with a header row and data rows." };
+  }
+  const delimiter = detectTableDelimiter(lines);
+  const header = splitTableLine(lines[0], delimiter).map(normalizeTableHeaderCell);
+  if (header.length < 2) {
+    return { error: "The header row could not be read properly. Please use a clear table with separate columns." };
+  }
+  const rows = lines.slice(1)
+    .map((line) => splitTableLine(line, delimiter))
+    .filter((cells) => cells.some((cell) => cell.length));
+  return { header, rows };
+}
+
+async function readBiomarkerUpload(file) {
+  const lowerName = file.name.toLowerCase();
+  if (lowerName.endsWith(".csv")) {
+    return file.text();
+  }
+  throw new Error("Unsupported file type. Please use a CSV file.");
+}
+
+function updateBiomarkerFileInfo(file, header = [], rowCount = 0) {
+  const statusNode = document.getElementById("biomarkerFileStatus");
+  const infoNode = document.getElementById("biomarkerDetectedInfo");
+  const suggestionList = document.getElementById("labelColumnSuggestions");
+  const labelInput = document.getElementById("labelColumn");
+  if (suggestionList) suggestionList.innerHTML = "";
+
+  if (!file) {
+    if (statusNode) statusNode.textContent = "No dataset selected yet.";
+    if (infoNode) {
+      infoNode.innerHTML = `
+        <h6 class="mb-2">Mandatory file requirements</h6>
+        <p class="small mb-2">For reliable biomarker analysis, your file must include:</p>
+        <ul class="small mb-0 ps-3">
+          <li>one structured table with a clear header row</li>
+          <li>one label column such as <code>label</code>, <code>risk_label</code>, <code>class</code>, or <code>target</code></li>
+          <li>numeric feature columns such as reading speed, error count, hesitation count, gaze values, or timing values</li>
+          <li>one sample per row</li>
+        </ul>
+      `;
+    }
+    return;
+  }
+
+  const suggestions = detectLikelyLabelColumns(header);
+  if (suggestionList) {
+    suggestionList.innerHTML = suggestions.map((name) => `<option value="${name}"></option>`).join("");
+  }
+  if (labelInput && suggestions.length && (!labelInput.value || labelInput.value === "label")) {
+    labelInput.value = suggestions[0];
+  }
+  if (statusNode) {
+    statusNode.textContent = `Selected ${file.name}. Found ${rowCount} data rows and ${header.length} columns.`;
+  }
+  if (infoNode) {
+    infoNode.innerHTML = `
+      <h6 class="mb-2">Detected dataset preview</h6>
+      <p class="small mb-1"><strong>File type:</strong> CSV</p>
+      <p class="small mb-1"><strong>Rows:</strong> ${rowCount}</p>
+      <p class="small mb-1"><strong>Columns:</strong> ${header.length}</p>
+      <p class="small mb-0"><strong>Suggested label columns:</strong> ${suggestions.length ? suggestions.join(", ") : "No obvious label column detected. Enter it manually."}</p>
+    `;
+  }
 }
 
 const THERAPY_RESPONSE_THRESHOLDS = {
@@ -1508,9 +1949,10 @@ function renderRecordDetail(record) {
     detailRows.push(["Recommendation", record.recommendation || "-"]);
   } else if (record.type === "eye_tracking") {
     detailRows.push(["Preset", record.preset || "-"]);
-    detailRows.push(["Reading Speed", `${Number(record.wpm || 0).toFixed(1)} WPM`]);
-    detailRows.push(["Backward Eye Jumps", record.regressions ?? "-"]);
-    detailRows.push(["Gaze Steadiness", record.stabilityScore !== undefined ? `${Number(record.stabilityScore).toFixed(1)}%` : "-"]);
+    detailRows.push(["Items Per Minute", `${Number(record.wpm || 0).toFixed(1)} IPM`]);
+    detailRows.push(["Wrong Taps", record.regressions ?? "-"]);
+    detailRows.push(["First-Try Accuracy", record.fixationScore !== undefined ? `${Number(record.fixationScore).toFixed(1)}%` : "-"]);
+    detailRows.push(["Consistency", record.stabilityScore !== undefined ? `${Number(record.stabilityScore).toFixed(1)}%` : "-"]);
     detailRows.push(["Overall Status", record.eyeStatus || "-"]);
   } else if (record.type === "biomarkers") {
     detailRows.push(["Samples Analyzed", String(record.analyzed_samples || 0)]);
@@ -2267,6 +2709,8 @@ function pickListeningParagraph(language) {
   currentListeningLanguage = language;
   currentListeningAudioPath = currentListeningItem.audioPath || "";
   audioPlaybackCompleted = false;
+  audioPlaybackStarted = false;
+  audioPlaybackInProgress = false;
   audioAnswerLocked = false;
   const player = document.getElementById("promptAudioPlayer");
   if (player) {
@@ -2287,19 +2731,96 @@ function pickListeningParagraph(language) {
   setNodeText("audioAutoScore", "-");
   setNodeText("audioPassThreshold", `${AUDIO_PASS_THRESHOLD}%`);
   setNodeText("audioPassResult", "-");
+  updateAudioControlState();
   updateSegmentScoreMatrix();
-  document.getElementById("audioTestStatus").textContent = "Sample ready. Play the audio, then choose one answer. Scoring happens automatically.";
+  document.getElementById("audioTestStatus").textContent = "Sample ready. Play the audio, choose one answer, then click Submit Answer.";
+}
+
+function updateAudioControlState() {
+  const playButton = document.getElementById("playAudioParagraph");
+  const submitButton = document.getElementById("verifyAudioAnswer");
+  const skipButton = document.getElementById("reloadAudioParagraph");
+  if (playButton) {
+    playButton.disabled = audioPlaybackInProgress;
+  }
+  if (submitButton) {
+    submitButton.disabled = audioAnswerLocked || selectedAudioOptionIndex === null;
+  }
+  if (skipButton) {
+    skipButton.disabled = false;
+  }
+}
+
+function attachPromptAudioPlayerListeners() {
+  const player = document.getElementById("promptAudioPlayer");
+  if (!player || player.dataset.bound === "true") return;
+  player.dataset.bound = "true";
+
+  player.addEventListener("play", () => {
+    audioPlaybackStarted = true;
+    audioPlaybackInProgress = true;
+    audioPlaybackCompleted = false;
+    updateAudioControlState();
+    const status = document.getElementById("audioTestStatus");
+    if (status) {
+      status.textContent = currentListeningLanguage === "English"
+        ? "Playing English listening sample..."
+        : "Playing audio...";
+    }
+  });
+
+  player.addEventListener("ended", () => {
+    finalizeAudioPlaybackState();
+  });
+
+  player.addEventListener("pause", () => {
+    if (!player.ended && player.currentTime > 0 && !audioPlaybackCompleted) {
+      audioPlaybackInProgress = false;
+      updateAudioControlState();
+      const status = document.getElementById("audioTestStatus");
+      if (status) status.textContent = "Audio paused. Resume playback or play again before submitting.";
+    }
+  });
+
+  player.addEventListener("error", () => {
+    audioPlaybackInProgress = false;
+    updateAudioControlState();
+    const status = document.getElementById("audioTestStatus");
+    if (status) status.textContent = "Audio playback failed. Click Play Audio to try again or Skip for another sample.";
+  });
+}
+
+function syncAudioPlaybackCompletion() {
+  if (audioPlaybackCompleted) return true;
+  const player = document.getElementById("promptAudioPlayer");
+  if (currentListeningAudioPath && player) {
+    const duration = Number(player.duration || 0);
+    const currentTime = Number(player.currentTime || 0);
+    const ended = player.ended || (duration > 0 && currentTime >= Math.max(0, duration - 0.2));
+    if (ended) {
+      finalizeAudioPlaybackState();
+      return true;
+    }
+    return false;
+  }
+  const synth = window.speechSynthesis;
+  if (audioPlaybackStarted && synth && !synth.speaking && !synth.pending) {
+    finalizeAudioPlaybackState();
+    return true;
+  }
+  return audioPlaybackCompleted;
 }
 
 function finalizeAudioPlaybackState() {
   audioPlaybackCompleted = true;
+  audioPlaybackInProgress = false;
+  updateAudioControlState();
   const status = document.getElementById("audioTestStatus");
   if (selectedAudioOptionIndex !== null && !audioAnswerLocked) {
-    if (status) status.textContent = "Audio finished. Scoring your selected answer automatically...";
-    gradeListeningAnswer(selectedAudioOptionIndex);
+    if (status) status.textContent = "Audio finished. Click Submit Answer to see the score.";
     return;
   }
-  if (status) status.textContent = "Audio finished. Choose the best answer below. Scoring will happen automatically.";
+  if (status) status.textContent = "Audio finished. Choose the best answer below, then click Submit Answer.";
 }
 
 async function loadBengaliListeningSet() {
@@ -2535,6 +3056,7 @@ function renderListeningOptions() {
   if (!container || !currentListeningItem) return;
   container.innerHTML = "";
   selectedAudioOptionIndex = null;
+  updateAudioControlState();
   if (question) {
     question.textContent = currentListeningItem.question || "Listen to the sample and answer the question below.";
   }
@@ -2551,12 +3073,13 @@ function renderListeningOptions() {
       selectedAudioOptionIndex = index;
       [...container.querySelectorAll("label")].forEach((node) => node.classList.remove("active"));
       wrapper.classList.add("active");
+      const status = document.getElementById("audioTestStatus");
+      updateAudioControlState();
       if (!audioPlaybackCompleted) {
-        const status = document.getElementById("audioTestStatus");
-        if (status) status.textContent = "Please let the audio finish first. The answer will be scored automatically after playback.";
+        if (status) status.textContent = "Answer selected. Please let the audio finish, then click Submit Answer.";
         return;
       }
-      gradeListeningAnswer(index);
+      if (status) status.textContent = "Answer selected. Click Submit Answer to view the score.";
     });
     wrapper.appendChild(radio);
     wrapper.appendChild(document.createTextNode(option));
@@ -2568,6 +3091,10 @@ async function playListeningSample() {
   if (!currentListeningItem) return;
   const status = document.getElementById("audioTestStatus");
   const player = document.getElementById("promptAudioPlayer");
+  audioPlaybackCompleted = false;
+  audioPlaybackStarted = false;
+  audioPlaybackInProgress = true;
+  updateAudioControlState();
   if (currentListeningAudioPath) {
     if (!player) return;
     const primaryPath = currentListeningAudioPath;
@@ -2583,17 +3110,13 @@ async function playListeningSample() {
       : "Playing audio...";
     try {
       await tryPlay(primaryPath);
-      player.onended = () => {
-        finalizeAudioPlaybackState();
-      };
     } catch (_primaryError) {
       try {
         if (!fallbackPath) throw new Error("no fallback path");
         await tryPlay(fallbackPath);
-        player.onended = () => {
-          finalizeAudioPlaybackState();
-        };
       } catch (_fallbackError) {
+        audioPlaybackInProgress = false;
+        updateAudioControlState();
         status.textContent = "Audio file could not be played. Please try the next sample.";
       }
     }
@@ -2601,6 +3124,8 @@ async function playListeningSample() {
   }
   const synth = window.speechSynthesis;
   if (!synth) {
+    audioPlaybackInProgress = false;
+    updateAudioControlState();
     status.textContent = "Audio playback is not supported in this browser for this language.";
     return;
   }
@@ -2624,6 +3149,7 @@ async function playListeningSample() {
   utter.pitch = 1.0;
   utter.volume = 1.0;
   utter.onstart = () => {
+    audioPlaybackStarted = true;
     playbackStarted = true;
     status.textContent = currentListeningLanguage === "English"
       ? "Playing English listening sample..."
@@ -2631,18 +3157,24 @@ async function playListeningSample() {
   };
   utter.onend = () => {
     if (!playbackStarted) {
+      audioPlaybackInProgress = false;
+      updateAudioControlState();
       status.textContent = "Audio playback did not start. Please try the next sample.";
       return;
     }
     finalizeAudioPlaybackState();
   };
   utter.onerror = () => {
+    audioPlaybackInProgress = false;
+    updateAudioControlState();
     status.textContent = "Audio playback failed in this browser. Please check browser sound settings and try again.";
   };
   try {
     if (typeof synth.resume === "function") synth.resume();
     synth.speak(utter);
   } catch (_err) {
+    audioPlaybackInProgress = false;
+    updateAudioControlState();
     status.textContent = "Audio playback failed in this browser. Please check browser sound settings and try again.";
   }
 }
@@ -2651,6 +3183,10 @@ function gradeListeningAnswer(selectedIndex) {
   if (!currentListeningItem) return;
   if (audioAnswerLocked) return;
   audioAnswerLocked = true;
+  audioPlaybackInProgress = false;
+  [...document.querySelectorAll("#audioOptions input[name='audioOption']")].forEach((input) => {
+    input.disabled = true;
+  });
   const correct = selectedIndex === currentListeningItem.correctIndex;
   if (!correct) audioFeatures.wrongAttempts += 1;
   const penalty = Math.min(0.35, (audioFeatures.reloadCount * 0.08) + (audioFeatures.wrongAttempts * 0.12));
@@ -2663,6 +3199,7 @@ function gradeListeningAnswer(selectedIndex) {
   setNodeText("audioPassThreshold", `${AUDIO_PASS_THRESHOLD}%`);
   const audioMeta = getStatusMeta(listeningScore, AUDIO_PASS_THRESHOLD, true);
   setNodeText("audioPassResult", audioMeta.label, audioMeta.className);
+  updateAudioControlState();
   updateSegmentScoreMatrix();
   document.getElementById("audioTestStatus").textContent =
     correct
@@ -2671,41 +3208,32 @@ function gradeListeningAnswer(selectedIndex) {
   maybeAutoRunScreening();
 }
 
-function submitAudioAnswer(selectedIndex) {
-  if (!currentListeningItem) return;
-  const correct = selectedIndex === currentListeningItem.correctIndex;
-  if (!correct) audioFeatures.wrongAttempts += 1;
-  const base = correct ? 1 : 0;
-  const penalty = Math.min(0.7, (audioFeatures.reloadCount * 0.15) + (audioFeatures.wrongAttempts * 0.2));
-  const efficiency = Math.max(0, base - penalty);
-  audioFeatures.analyzed = true;
-  audioFeatures.comprehensionScore = efficiency;
-  audioFeatures.pronunciationProxy = Math.max(0, Math.round((1 - efficiency) * 5));
-  document.getElementById("audioTestStatus").textContent =
-    correct
-      ? `Correct answer selected. Efficiency: ${(efficiency * 100).toFixed(1)}%`
-      : `Incorrect answer selected. Efficiency: ${(efficiency * 100).toFixed(1)}%. Reload for a fresh paragraph if distracted.`;
-}
-
 document.getElementById("reloadAudioParagraph")?.addEventListener("click", () => {
   const language = document.getElementById("sampleLanguage")?.value || "Bengali";
   audioFeatures.reloadCount += 1;
+  const player = document.getElementById("promptAudioPlayer");
+  if (player) {
+    player.pause();
+  }
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
   pickListeningParagraph(language);
-  document.getElementById("audioTestStatus").textContent = "New sample loaded. Click Play Audio when ready.";
+  document.getElementById("audioTestStatus").textContent = "New sample loaded. Click Play Audio when ready, or skip again for another sample.";
 });
 
 document.getElementById("playAudioParagraph")?.addEventListener("click", playListeningSample);
 document.getElementById("verifyAudioAnswer")?.addEventListener("click", () => {
   if (audioAnswerLocked) {
-    document.getElementById("audioTestStatus").textContent = "This sample is already scored. Load the next sample to continue.";
+    document.getElementById("audioTestStatus").textContent = "This sample is already scored. Click Skip for a new sample.";
     return;
   }
   if (selectedAudioOptionIndex === null) {
     document.getElementById("audioTestStatus").textContent = "Please choose one answer first.";
     return;
   }
-  if (!audioPlaybackCompleted) {
-    document.getElementById("audioTestStatus").textContent = "Please let the audio finish first.";
+  if (!syncAudioPlaybackCompletion()) {
+    document.getElementById("audioTestStatus").textContent = "Please let the audio finish first, then click Submit Answer.";
     return;
   }
   gradeListeningAnswer(selectedAudioOptionIndex);
@@ -2713,10 +3241,19 @@ document.getElementById("verifyAudioAnswer")?.addEventListener("click", () => {
 
 document.getElementById("sampleLanguage")?.addEventListener("change", (event) => {
   const language = event.target.value;
+  const player = document.getElementById("promptAudioPlayer");
+  if (player) {
+    player.pause();
+  }
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
   pickListeningParagraph(language);
   renderRandomReadingPrompt(language);
   renderRandomSpellingWords(language);
 });
+
+attachPromptAudioPlayerListeners();
 
 document.getElementById("voiceSelect")?.addEventListener("change", (event) => {
   selectedVoiceURI = event.target.value || "";
@@ -2873,6 +3410,7 @@ document.getElementById("runScreening").addEventListener("click", () => {
       },
   });
   latestScreening = { label, confidence, severityScore, language };
+  markReportSourceChanged("Screening");
   updateTestLabStatus();
 });
 
@@ -3037,6 +3575,7 @@ function analyzeTherapySession() {
     target,
     sessionType,
   };
+  markReportSourceChanged("Speech Therapy");
   updateTestLabStatus();
 }
 
@@ -3214,6 +3753,7 @@ async function analyzeEyeTrackingNow() {
     eyeStatus,
   });
   latestEye = { fixationDuration, regressions, wpm, dispersion, scanpath, eyeOverallScore, eyeStatus, stabilityScore, regressionScore };
+  markReportSourceChanged("Visual Focus Test");
   updateTestLabStatus();
   return true;
 }
@@ -3294,10 +3834,6 @@ document.getElementById("traceFile")?.addEventListener("change", async (event) =
   await analyzeEyeTrackingNow();
 });
 
-document.getElementById("eyePreset")?.addEventListener("change", (event) => {
-  applyEyePreset(event.target.value, true);
-});
-
 document.getElementById("runBiomarkers").addEventListener("click", async () => {
   const file = document.getElementById("manifestFile").files[0];
   const labelColumn = document.getElementById("labelColumn").value.trim() || "label";
@@ -3307,16 +3843,25 @@ document.getElementById("runBiomarkers").addEventListener("click", async () => {
   const summaryNode = document.getElementById("biomarkerSummary");
   const tableNode = document.getElementById("biomarkerTable");
   if (!file) {
-    summaryNode.innerHTML = "<p>Please upload a manifest CSV file.</p>";
-    tableNode.innerHTML = "";
+    resetBiomarkerView("Please upload a dataset CSV file first.");
     return;
   }
-  const text = await file.text();
-  const rows = text.trim().split(/\r?\n/);
-  const header = rows[0].split(",").map((x) => x.trim());
+  let extractedText = "";
+  try {
+    extractedText = await readBiomarkerUpload(file);
+  } catch (error) {
+    resetBiomarkerView(error instanceof Error ? error.message : "The file could not be read.");
+    return;
+  }
+  const parsedTable = parseTabularText(extractedText);
+  if (parsedTable.error) {
+    resetBiomarkerView(parsedTable.error);
+    return;
+  }
+  const header = parsedTable.header;
   const labelIdx = header.indexOf(labelColumn);
   if (labelIdx < 0) {
-    summaryNode.innerHTML = `<p>Label column "${labelColumn}" not found.</p>`;
+    resetBiomarkerView(`The label column "${labelColumn}" was not found. Try one of the suggested label names from the upload panel.`);
     return;
   }
 
@@ -3324,10 +3869,22 @@ document.getElementById("runBiomarkers").addEventListener("click", async () => {
     .map((name, idx) => ({ name, idx }))
     .filter(({ idx }) => idx !== labelIdx)
     .filter(({ name }) => /^((sp|rd|hw|eye)_|.*errors|.*count|.*time|.*rate|.*speed|.*dispersion|.*gaze|.*fix)/i.test(name));
-  const samples = rows.slice(1).map((line) => line.split(","));
+  if (!numericCols.length) {
+    resetBiomarkerView("No supported numeric biomarker columns were detected. Add columns such as reading speed, error counts, timing values, gaze values, or other measurable features.");
+    return;
+  }
+  const samples = parsedTable.rows.map((cells) => header.map((_, idx) => cells[idx] ?? ""));
+  if (samples.length < 2) {
+    resetBiomarkerView("At least two data rows are needed for biomarker analysis.");
+    return;
+  }
   const labels = samples.map((row) => Number(row[labelIdx])).map((v) => (Number.isFinite(v) ? v : 0));
   const meanLabel = labels.reduce((a, b) => a + b, 0) / Math.max(1, labels.length);
   const varLabel = labels.reduce((a, b) => a + ((b - meanLabel) ** 2), 0) / Math.max(1, labels.length);
+  if (varLabel === 0) {
+    resetBiomarkerView(`The label column "${labelColumn}" contains only one value. Please use a label column with at least two different classes or risk levels.`);
+    return;
+  }
   const stdLabel = Math.sqrt(varLabel) || 1;
 
   const results = numericCols.map(({ name, idx }) => {
@@ -3350,11 +3907,14 @@ document.getElementById("runBiomarkers").addEventListener("click", async () => {
   const filtered = familyFiltered.filter((row) => row.importance >= minImportance);
   const top = filtered.slice(0, topN);
   const strongest = top[0];
+  setBiomarkerMetric("biomarkerSamplesMetric", String(samples.length));
+  setBiomarkerMetric("biomarkerEvaluatedMetric", String(results.length));
+  setBiomarkerMetric("biomarkerShownMetric", String(top.length));
+  setBiomarkerMetric("biomarkerStrongestMetric", strongest ? strongest.biomarker : "None");
   summaryNode.innerHTML = `
-    <p><strong>Samples analyzed:</strong> ${samples.length}</p>
-    <p><strong>Biomarkers evaluated:</strong> ${results.length}</p>
-    <p><strong>Shown after filters:</strong> ${top.length}</p>
-    <p><strong>Strongest signal:</strong> ${strongest ? `${strongest.biomarker} (${strongest.family})` : "No biomarker passed the filter"}</p>
+    <p><strong>What this means:</strong> The dashboard checked ${results.length} measurable features across ${samples.length} samples and kept the strongest ${top.length} signals after your filters.</p>
+    <p><strong>Strongest signal:</strong> ${strongest ? `${strongest.biomarker} from the ${strongest.family} family` : "No biomarker passed the current filter"}</p>
+    <p><strong>Plain-language note:</strong> Biomarkers with higher importance are more strongly linked with the selected risk label in this dataset. This helps you see which feature groups matter most in the uploaded file.</p>
   `;
   tableNode.innerHTML = top.length
     ? top.map((row) => `<tr><td>${row.biomarker}</td><td>${row.family}</td><td>${row.correlation.toFixed(4)}</td><td>${row.importance.toFixed(4)}</td><td>${row.interpretation}</td></tr>`).join("")
@@ -3370,6 +3930,44 @@ document.getElementById("runBiomarkers").addEventListener("click", async () => {
   });
 
   saveRecord({ type: "biomarkers", analyzed_samples: samples.length, total_biomarkers: results.length, selectedFamily, minImportance, topN, biomarkers: top });
+});
+
+document.getElementById("manifestFile")?.addEventListener("change", async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) {
+    updateBiomarkerFileInfo(null);
+    resetBiomarkerView();
+    return;
+  }
+  try {
+    const extractedText = await readBiomarkerUpload(file);
+    const parsedTable = parseTabularText(extractedText);
+    if (parsedTable.error) {
+      updateBiomarkerFileInfo(file, [], 0);
+      resetBiomarkerView(parsedTable.error);
+      return;
+    }
+    updateBiomarkerFileInfo(file, parsedTable.header, parsedTable.rows.length);
+    resetBiomarkerView("Dataset loaded. Review the detected label suggestion, then click Analyze Biomarkers.");
+  } catch (error) {
+    updateBiomarkerFileInfo(file, [], 0);
+    resetBiomarkerView(error instanceof Error ? error.message : "The file could not be read.");
+  }
+});
+
+document.getElementById("resetBiomarkers")?.addEventListener("click", () => {
+  const fileInput = document.getElementById("manifestFile");
+  const labelInput = document.getElementById("labelColumn");
+  const familySelect = document.getElementById("biomarkerFamily");
+  const topNInput = document.getElementById("biomarkerTopN");
+  const minImportanceInput = document.getElementById("biomarkerMinImportance");
+  if (fileInput) fileInput.value = "";
+  if (labelInput) labelInput.value = "label";
+  if (familySelect) familySelect.value = "all";
+  if (topNInput) topNInput.value = "10";
+  if (minImportanceInput) minImportanceInput.value = "0.10";
+  updateBiomarkerFileInfo(null);
+  resetBiomarkerView();
 });
 
 document.getElementById("exportJson").addEventListener("click", () => {
@@ -3393,21 +3991,20 @@ document.getElementById("recordSearch")?.addEventListener("input", renderRecords
 renderRecords();
 
 function updateTestLabStatus() {
-  const screeningDone = !!latestScreening;
-  const therapyDone = !!latestTherapy;
-  const eyeDone = !!latestEye;
-  const ready = screeningDone && therapyDone && eyeDone;
+  const { screeningDone, therapyDone, eyeDone, ready } = getReportSourceReadiness();
   const node = document.getElementById("testStatus");
   if (!node) return;
   const screeningSummary = screeningDone ? `${latestScreening.label} (${(latestScreening.confidence * 100).toFixed(1)}%)` : "Pending";
   const therapySummary = therapyDone ? `${latestTherapy.sessionBand} (${(latestTherapy.overallScorePct || latestTherapy.score * 100).toFixed(1)}%)` : "Pending";
   const eyeSummary = eyeDone ? `${latestEye.eyeStatus || "Done"} (${(latestEye.eyeOverallScore || 0).toFixed(1)}%)` : "Pending";
+  const comparisonReady = isComparisonCurrent();
   node.innerHTML = `
     <p><strong>Checklist</strong></p>
     <p>Screening: ${screeningSummary}</p>
     <p>Speech Therapy: ${therapySummary}</p>
-    <p>Eye Tracking: ${eyeSummary}</p>
+    <p>Visual Focus Test: ${eyeSummary}</p>
     <p><strong>Ready for model comparison:</strong> <span class="${ready ? "text-success" : "text-danger"} fw-semibold">${ready ? "Yes" : "No"}</span></p>
+    <p><strong>Comparison Status:</strong> <span class="${comparisonReady ? "text-success" : "text-secondary"} fw-semibold">${comparisonReady ? "Current" : "Needs run/update"}</span></p>
   `;
 }
 
@@ -3427,14 +4024,15 @@ function modelPredict(scoreBase, modelName) {
 
 document.getElementById("runComparison")?.addEventListener("click", () => {
   if (!latestScreening || !latestTherapy || !latestEye) {
-    document.getElementById("finalReport").innerHTML = "<p>Please complete Screening, Therapy, and Eye Tracking first.</p>";
+    renderFinalReportPanel(null, "Please complete Screening, Therapy, and the Visual Focus Test first.");
+    setDownloadReportEnabled(false);
     return;
   }
   const base =
     (latestScreening.severityScore / 10) * 0.45 +
     (1 - latestTherapy.score) * 0.30 +
-    Math.min(1, latestEye.regressions / 10) * 0.15 +
-    Math.min(1, latestEye.dispersion * 4) * 0.10;
+    Math.min(1, (latestEye.totalWrongClicks ?? latestEye.regressions ?? 0) / 10) * 0.15 +
+    Math.min(1, (latestEye.consistencyValue ?? latestEye.dispersion ?? 0) * 4) * 0.10;
   const models = ["cnn", "lstm", "transformer", "vit", "multimodal_attention"];
   const predictions = models.map((m) => modelPredict(base, m));
   const averageRisk = predictions.reduce((sum, row) => sum + row.risk, 0) / predictions.length;
@@ -3478,19 +4076,25 @@ document.getElementById("runComparison")?.addEventListener("click", () => {
 
   window.__latestModelPredictions = predictions;
   window.__latestConsensus = { consensusLevel, averageRisk, decisionStability, mostCautious, mostConfident };
-  document.getElementById("finalReport").innerHTML = `
-    <p><strong>Model comparison completed.</strong></p>
-    <p>Consensus level: ${consensusLevel}</p>
-    <p>Average risk: ${averageRisk.toFixed(3)}</p>
-    <p>Decision stability: ${decisionStability}</p>
-    <p>Now click <strong>Generate Final Report</strong> for the merged outcome.</p>
-  `;
+  window.__latestComparisonVersion = reportSourceVersion;
+  window.__latestFinalReport = null;
+  setDownloadReportEnabled(false);
+  renderFinalReportPanel(null, `Model comparison completed. Consensus level: ${consensusLevel}. Now click Generate Final Report.`);
+  updateTestLabStatus();
 });
 
 document.getElementById("generateFinal")?.addEventListener("click", () => {
+  if (!isComparisonCurrent()) {
+    renderFinalReportPanel(null, "Run model comparison first, or rerun it after any changed test result.");
+    setDownloadReportEnabled(false);
+    return;
+  }
   const predictions = window.__latestModelPredictions || [];
-  if (!predictions.length) {
-    document.getElementById("finalReport").innerHTML = "<p>Run model comparison first.</p>";
+  const { info: studentInfo, missing } = validateStudentReportInfo();
+  if (missing.length) {
+    renderFinalReportPanel(null, `Please complete these student report fields first: ${missing.join(", ")}.`);
+    setDownloadReportEnabled(false);
+    document.getElementById("reportStudentCard")?.scrollIntoView({ behavior: "smooth", block: "center" });
     return;
   }
   const avgRisk = predictions.reduce((a, b) => a + b.risk, 0) / predictions.length;
@@ -3501,34 +4105,521 @@ document.getElementById("generateFinal")?.addEventListener("click", () => {
     finalLevel === "Severe"
       ? "High-priority intervention: intensive reading-pronunciation-spelling plan and specialist review."
       : finalLevel === "Moderate"
-        ? "Structured intervention: guided practice 4-5 days/week with progress tracking."
+      ? "Structured intervention: guided practice 4-5 days/week with progress tracking."
         : "Foundation support: regular guided practice and periodic reassessment.";
   const consensus = window.__latestConsensus || {};
+  const reportData = {
+    studentInfo,
+    finalLevel,
+    avgRisk,
+    severeVotes,
+    moderateVotes,
+    predictions,
+    recommendation,
+    consensus,
+    screening: latestScreening,
+    therapy: latestTherapy,
+    visualFocus: latestEye,
+    generatedAt: new Date().toISOString(),
+    comparisonVersion: reportSourceVersion,
+  };
 
-  document.getElementById("finalReport").innerHTML = `
-    <p><strong>Final Aggregated Outcome:</strong> ${finalLevel}</p>
-    <p><strong>Average Risk Score:</strong> ${avgRisk.toFixed(3)}</p>
-    <p><strong>Model Agreement:</strong> Severe votes ${severeVotes}, Moderate votes ${moderateVotes}, Mild votes ${predictions.length - severeVotes - moderateVotes}</p>
-    <p><strong>Decision Stability:</strong> ${consensus.decisionStability || "-"}</p>
-    <p><strong>Most Cautious Model:</strong> ${consensus.mostCautious ? `${consensus.mostCautious.modelName} (${consensus.mostCautious.level})` : "-"}</p>
-    <p><strong>Recommended Next Step:</strong> ${recommendation}</p>
-  `;
-  saveRecord({ type: "final_report", finalLevel, avgRisk, severeVotes, moderateVotes, predictions });
+  window.__latestFinalReport = reportData;
+  renderFinalReportPanel(reportData);
+  setDownloadReportEnabled(true);
+  saveRecord({ type: "final_report", finalLevel, avgRisk, severeVotes, moderateVotes, predictions, studentInfo, generatedAt: reportData.generatedAt, comparisonVersion: reportSourceVersion });
+  updateTestLabStatus();
 });
+
+document.getElementById("downloadFinalPdf")?.addEventListener("click", () => {
+  const report = window.__latestFinalReport;
+  if (!report) {
+    renderFinalReportPanel(null, "Generate the final report first, then download the PDF.");
+    setDownloadReportEnabled(false);
+    return;
+  }
+  if (report.comparisonVersion !== reportSourceVersion || !isComparisonCurrent()) {
+    invalidateReportFlow("Test results changed after the report was prepared. Run model comparison and generate the report again.");
+    return;
+  }
+  const { info: currentStudentInfo, missing } = validateStudentReportInfo();
+  if (missing.length) {
+    renderFinalReportPanel(null, `Please complete these student report fields first: ${missing.join(", ")}.`);
+    setDownloadReportEnabled(false);
+    document.getElementById("reportStudentCard")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+  report.studentInfo = currentStudentInfo;
+  if (!window.jspdf?.jsPDF) {
+    renderFinalReportPanel(null, "PDF export is not available right now. Please refresh and try again.");
+    setDownloadReportEnabled(false);
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const lines = [
+    "Dyslexia Detection Final Report",
+    "",
+    `Student Name: ${report.studentInfo.name}`,
+    `Age: ${report.studentInfo.age}`,
+    `Class: ${report.studentInfo.studentClass}`,
+    `Roll No: ${report.studentInfo.rollNo}`,
+    `Section: ${report.studentInfo.section}`,
+    `School Name: ${report.studentInfo.schoolName}`,
+    "",
+    `Final Aggregated Outcome: ${report.finalLevel}`,
+    `Average Risk Score: ${report.avgRisk.toFixed(3)}`,
+    `Model Agreement: Severe votes ${report.severeVotes}, Moderate votes ${report.moderateVotes}, Mild votes ${report.predictions.length - report.severeVotes - report.moderateVotes}`,
+    `Decision Stability: ${report.consensus.decisionStability || "-"}`,
+    `Most Cautious Model: ${report.consensus.mostCautious ? `${report.consensus.mostCautious.modelName} (${report.consensus.mostCautious.level})` : "-"}`,
+    `Most Confident Model: ${report.consensus.mostConfident ? `${report.consensus.mostConfident.modelName} (${report.consensus.mostConfident.level})` : "-"}`,
+    "",
+    `Screening Summary: ${report.screening ? `${report.screening.label} (${(report.screening.confidence * 100).toFixed(1)}%)` : "-"}`,
+    `Speech Therapy Summary: ${report.therapy ? `${report.therapy.sessionBand} (${(report.therapy.overallScorePct || report.therapy.score * 100).toFixed(1)}%)` : "-"}`,
+    `Visual Focus Summary: ${report.visualFocus ? `${report.visualFocus.eyeStatus} (${(report.visualFocus.eyeOverallScore || 0).toFixed(1)}%)` : "-"}`,
+    "",
+    `Recommended Next Step: ${report.recommendation}`,
+    `Generated At: ${new Date(report.generatedAt).toLocaleString()}`,
+  ];
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+  let y = 20;
+  lines.forEach((line, index) => {
+    const split = doc.splitTextToSize(line, 170);
+    if (index === 0) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+    } else {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(12);
+    }
+    doc.text(split, 20, y);
+    y += split.length * (index === 0 ? 8 : 7);
+    if (y > 270) {
+      doc.addPage();
+      y = 20;
+    }
+  });
+  const safeName = report.studentInfo.name.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || "student";
+  doc.save(`${safeName}_final_report.pdf`);
+});
+
+[
+  "reportStudentName",
+  "reportStudentAge",
+  "reportStudentClass",
+  "reportStudentRoll",
+  "reportStudentSection",
+  "reportSchoolName",
+].forEach((id) => {
+  document.getElementById(id)?.addEventListener("input", () => {
+    const { missing } = validateStudentReportInfo();
+    setDownloadReportEnabled(!!window.__latestFinalReport && !missing.length);
+    if (window.__latestFinalReport) {
+      window.__latestFinalReport.studentInfo = getStudentReportInfo();
+      renderFinalReportPanel(window.__latestFinalReport);
+      return;
+    }
+    renderFinalReportPanel();
+  });
+});
+
+function setVisualFocusSessionStatus(message, className = "small text-muted mt-3 mb-0") {
+  const node = document.getElementById("eyeSessionStatus");
+  if (!node) return;
+  node.textContent = message;
+  node.className = className;
+}
+
+function renderVisualFocusQuickStats(summary) {
+  const node = document.getElementById("eyeTraceQuickStats");
+  if (!node) return;
+  if (!summary) {
+    node.innerHTML = `<p class="mb-0 text-muted small">After a test, this area will show round count, response speed, and first-try success.</p>`;
+    return;
+  }
+  node.innerHTML = `
+    <div class="row g-2 small">
+      <div class="col-md-4"><strong>Rounds:</strong> ${summary.totalRounds}</div>
+      <div class="col-md-4"><strong>Avg Response:</strong> ${summary.averageResponseMs.toFixed(0)} ms</div>
+      <div class="col-md-4"><strong>Items/Minute:</strong> ${summary.itemsPerMinute.toFixed(1)}</div>
+      <div class="col-md-4"><strong>First-Try Correct:</strong> ${summary.firstTryCorrectCount}/${summary.totalRounds}</div>
+      <div class="col-md-4"><strong>Wrong Taps:</strong> ${summary.totalWrongClicks}</div>
+      <div class="col-md-4"><strong>Total Time:</strong> ${summary.sessionSec.toFixed(2)}s</div>
+    </div>
+  `;
+}
+
+function resetVisualFocusOutputs(message) {
+  const resultNode = document.getElementById("eyeResult");
+  if (resultNode) resultNode.innerHTML = `<p>${message}</p>`;
+  const checklistNode = document.getElementById("eyeChecklist");
+  if (checklistNode) checklistNode.innerHTML = `<p class="mb-0 text-muted small">After analysis, this area will show simple checks for speed, accuracy, control, and consistency.</p>`;
+  const recommendationNode = document.getElementById("eyeRecommendation");
+  if (recommendationNode) recommendationNode.innerHTML = `<p class="mb-0 text-muted">A plain-language recommendation will appear here after the test is analyzed.</p>`;
+  setNodeText("eyeOverallScore", "-");
+  setNodeText("eyeOverallStatus", "Pending", "text-secondary fw-semibold");
+  if (eyeChart) {
+    eyeChart.destroy();
+    eyeChart = null;
+  }
+}
+
+function getVisualFocusPreset() {
+  const presetKey = document.getElementById("eyePreset")?.value || "letters";
+  return EYE_PRESETS[presetKey] || EYE_PRESETS.letters;
+}
+
+function applyVisualFocusPreset(presetKey) {
+  const preset = EYE_PRESETS[presetKey] || EYE_PRESETS.letters;
+  const hintNode = document.getElementById("eyePresetHint");
+  if (hintNode) hintNode.value = preset.description;
+  if (!eyeTestState.active) {
+    const targetNode = document.getElementById("eyeTargetSymbol");
+    if (targetNode) targetNode.textContent = "";
+  }
+}
+
+function resetVisualFocusState() {
+  const preset = getVisualFocusPreset();
+  const presetKey = document.getElementById("eyePreset")?.value || "letters";
+  eyeTestState = {
+    active: false,
+    roundIndex: 0,
+    totalRounds: preset.totalRounds,
+    roundTypes: presetKey === "mixed" ? buildVisualFocusRoundTypes(preset.totalRounds) : [],
+    results: [],
+    startedAt: 0,
+    roundStartedAt: 0,
+    target: "",
+    choices: [],
+    wrongClicks: 0,
+    locked: false,
+  };
+}
+
+function updateVisualFocusButtons() {
+  const startBtn = document.getElementById("startEyeVisualTest");
+  const resetBtn = document.getElementById("resetEyeVisualTest");
+  if (startBtn) startBtn.disabled = eyeTestState.active;
+  if (resetBtn) resetBtn.disabled = false;
+}
+
+function setVisualFocusPanelsActive(active) {
+  document.querySelector(".eye-target-card")?.classList.toggle("active", active);
+  document.querySelector(".eye-test-board")?.classList.toggle("active", active);
+}
+
+function getVisualFocusRoundPool(preset, roundIndex = eyeTestState.roundIndex, phase = "idle") {
+  const presetKey = document.getElementById("eyePreset")?.value || "letters";
+  if (presetKey === "mixed" && preset.letterPool && preset.digitPool) {
+    if (phase === "active") {
+      const roundType = eyeTestState.roundTypes?.[roundIndex] || "letter";
+      return roundType === "digit" ? preset.digitPool : preset.letterPool;
+    }
+    return preset.letterPool;
+  }
+  return preset.symbolPool;
+}
+
+function buildVisualFocusRoundTypes(totalRounds) {
+  const letterCount = Math.ceil(totalRounds / 2);
+  const digitCount = Math.floor(totalRounds / 2);
+  return shuffle([
+    ...Array.from({ length: letterCount }, () => "letter"),
+    ...Array.from({ length: digitCount }, () => "digit"),
+  ]);
+}
+
+function renderVisualFocusGrid() {
+  const node = document.getElementById("eyeChoiceGrid");
+  if (!node) return;
+  if (!eyeTestState.choices.length) {
+    node.innerHTML = Array.from({ length: 9 }, () => `<button type="button" class="eye-choice-btn" disabled></button>`).join("");
+    return;
+  }
+  node.innerHTML = eyeTestState.choices.map((choice) => `<button type="button" class="eye-choice-btn" data-eye-choice="${choice}">${choice}</button>`).join("");
+}
+
+function updateVisualFocusProgress() {
+  const progressNode = document.getElementById("eyeTestProgress");
+  if (!progressNode) return;
+  progressNode.textContent = eyeTestState.active
+    ? `Round ${eyeTestState.roundIndex + 1} of ${eyeTestState.totalRounds}`
+    : "Press Start Test to begin.";
+}
+
+function buildVisualFocusChoices(target, pool) {
+  const distractors = shuffle(pool.filter((item) => item !== target)).slice(0, 8);
+  return shuffle([target, ...distractors]);
+}
+
+function startVisualFocusRound() {
+  const preset = getVisualFocusPreset();
+  const pool = getVisualFocusRoundPool(preset, eyeTestState.roundIndex, "active");
+  eyeTestState.target = pool[Math.floor(Math.random() * pool.length)];
+  eyeTestState.choices = buildVisualFocusChoices(eyeTestState.target, pool);
+  eyeTestState.roundStartedAt = performance.now();
+  eyeTestState.wrongClicks = 0;
+  eyeTestState.locked = false;
+  const targetNode = document.getElementById("eyeTargetSymbol");
+  if (targetNode) targetNode.textContent = eyeTestState.target;
+  const statusNode = document.getElementById("eyeTestStatus");
+  if (statusNode) statusNode.textContent = `Find ${eyeTestState.target} and tap it in the answer grid.`;
+  renderVisualFocusGrid();
+  updateVisualFocusProgress();
+}
+
+function renderVisualFocusChecklist(items) {
+  const node = document.getElementById("eyeChecklist");
+  if (!node) return;
+  node.innerHTML = `
+    <div class="row g-2 small">
+      ${items.map((item) => `
+        <div class="col-md-6">
+          <div><strong>${item.label}:</strong> <span class="${item.className}">${item.status}</span></div>
+          <div class="text-muted">${item.detail}</div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderVisualFocusRecommendation(summary) {
+  const node = document.getElementById("eyeRecommendation");
+  if (!node) return;
+  node.innerHTML = `
+    <p><strong>End-User Summary:</strong> ${summary.statusText}</p>
+    <p><strong>What this means:</strong> ${summary.interpretation}</p>
+    <p class="mb-0"><strong>Recommended next step:</strong> ${summary.nextStep}</p>
+  `;
+}
+
+function finishVisualFocusTest() {
+  const preset = getVisualFocusPreset();
+  eyeTestState.active = false;
+  updateVisualFocusButtons();
+  setVisualFocusPanelsActive(false);
+  const results = eyeTestState.results;
+  if (!results.length) {
+    setVisualFocusSessionStatus("No usable rounds were recorded.", "small text-warning mt-3 mb-0");
+    resetVisualFocusOutputs("Start the visual focus test to generate a result.");
+    return false;
+  }
+  const totalRounds = results.length;
+  const totalWrongClicks = results.reduce((sum, row) => sum + row.wrongClicks, 0);
+  const firstTryCorrectCount = results.filter((row) => row.wrongClicks === 0).length;
+  const responseTimes = results.map((row) => row.responseMs);
+  const averageResponseMs = responseTimes.reduce((sum, value) => sum + value, 0) / totalRounds;
+  const variance = responseTimes.reduce((sum, value) => sum + ((value - averageResponseMs) ** 2), 0) / totalRounds;
+  const responseStdMs = Math.sqrt(variance);
+  const consistencyValue = responseStdMs / Math.max(averageResponseMs, 1);
+  const sessionSec = Math.max((performance.now() - eyeTestState.startedAt) / 1000, 1e-6);
+  const itemsPerMinute = totalRounds / (sessionSec / 60);
+  const accuracyScore = (firstTryCorrectCount / totalRounds) * 100;
+  const speedScore = clamp(100 - (((averageResponseMs - preset.targetResponseMs) / preset.targetResponseMs) * 55), 0, 100);
+  const controlScore = clamp(100 - ((totalWrongClicks / totalRounds) * 28), 0, 100);
+  const consistencyScore = clamp(100 - (consistencyValue * 150), 0, 100);
+  const eyeOverallScore = (accuracyScore * 0.35) + (speedScore * 0.25) + (controlScore * 0.20) + (consistencyScore * 0.20);
+  const eyeStatus = eyeOverallScore >= 80
+    ? "Strong visual focus pattern"
+    : eyeOverallScore >= 65
+      ? "Usable visual focus with mild strain"
+      : "Needs extra visual support";
+  const eyeStatusClass = eyeOverallScore >= 80 ? "text-success fw-semibold" : eyeOverallScore >= 65 ? "text-warning fw-semibold" : "text-danger fw-semibold";
+  const checklistItems = [
+    {
+      label: "First-try accuracy",
+      status: accuracyScore >= 85 ? "Strong" : accuracyScore >= 65 ? "Fair" : "Needs support",
+      className: accuracyScore >= 85 ? "text-success fw-semibold" : accuracyScore >= 65 ? "text-warning fw-semibold" : "text-danger fw-semibold",
+      detail: `${firstTryCorrectCount} of ${totalRounds} targets were chosen correctly on the first tap.`,
+    },
+    {
+      label: "Response speed",
+      status: speedScore >= 80 ? "On target" : speedScore >= 60 ? "Slightly slow" : "Slow for this mode",
+      className: speedScore >= 80 ? "text-success fw-semibold" : speedScore >= 60 ? "text-warning fw-semibold" : "text-danger fw-semibold",
+      detail: `Average response time was ${averageResponseMs.toFixed(0)} ms. Target for this mode is about ${preset.targetResponseMs} ms.`,
+    },
+    {
+      label: "Tap control",
+      status: totalWrongClicks <= Math.ceil(totalRounds / 3) ? "Controlled" : "Too many extra taps",
+      className: totalWrongClicks <= Math.ceil(totalRounds / 3) ? "text-success fw-semibold" : "text-warning fw-semibold",
+      detail: `${totalWrongClicks} wrong taps were made across ${totalRounds} rounds.`,
+    },
+    {
+      label: "Consistency",
+      status: consistencyScore >= 80 ? "Consistent" : consistencyScore >= 60 ? "Some variation" : "Large variation",
+      className: consistencyScore >= 80 ? "text-success fw-semibold" : consistencyScore >= 60 ? "text-warning fw-semibold" : "text-danger fw-semibold",
+      detail: `Response-time variation score is ${consistencyScore.toFixed(1)}%.`,
+    },
+  ];
+  const weakestArea = [
+    { key: "accuracy", score: accuracyScore },
+    { key: "speed", score: speedScore },
+    { key: "control", score: controlScore },
+    { key: "consistency", score: consistencyScore },
+  ].sort((a, b) => a.score - b.score)[0];
+  const interpretation = eyeOverallScore >= 80
+    ? "The user stayed visually organized and responded with strong control in this short matching task."
+    : eyeOverallScore >= 65
+      ? "The task was completed successfully, but the response pattern showed mild slowing or inconsistency."
+      : "The response pattern suggests the user may benefit from shorter visual tasks and more guided practice.";
+  const nextStep = weakestArea.key === "accuracy"
+    ? "Repeat the same mode with fewer distractors and encourage careful matching before tapping."
+    : weakestArea.key === "speed"
+      ? "Try one shorter round first, then repeat this mode and aim for steadier response speed."
+      : weakestArea.key === "control"
+        ? "Encourage a brief pause before tapping so the user confirms the target first."
+        : "Repeat the task after a short break and watch for a more even response pace.";
+
+  setVisualFocusSessionStatus(`Completed ${preset.label}. The result has been saved automatically in the background.`, "small text-success mt-3 mb-0");
+  renderVisualFocusQuickStats({ totalRounds, averageResponseMs, itemsPerMinute, firstTryCorrectCount, totalWrongClicks, sessionSec });
+  renderVisualFocusChecklist(checklistItems);
+  renderVisualFocusRecommendation({
+    statusText: `${eyeStatus} in ${preset.label.toLowerCase()}.`,
+    interpretation,
+    nextStep,
+  });
+  setNodeText("eyeOverallScore", `${eyeOverallScore.toFixed(1)}%`);
+  setNodeText("eyeOverallStatus", eyeStatus, eyeStatusClass);
+  const resultNode = document.getElementById("eyeResult");
+  if (resultNode) {
+    resultNode.innerHTML = `
+      <p><strong>Test Mode:</strong> ${preset.label}</p>
+      <p><strong>Rounds Completed:</strong> ${totalRounds}</p>
+      <p><strong>Items Per Minute:</strong> ${itemsPerMinute.toFixed(1)}</p>
+      <p><strong>Average Response Time:</strong> ${averageResponseMs.toFixed(0)} ms</p>
+      <p><strong>Wrong Taps:</strong> ${totalWrongClicks}</p>
+      <p><strong>First-Try Accuracy:</strong> ${accuracyScore.toFixed(1)}%</p>
+      <p><strong>Consistency Score:</strong> ${consistencyScore.toFixed(1)}%</p>
+      <p><strong>Tap Control Score:</strong> ${controlScore.toFixed(1)}%</p>
+      <p><strong>Speed Score:</strong> ${speedScore.toFixed(1)}%</p>
+      <p><strong>Simple Summary:</strong> ${eyeStatus}.</p>
+      <p><strong>Interpretation:</strong> This result is based on first-try accuracy, response speed, wrong taps, and response consistency.</p>
+    `;
+  }
+  eyeChart = drawChart(eyeChart, "eyeChart", {
+    type: "bar",
+    data: {
+      labels: ["Accuracy", "Speed", "Control", "Consistency"],
+      datasets: [{ label: "Visual Test Sub-score", data: [accuracyScore, speedScore, controlScore, consistencyScore], backgroundColor: ["#2563eb", "#10b981", "#f59e0b", "#8b5cf6"] }],
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } },
+  });
+  saveRecord({
+    type: "eye_tracking",
+    preset: preset.label,
+    testMode: preset.label,
+    fixationDuration: averageResponseMs,
+    regressions: totalWrongClicks,
+    wpm: itemsPerMinute,
+    dispersion: consistencyValue,
+    scanpath: totalWrongClicks + totalRounds,
+    meanSaccadeVelocity: totalRounds / Math.max(sessionSec, 1e-6),
+    sessionSec,
+    fixationClusters: firstTryCorrectCount,
+    paceAlignment: speedScore,
+    stabilityScore: consistencyScore,
+    regressionScore: controlScore,
+    fixationScore: accuracyScore,
+    eyeOverallScore,
+    eyeStatus,
+    totalRounds,
+    averageResponseMs,
+    totalWrongClicks,
+    firstTryCorrectCount,
+    consistencyValue,
+  });
+  latestEye = {
+    fixationDuration: averageResponseMs,
+    regressions: totalWrongClicks,
+    wpm: itemsPerMinute,
+    dispersion: consistencyValue,
+    scanpath: totalWrongClicks + totalRounds,
+    eyeOverallScore,
+    eyeStatus,
+    stabilityScore: consistencyScore,
+    regressionScore: controlScore,
+    fixationScore: accuracyScore,
+    totalWrongClicks,
+    consistencyValue,
+  };
+  updateTestLabStatus();
+  return true;
+}
+
+function handleVisualFocusChoice(choice, button) {
+  if (!eyeTestState.active || eyeTestState.locked) return;
+  if (choice !== eyeTestState.target) {
+    eyeTestState.wrongClicks += 1;
+    if (button) {
+      button.disabled = true;
+      button.classList.add("wrong");
+    }
+    const statusNode = document.getElementById("eyeTestStatus");
+    if (statusNode) statusNode.textContent = `${choice} is not the target. Try again.`;
+    return;
+  }
+  eyeTestState.locked = true;
+  const responseMs = performance.now() - eyeTestState.roundStartedAt;
+  eyeTestState.results.push({
+    target: eyeTestState.target,
+    responseMs,
+    wrongClicks: eyeTestState.wrongClicks,
+  });
+  if (button) button.classList.add("correct");
+  const statusNode = document.getElementById("eyeTestStatus");
+  if (statusNode) statusNode.textContent = "Correct. Loading the next round...";
+  window.setTimeout(() => {
+    eyeTestState.roundIndex += 1;
+    if (eyeTestState.roundIndex >= eyeTestState.totalRounds) {
+      finishVisualFocusTest();
+      return;
+    }
+    startVisualFocusRound();
+  }, 320);
+}
+
+function startVisualFocusTest() {
+  resetVisualFocusState();
+  eyeTestState.active = true;
+  eyeTestState.startedAt = performance.now();
+  updateVisualFocusButtons();
+  setVisualFocusPanelsActive(true);
+  setVisualFocusSessionStatus("Visual focus test started. Results will be saved automatically after the last round.", "small text-primary mt-3 mb-0");
+  resetVisualFocusOutputs("Test in progress. Results will appear automatically when the final round ends.");
+  renderVisualFocusQuickStats(null);
+  startVisualFocusRound();
+}
+
+function resetVisualFocusTest() {
+  resetVisualFocusState();
+  updateVisualFocusButtons();
+  setVisualFocusPanelsActive(false);
+  const targetNode = document.getElementById("eyeTargetSymbol");
+  if (targetNode) targetNode.textContent = "";
+  renderVisualFocusGrid();
+  updateVisualFocusProgress();
+  applyVisualFocusPreset(document.getElementById("eyePreset")?.value || "letters");
+  const statusNode = document.getElementById("eyeTestStatus");
+  if (statusNode) statusNode.textContent = "Ready for a new visual focus test.";
+  setVisualFocusSessionStatus("No test completed yet.");
+  resetVisualFocusOutputs("Start the visual focus test to generate a result.");
+  renderVisualFocusQuickStats(null);
+}
 
 updateTestLabStatus();
 async function initializeDashboard() {
   const language = document.getElementById("sampleLanguage")?.value || "Bengali";
   const therapyLanguage = document.getElementById("therapyLanguage")?.value || "Bengali";
   const therapySessionType = document.getElementById("therapyType")?.value || "Sound Drill";
-  const eyePreset = document.getElementById("eyePreset")?.value || "short_passage";
+  const eyePreset = document.getElementById("eyePreset")?.value || "letters";
   await loadBengaliListeningSet();
   pickListeningParagraph(language);
   renderRandomSpellingWords(language);
   renderRandomReadingPrompt(language);
   renderTherapyTargetOptions(therapyLanguage, therapySessionType);
-  applyEyePreset(eyePreset, false);
-  resetEyeLiveCheck(false);
+  applyVisualFocusPreset(eyePreset);
   updateTherapyPromptUI();
   setTherapyRoundStatus("The system will listen to each spoken response and auto-fill the therapy metrics below.");
   const initTherapy = (id, value) => {
@@ -3541,12 +4632,31 @@ async function initializeDashboard() {
   setNodeText("readingPassThreshold", `${READING_PASS_THRESHOLD}%`);
   setNodeText("audioPassThreshold", `${AUDIO_PASS_THRESHOLD}%`);
   setNodeText("spellingPassThreshold", `${SPELLING_PASS_THRESHOLD}%`);
-  resetEyeOutputs("Start the live on-screen eye-tracking check, or use the optional CSV import.");
-  setEyeUploadStatus("No CSV file uploaded yet. Live on-screen eye tracking is ready.");
-  updateEyeLiveButtons();
+  resetVisualFocusOutputs("Start the visual focus test to generate a result.");
+  setVisualFocusSessionStatus("No test completed yet.");
+  renderVisualFocusQuickStats(null);
+  updateVisualFocusButtons();
+  renderVisualFocusGrid();
+  updateVisualFocusProgress();
+  renderFinalReportPanel();
+  setDownloadReportEnabled(false);
   updateSegmentScoreMatrix();
 }
 initializeDashboard();
+
+document.getElementById("eyeChoiceGrid")?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-eye-choice]");
+  if (!button) return;
+  handleVisualFocusChoice(button.dataset.eyeChoice, button);
+});
+document.getElementById("startEyeVisualTest")?.addEventListener("click", startVisualFocusTest);
+document.getElementById("resetEyeVisualTest")?.addEventListener("click", resetVisualFocusTest);
+document.getElementById("eyePreset")?.addEventListener("change", (event) => {
+  applyVisualFocusPreset(event.target.value);
+  resetVisualFocusTest();
+});
+applyVisualFocusPreset(document.getElementById("eyePreset")?.value || "letters");
+resetVisualFocusTest();
 
 document.querySelectorAll(".user-guide-btn").forEach((button) => {
   button.addEventListener("click", () => openGuideModal(button.dataset.guide));

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import tempfile
+import textwrap
 import wave
+from datetime import datetime
 from pathlib import Path
 import os
 import subprocess
@@ -79,6 +81,15 @@ DEFAULT_TEXT_BY_LANGUAGE = {
     "Multilingual": "\u0986\u09ae\u09bf \u09ac\u09be\u0982\u09b2\u09be \u09aa\u09dc\u09bf",
 }
 
+REPORT_FIELD_LABELS = {
+    "student_name": "Student Name",
+    "age": "Age",
+    "student_class": "Class",
+    "roll_no": "Roll No",
+    "section": "Section",
+    "school_name": "School Name",
+}
+
 
 st.set_page_config(page_title="Dyslexia Detection Dashboard", layout="wide")
 st.markdown(
@@ -130,6 +141,224 @@ def load_history(history_path: str) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame(columns=["epoch", "loss", "val_accuracy", "val_f1"])
     return pd.read_csv(path)
+
+
+def initialize_report_state() -> None:
+    st.session_state.setdefault(
+        "report_student_info",
+        {
+            "student_name": "",
+            "age": "",
+            "student_class": "",
+            "roll_no": "",
+            "section": "",
+            "school_name": "",
+        },
+    )
+    st.session_state.setdefault("report_screening", None)
+    st.session_state.setdefault("report_therapy", None)
+    st.session_state.setdefault("report_eye", None)
+    st.session_state.setdefault("report_biomarkers", None)
+    st.session_state.setdefault("generated_final_report", None)
+
+
+def set_report_result(key: str, value: dict[str, object]) -> None:
+    st.session_state[key] = value
+    st.session_state["generated_final_report"] = None
+
+
+def format_percent(value: object) -> str:
+    try:
+        return f"{float(value) * 100:.1f}%"
+    except (TypeError, ValueError):
+        return "N/A"
+
+
+def format_decimal(value: object, digits: int = 2) -> str:
+    try:
+        return f"{float(value):.{digits}f}"
+    except (TypeError, ValueError):
+        return "N/A"
+
+
+def missing_report_fields(student_info: dict[str, str]) -> list[str]:
+    missing: list[str] = []
+    for key, label in REPORT_FIELD_LABELS.items():
+        if not str(student_info.get(key, "")).strip():
+            missing.append(label)
+    return missing
+
+
+def build_final_report_payload() -> dict[str, object]:
+    student_info = dict(st.session_state.get("report_student_info", {}))
+    screening = st.session_state.get("report_screening")
+    therapy = st.session_state.get("report_therapy")
+    eye = st.session_state.get("report_eye")
+    biomarkers = st.session_state.get("report_biomarkers")
+
+    sections: list[dict[str, object]] = []
+    overview: list[str] = []
+    recommendations: list[str] = []
+
+    if screening:
+        sections.append(
+            {
+                "title": "Screening",
+                "lines": [
+                    f"Result: {screening.get('label_text', 'Not available')}",
+                    f"Confidence: {format_percent(screening.get('confidence'))}",
+                    str(screening.get("summary", "Screening summary is not available.")),
+                ],
+            }
+        )
+        overview.append(f"Screening suggests {screening.get('label_text', 'an undetermined pattern')}.")
+        recommendations.append("Review the screening result together with the class teacher and guardian.")
+
+    if therapy:
+        sections.append(
+            {
+                "title": "Speech Therapy",
+                "lines": [
+                    f"Session score: {format_percent(therapy.get('therapy_score'))}",
+                    str(therapy.get("recommendation", "Therapy recommendation is not available.")),
+                ],
+            }
+        )
+        overview.append(f"Speech practice score is {format_percent(therapy.get('therapy_score'))}.")
+        recommendations.append("Continue short and regular speech practice sessions.")
+
+    if eye:
+        sections.append(
+            {
+                "title": "Eye Tracking",
+                "lines": [
+                    f"Reading speed: {format_decimal(eye.get('reading_speed_wpm'))} WPM",
+                    f"Regressions: {eye.get('regressions_count', 'N/A')}",
+                    f"Fixation duration: {format_decimal(eye.get('fixation_duration_ms'))} ms",
+                    f"Gaze dispersion: {format_decimal(eye.get('gaze_dispersion'))}",
+                ],
+            }
+        )
+        overview.append(f"Eye tracking recorded reading speed of {format_decimal(eye.get('reading_speed_wpm'))} WPM.")
+        recommendations.append("Repeat the eye-tracking task in a calm setting if the child seemed distracted.")
+
+    if biomarkers:
+        strongest_name = biomarkers.get("top_biomarker", "Not available")
+        strongest_score = biomarkers.get("top_importance")
+        sections.append(
+            {
+                "title": "Biomarkers",
+                "lines": [
+                    f"Markers analyzed: {biomarkers.get('count', 0)}",
+                    f"Strongest marker: {strongest_name} ({format_decimal(strongest_score, 4)})",
+                ],
+            }
+        )
+        overview.append(f"Biomarker review highlights {strongest_name} as the strongest signal.")
+        recommendations.append("Use biomarker findings together with screening, therapy, and classroom observation.")
+
+    if not sections:
+        overview.append("No test results have been saved yet.")
+        recommendations.append("Complete at least one test before generating the final report.")
+
+    unique_recommendations = list(dict.fromkeys(recommendations))
+    return {
+        "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "student_info": student_info,
+        "sections": sections,
+        "overview": overview,
+        "recommendations": unique_recommendations,
+    }
+
+
+def create_pdf_bytes(lines: list[str]) -> bytes:
+    page_width = 612
+    page_height = 792
+    start_x = 50
+    start_y = 750
+    line_height = 16
+    max_lines_per_page = 42
+
+    def escape_pdf_text(value: str) -> str:
+        return value.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+    pages = [lines[index : index + max_lines_per_page] for index in range(0, len(lines), max_lines_per_page)] or [[]]
+    objects: list[str] = []
+
+    def add_object(content: str) -> int:
+        objects.append(content)
+        return len(objects)
+
+    catalog_id = add_object("<< /Type /Catalog /Pages 2 0 R >>")
+    pages_id = add_object("<< /Type /Pages /Count 0 /Kids [] >>")
+    font_id = add_object("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+    page_ids: list[int] = []
+
+    for page_lines in pages:
+        stream_lines = ["BT", "/F1 11 Tf", f"{line_height} TL", f"{start_x} {start_y} Td"]
+        for index, line in enumerate(page_lines):
+            if index > 0:
+                stream_lines.append("T*")
+            stream_lines.append(f"({escape_pdf_text(line)}) Tj")
+        stream_lines.append("ET")
+        stream = "\n".join(stream_lines)
+        content_id = add_object(f"<< /Length {len(stream)} >>\nstream\n{stream}\nendstream")
+        page_id = add_object(
+            f"<< /Type /Page /Parent {pages_id} 0 R /MediaBox [0 0 {page_width} {page_height}] "
+            f"/Resources << /Font << /F1 {font_id} 0 R >> >> /Contents {content_id} 0 R >>"
+        )
+        page_ids.append(page_id)
+
+    objects[pages_id - 1] = (
+        f"<< /Type /Pages /Count {len(page_ids)} /Kids [{' '.join(f'{page_id} 0 R' for page_id in page_ids)}] >>"
+    )
+
+    pdf = "%PDF-1.4\n"
+    offsets = [0]
+    for index, content in enumerate(objects, start=1):
+        offsets.append(len(pdf))
+        pdf += f"{index} 0 obj\n{content}\nendobj\n"
+
+    xref_start = len(pdf)
+    pdf += f"xref\n0 {len(objects) + 1}\n"
+    pdf += "0000000000 65535 f \n"
+    for offset in offsets[1:]:
+        pdf += f"{offset:010d} 00000 n \n"
+    pdf += f"trailer\n<< /Size {len(objects) + 1} /Root {catalog_id} 0 R >>\nstartxref\n{xref_start}\n%%EOF"
+    return pdf.encode("latin-1", errors="replace")
+
+
+def final_report_pdf_bytes(report: dict[str, object]) -> bytes:
+    student_info = report["student_info"]
+    lines = [
+        "Learning Disorder Intelligence - Final Report",
+        "",
+        f"Generated: {report['generated_at']}",
+        "",
+        "Student Details",
+        f"Student Name: {student_info['student_name']}",
+        f"Age: {student_info['age']}",
+        f"Class: {student_info['student_class']}",
+        f"Roll No: {student_info['roll_no']}",
+        f"Section: {student_info['section']}",
+        f"School Name: {student_info['school_name']}",
+        "",
+        "Overview",
+    ]
+    for item in report["overview"]:
+        lines.extend(textwrap.wrap(str(item), width=90) or [""])
+    lines.append("")
+
+    for section in report["sections"]:
+        lines.append(str(section["title"]))
+        for line in section["lines"]:
+            lines.extend(textwrap.wrap(str(line), width=90) or [""])
+        lines.append("")
+
+    lines.append("Recommended Next Steps")
+    for item in report["recommendations"]:
+        lines.extend(textwrap.wrap(str(item), width=90) or [""])
+    return create_pdf_bytes(lines)
 
 
 def save_upload(uploaded_file) -> Path | None:
@@ -511,6 +740,15 @@ def render_biomarker_discovery(manifest_path: Path) -> None:
         top = result.summary.head(top_k)
         st.dataframe(top, width="stretch", hide_index=True)
         st.bar_chart(top.set_index("biomarker")["importance_score"], width="stretch")
+        top_row = top.iloc[0]
+        set_report_result(
+            "report_biomarkers",
+            {
+                "count": int(len(result.summary)),
+                "top_biomarker": str(top_row["biomarker"]),
+                "top_importance": float(top_row["importance_score"]),
+            },
+        )
         output_dir = Path("reports/biomarkers")
         output_dir.mkdir(parents=True, exist_ok=True)
         dataset_path = output_dir / "biomarker_dataset.csv"
@@ -1009,6 +1247,28 @@ def render_live_screening() -> None:
                 omission_count=int(omission_count),
                 modality_attention=modality_attention,
             )
+            explanation = build_educational_explanation(
+                label_text=label_from_probabilities(probabilities),
+                confidence=confidence,
+                probabilities=probabilities,
+                spelling_errors=int(spelling_errors),
+                pronunciation_errors=int(pronunciation_errors),
+                reading_time_seconds=float(reading_time_seconds),
+                hesitation_count=int(hesitation_count),
+                repetition_count=int(repetition_count),
+                omission_count=int(omission_count),
+                sample_language=sample_language,
+                modality_attention=modality_attention,
+            )
+            set_report_result(
+                "report_screening",
+                {
+                    "label_text": label_from_probabilities(probabilities),
+                    "confidence": float(confidence),
+                    "summary": explanation.summary,
+                    "sample_language": sample_language,
+                },
+            )
             profile = profile_from_screening(
                 label_from_probabilities(probabilities),
                 sample_language,
@@ -1243,6 +1503,17 @@ def render_speech_therapy_lab() -> None:
     duration_seconds = st.number_input("Session duration seconds", min_value=0.0, max_value=600.0, value=0.0, key="therapy_duration_dashboard")
     result = score_therapy_session(float(duration_seconds), int(pronunciation_errors), int(syllable_repetitions), int(sound_substitutions), int(attention_rating))
     st.progress(result.therapy_score, text=result.recommendation)
+    if st.button("Use Current Therapy Result in Report", key="use_therapy_report_dashboard"):
+        set_report_result(
+            "report_therapy",
+            {
+                "therapy_score": float(result.therapy_score),
+                "recommendation": result.recommendation,
+                "language": language,
+                "task_id": task.task_id,
+            },
+        )
+        st.success("Current therapy result added to the final report.")
 
     if st.button("Save Therapy Session", key="save_therapy_dashboard"):
         audio_rel = ""
@@ -1275,6 +1546,15 @@ def render_speech_therapy_lab() -> None:
                 "recommendation": result.recommendation,
             },
         )
+        set_report_result(
+            "report_therapy",
+            {
+                "therapy_score": float(result.therapy_score),
+                "recommendation": result.recommendation,
+                "language": language,
+                "task_id": task.task_id,
+            },
+        )
         st.success(f"Therapy session saved to {workspace['sessions']}")
 
     if workspace["sessions"].exists():
@@ -1298,11 +1578,114 @@ def render_eye_tracking_lab() -> None:
         if st.button("Compute and Save Eye Metrics", key="compute_eye_metrics_dashboard"):
             metrics = compute_eye_tracking_metrics(trace, int(word_count))
             append_eye_tracking_metrics(output_path, sample_id, participant_hash, language, metrics, int(word_count))
+            set_report_result(
+                "report_eye",
+                {
+                    "reading_speed_wpm": float(metrics.reading_speed_wpm),
+                    "regressions_count": int(metrics.regressions_count),
+                    "fixation_duration_ms": float(metrics.fixation_duration_ms),
+                    "gaze_dispersion": float(metrics.gaze_dispersion),
+                    "language": language,
+                },
+            )
             st.success(f"Eye-tracking metrics saved to {output_path}")
-            st.json(metrics.__dict__)
+            metric_cols = st.columns(4)
+            with metric_cols[0]:
+                st.metric("Reading speed", f"{metrics.reading_speed_wpm:.2f} WPM")
+            with metric_cols[1]:
+                st.metric("Regressions", int(metrics.regressions_count))
+            with metric_cols[2]:
+                st.metric("Fixation duration", f"{metrics.fixation_duration_ms:.2f} ms")
+            with metric_cols[3]:
+                st.metric("Gaze dispersion", f"{metrics.gaze_dispersion:.2f}")
     if output_path.exists():
         st.subheader("Collected Eye-Tracking Metrics")
         st.dataframe(pd.read_csv(output_path), width="stretch", hide_index=True)
+
+
+def render_final_report_tab() -> None:
+    st.subheader("Final Report")
+    st.caption("Fill the student details below, then generate the report. The saved test results will be added automatically to the PDF.")
+
+    student_info = st.session_state["report_student_info"]
+    detail_cols = st.columns(3)
+    with detail_cols[0]:
+        student_info["student_name"] = st.text_input("Student Name", value=student_info["student_name"], key="report_student_name")
+        student_info["age"] = st.text_input("Age", value=student_info["age"], key="report_age")
+    with detail_cols[1]:
+        student_info["student_class"] = st.text_input("Class", value=student_info["student_class"], key="report_class")
+        student_info["roll_no"] = st.text_input("Roll No", value=student_info["roll_no"], key="report_roll_no")
+    with detail_cols[2]:
+        student_info["section"] = st.text_input("Section", value=student_info["section"], key="report_section")
+        student_info["school_name"] = st.text_input("School Name", value=student_info["school_name"], key="report_school_name")
+    st.session_state["report_student_info"] = student_info
+
+    status_cols = st.columns(4)
+    status_map = {
+        "Screening": st.session_state.get("report_screening"),
+        "Speech Therapy": st.session_state.get("report_therapy"),
+        "Eye Tracking": st.session_state.get("report_eye"),
+        "Biomarkers": st.session_state.get("report_biomarkers"),
+    }
+    for index, (label, value) in enumerate(status_map.items()):
+        with status_cols[index]:
+            st.metric(label, "Ready" if value else "Pending")
+
+    missing = missing_report_fields(student_info)
+    if missing:
+        st.info(f"Please fill these details before generating the report: {', '.join(missing)}")
+    if not any(status_map.values()):
+        st.warning("No saved test results are available yet. Run at least one test first.")
+
+    if st.button("Generate Final Report", type="primary", key="generate_final_report_dashboard"):
+        if missing:
+            st.error(f"Please fill these details first: {', '.join(missing)}")
+        elif not any(status_map.values()):
+            st.error("Please complete at least one test before generating the final report.")
+        else:
+            st.session_state["generated_final_report"] = build_final_report_payload()
+            st.success("Final report generated successfully.")
+
+    report = st.session_state.get("generated_final_report")
+    if not report:
+        st.markdown("**Report Preview**")
+        st.caption("The final report preview will appear here after you click Generate Final Report.")
+        return
+
+    st.markdown("**Report Preview**")
+    info_left, info_right = st.columns(2)
+    with info_left:
+        st.write(f"**Student Name:** {report['student_info']['student_name']}")
+        st.write(f"**Age:** {report['student_info']['age']}")
+        st.write(f"**Class:** {report['student_info']['student_class']}")
+    with info_right:
+        st.write(f"**Roll No:** {report['student_info']['roll_no']}")
+        st.write(f"**Section:** {report['student_info']['section']}")
+        st.write(f"**School Name:** {report['student_info']['school_name']}")
+    st.caption(f"Generated on {report['generated_at']}")
+
+    st.markdown("**Overview**")
+    for item in report["overview"]:
+        st.write(f"- {item}")
+
+    for section in report["sections"]:
+        st.markdown(f"**{section['title']}**")
+        for line in section["lines"]:
+            st.write(f"- {line}")
+
+    st.markdown("**Recommended Next Steps**")
+    for item in report["recommendations"]:
+        st.write(f"- {item}")
+
+    pdf_bytes = final_report_pdf_bytes(report)
+    file_name = f"{report['student_info']['student_name'].strip().replace(' ', '_') or 'student'}_final_report.pdf"
+    st.download_button(
+        "Download Report PDF",
+        data=pdf_bytes,
+        file_name=file_name,
+        mime="application/pdf",
+        key="download_final_report_pdf_dashboard",
+    )
 
 
 def render_model_ops(manifest_path: Path) -> None:
@@ -1398,6 +1781,7 @@ def render_model_ops(manifest_path: Path) -> None:
 def main() -> None:
     st.title("Learning Disorder Intelligence Dashboard")
     st.caption("Professional multimodal platform for screening, explainability, intervention, therapy, and deployment workflows.")
+    initialize_report_state()
 
     with st.sidebar:
         st.header("Data Source")
@@ -1447,6 +1831,7 @@ def main() -> None:
             "Guided Practice",
             "Speech Therapy",
             "Eye Tracking",
+            "Final Report",
             "Model Ops",
         ]
     )
@@ -1479,6 +1864,8 @@ def main() -> None:
     with tabs[13]:
         render_eye_tracking_lab()
     with tabs[14]:
+        render_final_report_tab()
+    with tabs[15]:
         render_model_ops(manifest_path)
 
 

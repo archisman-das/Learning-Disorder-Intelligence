@@ -23,8 +23,8 @@
           <div class="card-body p-2 d-grid gap-1" id="tabNav">
             <button class="btn btn-primary text-start tab-btn active" data-tab="screening"><i class="bi bi-clipboard2-pulse me-2"></i>Screening</button>
             <button class="btn btn-light text-start tab-btn" data-tab="therapy"><i class="bi bi-soundwave me-2"></i>Speech Therapy</button>
-            <button class="btn btn-light text-start tab-btn" data-tab="eye"><i class="bi bi-eye me-2"></i>Eye Tracking</button>
-            <button class="btn btn-light text-start tab-btn" data-tab="testlab"><i class="bi bi-bar-chart-steps me-2"></i>End-User Test Lab</button>
+            <button class="btn btn-light text-start tab-btn" data-tab="eye"><i class="bi bi-eye me-2"></i>Visual Focus Test</button>
+            <button class="btn btn-light text-start tab-btn" data-tab="testlab"><i class="bi bi-bar-chart-steps me-2"></i>Test Lab & Report</button>
             <button class="btn btn-light text-start tab-btn" data-tab="biomarkers"><i class="bi bi-activity me-2"></i>Biomarkers</button>
             <button class="btn btn-light text-start tab-btn" data-tab="records"><i class="bi bi-journal-text me-2"></i>Records</button>
           </div>
@@ -81,8 +81,8 @@
                     <div id="audioOptions" class="d-grid gap-2 mb-2"></div>
                     <div class="d-flex gap-2 mt-2">
                       <button id="playAudioParagraph" class="btn btn-outline-primary btn-sm">Play Audio</button>
-                      <button id="verifyAudioAnswer" class="btn btn-outline-success btn-sm">Manual Check</button>
-                      <button id="reloadAudioParagraph" class="btn btn-outline-secondary btn-sm">Next Sample</button>
+                      <button id="verifyAudioAnswer" class="btn btn-outline-success btn-sm" type="button">Submit Answer</button>
+                      <button id="reloadAudioParagraph" class="btn btn-outline-secondary btn-sm">Skip</button>
                     </div>
                     <p id="audioTestStatus" class="mt-2 mb-0">Load a sample and listen carefully.</p>
                     <p class="mt-2 mb-1 small"><strong>Listening Score:</strong> <span id="audioAutoScore">-</span></p>
@@ -212,80 +212,67 @@
           <div class="card border-0 shadow-sm">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 class="mb-0">Eye Tracking Check</h5>
+                <h5 class="mb-0">Visual Focus Test</h5>
                 <button class="btn btn-outline-primary btn-sm user-guide-btn" data-guide="eye">User Guidance</button>
               </div>
-              <div class="alert alert-primary py-2">Run the eye check directly in this window. Start the live check, follow the reading passage with your mouse or finger, and the result will be analyzed automatically.</div>
+              <div class="alert alert-primary py-2">Run a simple on-screen symbol test here. The result is scored automatically and saved in the background for the final report.</div>
               <div class="guide-box mb-2">
                 <h6 class="mb-2">How To Use</h6>
                 <ol class="mb-0 small ps-3">
-                  <li>Choose the reading activity type first.</li>
-                  <li>Click <strong>Start Live Check</strong>.</li>
-                  <li>Read the on-screen passage and follow it with your mouse or finger.</li>
-                  <li>Wait for the timer to finish.</li>
-                  <li>The dashboard analyzes the result automatically and explains it below.</li>
+                  <li>Choose a test mode like letters, digits, or mixed symbols.</li>
+                  <li>Press <strong>Start Test</strong>.</li>
+                  <li>Tap the matching symbol in each round as quickly and accurately as you can.</li>
+                  <li>When the last round finishes, the result is analyzed and saved automatically.</li>
                 </ol>
               </div>
               <div class="row g-2">
-                <div class="col-md-4"><label class="form-label">Reading Activity</label><select id="eyePreset" class="form-select"><option value="short_passage">Short Passage</option><option value="sentence_drill">Sentence Drill</option><option value="long_passage">Long Passage</option></select></div>
-                <div class="col-md-8"><label class="form-label">Preset Guidance</label><input id="eyePresetHint" class="form-control" type="text" value="Short passage: balanced settings for a typical reading sample." readonly></div>
-                <div class="col-md-3"><label class="form-label">Words In Passage</label><input type="number" id="wordCount" class="form-control" min="1" value="6"></div>
-                <div class="col-md-3"><label class="form-label">Expected Time (seconds)</label><input type="number" id="eyeExpectedTime" class="form-control" min="1" value="18"></div>
-                <div class="col-md-3"><label class="form-label">Allowed Backward Jumps</label><input type="number" id="eyeRegressionLimit" class="form-control" min="0" value="4"></div>
-                <div class="col-md-3"><label class="form-label">Steadiness Target</label><input type="number" id="eyeDispersionTarget" class="form-control" min="0.01" step="0.01" value="0.18"></div>
-                <div class="col-md-12"><label class="form-label">Optional Advanced CSV Import</label><input type="file" id="traceFile" class="form-control" accept=".csv"></div>
+                <div class="col-md-4"><label class="form-label">Test Mode</label><select id="eyePreset" class="form-select"><option value="letters">Alphabet Match</option><option value="digits">Digit Match</option><option value="mixed">Mixed Symbols</option></select></div>
+                <div class="col-md-8"><label class="form-label">Preset Guidance</label><input id="eyePresetHint" class="form-control" type="text" value="Find the matching letter quickly. Best for a simple classroom-ready attention check." readonly></div>
               </div>
-              <div class="guide-box mt-3">
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                  <h6 class="mb-0">Live On-Screen Tracking Check</h6>
-                  <div class="d-flex gap-2 flex-wrap">
-                    <button id="startEyeLiveCheck" class="btn btn-primary btn-sm">Start Live Check</button>
-                    <button id="resetEyeLiveCheck" class="btn btn-outline-secondary btn-sm">Reset Live Check</button>
+              <div class="eye-test-shell mt-3">
+                <div class="row g-3 align-items-stretch">
+                  <div class="col-xl-4">
+                    <div class="eye-target-card h-100">
+                      <span class="eye-live-badge">Round Target</span>
+                      <p class="small text-muted mb-2">Tap the same symbol from the answer grid.</p>
+                      <div id="eyeTargetSymbol" class="eye-target-symbol"></div>
+                      <p id="eyeTestProgress" class="small text-muted mb-0">Press Start Test to begin.</p>
+                    </div>
+                  </div>
+                  <div class="col-xl-8">
+                    <div class="eye-test-board h-100">
+                      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <h6 class="mb-0">Interactive Test Board</h6>
+                        <div class="d-flex gap-2 flex-wrap">
+                          <button id="startEyeVisualTest" class="btn btn-primary btn-sm">Start Test</button>
+                          <button id="resetEyeVisualTest" class="btn btn-outline-secondary btn-sm">Reset</button>
+                        </div>
+                      </div>
+                      <p id="eyeTestStatus" class="small text-muted mb-3">Ready for a new visual focus test.</p>
+                      <div id="eyeChoiceGrid" class="eye-choice-grid"></div>
+                    </div>
                   </div>
                 </div>
-                <p class="small mb-2">This is the easiest mode for end users. Start the live check, then follow the passage with your mouse or finger while reading. The result will be analyzed automatically.</p>
-                <div id="eyeLiveTrackArea" class="eye-live-area">
-                  <div class="eye-live-toolbar">
-                    <span class="eye-live-badge">Live Window Check</span>
-                    <p id="eyeLiveStatus" class="small text-muted mb-0">Press Start Live Check, then follow the passage using your mouse or finger while reading.</p>
-                  </div>
-                  <div id="eyeLivePassage" class="eye-live-passage"></div>
-                  <div id="eyeLiveCursor" class="eye-live-cursor d-none"></div>
-                </div>
               </div>
-              <div class="d-flex gap-2 flex-wrap mt-2">
-                <button id="downloadEyeTemplate" class="btn btn-outline-secondary btn-sm">Download CSV Template</button>
-                <button id="loadEyeDemo" class="btn btn-outline-primary btn-sm">Load Demo Sample</button>
-                <span class="text-muted small align-self-center">CSV import is optional. Use it only if you already have saved gaze data.</span>
-              </div>
-              <p id="eyeUploadStatus" class="small text-muted mt-2 mb-0">No gaze trace uploaded yet.</p>
+              <p id="eyeSessionStatus" class="small text-muted mt-3 mb-0">No test completed yet.</p>
               <div id="eyeTraceQuickStats" class="result-card mt-2">
-                <p class="mb-0 text-muted small">After a live check or CSV import, this area will show trace duration, point count, and movement range.</p>
+                <p class="mb-0 text-muted small">After a test, this area will show round count, response speed, and first-try success.</p>
               </div>
               <div id="eyeChecklist" class="result-card mt-2">
-                <p class="mb-0 text-muted small">After analysis, this area will show a simple quality checklist for pace, steadiness, and backward eye jumps.</p>
+                <p class="mb-0 text-muted small">After analysis, this area will show simple checks for speed, accuracy, control, and consistency.</p>
               </div>
-              <div class="guide-box mt-2">
-                <h6 class="mb-2">Optional CSV Format</h6>
-                <pre id="eyeTemplatePreview" class="mb-0 small">timestamp_ms,gaze_x,gaze_y
-0,0.42,0.51
-120,0.45,0.52
-240,0.47,0.50
-360,0.44,0.49
-480,0.40,0.50</pre>
-              </div>
-              <button id="runEye" class="btn btn-primary mt-3">Analyze Again</button>
               <div id="eyeSummaryBand" class="score-overall mt-3">
-                <p class="mb-1"><strong>Eye Tracking Score:</strong> <span id="eyeOverallScore">-</span></p>
-                <p class="mb-0"><strong>Overall Reading Status:</strong> <span id="eyeOverallStatus">Pending</span></p>
+                <p class="mb-1"><strong>Visual Focus Score:</strong> <span id="eyeOverallScore">-</span></p>
+                <p class="mb-0"><strong>Overall Visual Status:</strong> <span id="eyeOverallStatus">Pending</span></p>
               </div>
               <div class="row g-3 mt-2">
                 <div class="col-xl-6"><div id="eyeResult" class="result-card"></div></div>
                 <div class="col-xl-6"><div class="chart-wrap"><canvas id="eyeChart"></canvas></div></div>
               </div>
               <div id="eyeRecommendation" class="result-card mt-3">
-                <p class="mb-0 text-muted">A plain-language recommendation will appear here after the file is analyzed.</p>
+                <p class="mb-0 text-muted">A plain-language recommendation will appear here after the test is analyzed.</p>
               </div>
+              <button id="runEye" type="button" class="d-none" aria-hidden="true" tabindex="-1"></button>
             </div>
           </div>
         </section>
@@ -294,13 +281,29 @@
           <div class="card border-0 shadow-sm">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 class="mb-0">End-User Full Test Lab</h5>
+                <h5 class="mb-0">End-User Full Test Lab & Report</h5>
                 <button class="btn btn-outline-primary btn-sm user-guide-btn" data-guide="testlab">User Guidance</button>
               </div>
+              <div class="alert alert-success py-2">
+                <strong>Report Area:</strong> Fill the student details in this section, run the comparison, then generate and download the final PDF report here.
+              </div>
               <div id="testStatus" class="result-card mb-3"></div>
+              <div class="guide-box mb-3" id="reportStudentCard">
+                <h6 class="mb-2">Student Report Details</h6>
+                <p class="small text-muted mb-2">The teacher, parent, or test correspondent should fill these details before generating the report. These details will be included automatically in the PDF.</p>
+                <div class="row g-2">
+                  <div class="col-md-6"><label class="form-label">Student Name</label><input id="reportStudentName" class="form-control" type="text" placeholder="Enter student name"></div>
+                  <div class="col-md-2"><label class="form-label">Age</label><input id="reportStudentAge" class="form-control" type="text" placeholder="Age"></div>
+                  <div class="col-md-2"><label class="form-label">Class</label><input id="reportStudentClass" class="form-control" type="text" placeholder="Class"></div>
+                  <div class="col-md-2"><label class="form-label">Roll No</label><input id="reportStudentRoll" class="form-control" type="text" placeholder="Roll"></div>
+                  <div class="col-md-4"><label class="form-label">Section</label><input id="reportStudentSection" class="form-control" type="text" placeholder="Section"></div>
+                  <div class="col-md-8"><label class="form-label">School Name</label><input id="reportSchoolName" class="form-control" type="text" placeholder="Enter school name"></div>
+                </div>
+              </div>
               <div class="d-flex gap-2 flex-wrap">
                 <button id="runComparison" class="btn btn-primary">Run Model Comparison</button>
                 <button id="generateFinal" class="btn btn-success">Generate Final Report</button>
+                <button id="downloadFinalPdf" class="btn btn-outline-secondary" disabled>Download Report PDF</button>
               </div>
               <div class="row g-2 mt-2">
                 <div class="col-md-4"><div class="score-overall"><p class="mb-1"><strong>Consensus Level:</strong> <span id="labConsensusLevel">-</span></p><p class="mb-0"><strong>Average Risk:</strong> <span id="labAverageRisk">-</span></p></div></div>
@@ -320,7 +323,9 @@
                   <div class="chart-wrap"><canvas id="modelCompareChart"></canvas></div>
                 </div>
               </div>
-              <div id="finalReport" class="result-card mt-3"></div>
+              <div id="finalReport" class="result-card mt-3">
+                <p class="mb-0 text-muted">Fill in the student details above, run model comparison, then click <strong>Generate Final Report</strong>. The same details will be included automatically in the PDF download.</p>
+              </div>
             </div>
           </div>
         </section>
@@ -332,16 +337,71 @@
                 <h5 class="mb-0">Digital Biomarker Discovery (Client-side)</h5>
                 <button class="btn btn-outline-primary btn-sm user-guide-btn" data-guide="biomarkers">User Guidance</button>
               </div>
-              <div class="alert alert-primary py-2">Upload manifest CSV to discover top correlating handwriting/speech/reading biomarkers locally.</div>
-              <div class="row g-2">
-                <div class="col-md-8"><label class="form-label">Manifest CSV</label><input type="file" id="manifestFile" class="form-control" accept=".csv"></div>
-                <div class="col-md-4"><label class="form-label">Risk Label Column</label><input type="text" id="labelColumn" class="form-control" value="label"></div>
-                <div class="col-md-4"><label class="form-label">Top Biomarkers</label><input type="number" id="biomarkerTopN" class="form-control" min="3" max="20" value="10"></div>
-                <div class="col-md-4"><label class="form-label">Minimum Importance</label><input type="number" id="biomarkerMinImportance" class="form-control" min="0" max="1" step="0.01" value="0.10"></div>
-                <div class="col-md-4"><label class="form-label">Feature Family</label><select id="biomarkerFamily" class="form-select"><option value="all">All</option><option value="reading">Reading</option><option value="speech">Speech</option><option value="handwriting">Handwriting</option><option value="eye_tracking">Eye Tracking</option><option value="timing">Timing</option></select></div>
+              <div class="alert alert-primary py-2">Upload one dataset CSV file and the dashboard will highlight the strongest reading, speech, handwriting, timing, and visual markers in a simple way.</div>
+              <div class="biomarker-shell mt-3">
+                <div class="row g-3">
+                  <div class="col-xl-7">
+                    <div class="biomarker-upload-card h-100">
+                      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <h6 class="mb-0">Step 1: Upload Dataset</h6>
+                        <span class="eye-live-badge">CSV only</span>
+                      </div>
+                      <label class="form-label">Dataset CSV</label>
+                      <input type="file" id="manifestFile" class="form-control" accept=".csv,text/csv">
+                      <p id="biomarkerFileStatus" class="small text-muted mt-2 mb-0">No dataset selected yet.</p>
+                      <div id="biomarkerDetectedInfo" class="guide-box mt-3">
+                        <h6 class="mb-2">Mandatory file requirements</h6>
+                        <p class="small mb-2">For reliable biomarker analysis, your file must include:</p>
+                        <ul class="small mb-0 ps-3">
+                          <li>one structured table with a clear header row</li>
+                          <li>one label column such as `label`, `risk_label`, `class`, or `target`</li>
+                          <li>numeric feature columns such as reading speed, error count, hesitation count, gaze values, or timing values</li>
+                          <li>one sample per row</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-xl-5">
+                    <div class="biomarker-settings-card h-100">
+                      <h6 class="mb-2">Step 2: Choose Analysis Settings</h6>
+                      <div class="row g-2">
+                        <div class="col-12">
+                          <label class="form-label">Risk Label Column</label>
+                          <input type="text" id="labelColumn" class="form-control" value="label" list="labelColumnSuggestions">
+                          <datalist id="labelColumnSuggestions"></datalist>
+                          <p class="small text-muted mt-1 mb-0">If the system detects a likely label column, it will suggest it automatically.</p>
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label">Show Top Results</label>
+                          <input type="number" id="biomarkerTopN" class="form-control" min="3" max="20" value="10">
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label">Feature Family</label>
+                          <select id="biomarkerFamily" class="form-select"><option value="all">All families</option><option value="reading">Reading</option><option value="speech">Speech</option><option value="handwriting">Handwriting</option><option value="eye_tracking">Eye Tracking</option><option value="timing">Timing</option></select>
+                        </div>
+                        <div class="col-12">
+                          <label class="form-label">Minimum Importance</label>
+                          <input type="number" id="biomarkerMinImportance" class="form-control" min="0" max="1" step="0.01" value="0.10">
+                          <p class="small text-muted mt-1 mb-0">Lower values show more markers. Higher values keep only stronger signals.</p>
+                        </div>
+                      </div>
+                      <div class="d-flex gap-2 flex-wrap mt-3">
+                        <button id="runBiomarkers" class="btn btn-primary">Analyze Biomarkers</button>
+                        <button id="resetBiomarkers" class="btn btn-outline-secondary">Reset</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <button id="runBiomarkers" class="btn btn-primary mt-3">Analyze Biomarkers</button>
-              <div id="biomarkerSummary" class="result-card mt-3"></div>
+              <div class="row g-2 mt-3">
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong>Samples</strong></p><p class="mb-0" id="biomarkerSamplesMetric">-</p></div></div>
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong>Markers Checked</strong></p><p class="mb-0" id="biomarkerEvaluatedMetric">-</p></div></div>
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong>Markers Shown</strong></p><p class="mb-0" id="biomarkerShownMetric">-</p></div></div>
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong>Strongest Signal</strong></p><p class="mb-0" id="biomarkerStrongestMetric">-</p></div></div>
+              </div>
+              <div id="biomarkerSummary" class="result-card mt-3">
+                <p class="mb-0 text-muted">Upload a dataset and run the analysis to see a plain-language biomarker summary here.</p>
+              </div>
               <div class="chart-wrap mt-3"><canvas id="biomarkerChart"></canvas></div>
               <div class="table-responsive mt-3">
                 <table class="table table-sm table-hover align-middle">
@@ -405,6 +465,10 @@
     </div>
   </div>
 
+  <div class="container pb-4">
+    <p class="text-center text-muted small mb-0">&copy; 2026 Developed by Archisman Das</p>
+  </div>
+
   <div class="guide-modal" id="guideModal" hidden>
     <div class="guide-modal-backdrop"></div>
     <div class="guide-modal-content">
@@ -417,6 +481,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-  <script src="./app.js?v=4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="./app.js?v=5"></script>
 </body>
 </html>

@@ -1,18 +1,48 @@
 ﻿const storeKey = "ld_dashboard_records_v2";
 
+const apiBase = (() => {
+  const explicit = String(window.__API_BASE__ || "").trim().replace(/\/+$/, "");
+  if (explicit) return explicit;
+  const { protocol, hostname, port, origin } = window.location;
+  if (protocol === "file:" || protocol === "about:") {
+    return "http://localhost:8080";
+  }
+  if ((hostname === "localhost" || hostname === "127.0.0.1") && port && port !== "8080") {
+    return "http://localhost:8080";
+  }
+  return origin || "http://localhost:8080";
+})();
+
+function apiUrl(path) {
+  const cleanPath = String(path || "");
+  return `${apiBase}${cleanPath.startsWith("/") ? cleanPath : `/${cleanPath}`}`;
+}
+
 const tabButtons = [...document.querySelectorAll(".tab-btn")];
 const tabPanels = [...document.querySelectorAll(".tab-panel")];
-tabButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    tabButtons.forEach((x) => {
-      x.classList.remove("btn-primary", "active");
-      x.classList.add("btn-light");
-    });
-    tabPanels.forEach((x) => x.classList.remove("active"));
-    button.classList.remove("btn-light");
-    button.classList.add("btn-primary", "active");
-    document.getElementById(button.dataset.tab).classList.add("active");
+
+function activateTab(tabId) {
+  const target = document.getElementById(tabId);
+  if (!target) return;
+  tabButtons.forEach((x) => {
+    x.classList.remove("btn-primary", "active");
+    x.classList.add("btn-light");
   });
+  tabPanels.forEach((x) => x.classList.remove("active"));
+  const activeButton = tabButtons.find((button) => button.dataset.tab === tabId);
+  if (activeButton) {
+    activeButton.classList.remove("btn-light");
+    activeButton.classList.add("btn-primary", "active");
+  }
+  target.classList.add("active");
+}
+
+tabButtons.forEach((button) => {
+  button.addEventListener("click", () => activateTab(button.dataset.tab));
+});
+
+document.querySelectorAll("[data-nav-tab]").forEach((button) => {
+  button.addEventListener("click", () => activateTab(button.dataset.navTab));
 });
 
 let screeningChart;
@@ -779,6 +809,26 @@ function setScreeningChartVisible(visible) {
   node.classList.toggle("d-none", !visible);
 }
 
+function getNextRoundLabel(roundKey = "screening", language = getDashboardLanguage()) {
+  const bengali = isBengaliUi(language);
+  const map = bengali
+    ? {
+        screening: "স্পিচ থেরাপি",
+        therapy: "ভিজ্যুয়াল ফোকাস টেস্ট",
+        eye: "টেস্ট ল্যাব ও রিপোর্ট",
+        testlab: "বায়োমার্কার্স",
+        biomarkers: "রেকর্ডস",
+      }
+    : {
+        screening: "Speech Therapy",
+        therapy: "Visual Focus Test",
+        eye: "Test Lab & Report",
+        testlab: "Biomarkers",
+        biomarkers: "Records",
+      };
+  return map[roundKey] || (bengali ? "পরবর্তী ধাপ" : "Next round");
+}
+
 function renderSecurityBanner() {
   const host = window.location.hostname || "";
   const secureEnough = window.isSecureContext || host === "localhost" || host === "127.0.0.1";
@@ -1410,12 +1460,239 @@ function setDownloadReportEnabled(enabled) {
 }
 
 function getReportSourceReadiness() {
+  const sources = normalizeComparisonSources();
   return {
-    screeningDone: !!latestScreening,
-    therapyDone: !!latestTherapy,
-    eyeDone: !!latestEye,
-    ready: !!latestScreening && !!latestTherapy && !!latestEye,
+    screeningDone: !!sources.screening,
+    therapyDone: !!sources.therapy,
+    eyeDone: !!sources.eye,
+    ready: !!sources.screening && !!sources.therapy && !!sources.eye,
   };
+}
+
+function getLatestSavedRecord(type) {
+  return loadRecords().slice().reverse().find((record) => record && record.type === type) || null;
+}
+
+function buildLiveScreeningSummary() {
+  if (!readingTestState.done || !audioFeatures.analyzed || !spellingFeatures.scored) return null;
+  const spellingScore = spellingFeatures.total
+    ? ((spellingFeatures.total - spellingFeatures.errors) / spellingFeatures.total) * 100
+    : 0;
+  const readingScore = Number(readingTestState.score || 0);
+  const audioScore = Number(audioFeatures.comprehensionScore || 0) * 100;
+  const averageScore = (readingScore + audioScore + spellingScore) / 3;
+  const severityScore = clamp(10 - (averageScore / 10), 0, 10);
+  const label = averageScore >= 80 ? "Mild" : averageScore >= 60 ? "Moderate" : "Severe";
+  return {
+    label,
+    confidence: clamp((averageScore / 100) * 0.92 + 0.08, 0, 1),
+    severityScore,
+    language: getDashboardLanguage(),
+    readingScore,
+    audioScore,
+    spellingScore,
+  };
+}
+
+function normalizeComparisonSources() {
+  const screening = latestScreening || (() => {
+    const record = getLatestSavedRecord("screening");
+    if (record) {
+      return {
+        label: record.label || "-",
+        confidence: Number(record.confidence || 0),
+        severityScore: Number(record.severityScore || 0),
+        language: record.language || "English",
+        readingScore: Number(record.readingScore || record.auto_features?.reading_score || 0),
+        audioScore: Number(record.audioScore || record.auto_features?.audio_score || 0),
+        spellingScore: Number(record.spellingScore || record.auto_features?.spelling_score || 0),
+      };
+    }
+    return buildLiveScreeningSummary();
+  })();
+  if (!latestScreening && screening) {
+    latestScreening = screening;
+  }
+
+  const therapy = latestTherapy || (() => {
+    const record = getLatestSavedRecord("therapy");
+    if (!record) return null;
+    return {
+      score: Number(record.score || 0),
+      overallScorePct: Number(record.overallScorePct || (record.score || 0) * 100),
+      threshold: Number(record.threshold || THERAPY_PASS_THRESHOLD),
+      recommendation: record.recommendation || "",
+      nextLevel: record.nextLevel || "",
+      sessionBand: record.sessionBand || "Pending",
+      target: record.target || "",
+      sessionType: record.sessionType || "Sound Drill",
+    };
+  })();
+
+  const eye = latestEye || (() => {
+    const record = getLatestSavedRecord("eye_tracking");
+    if (!record) return null;
+    return {
+      fixationDuration: Number(record.fixationDuration || 0),
+      regressions: Number(record.totalWrongClicks ?? record.regressions ?? 0),
+      wpm: Number(record.wpm || 0),
+      dispersion: Number(record.dispersion || record.consistencyValue || 0),
+      scanpath: Number(record.scanpath || 0),
+      eyeOverallScore: Number(record.eyeOverallScore || 0),
+      eyeStatus: record.eyeStatus || "Pending",
+      stabilityScore: Number(record.stabilityScore || 0),
+      regressionScore: Number(record.regressionScore || 0),
+      fixationScore: Number(record.fixationScore || 0),
+      totalWrongClicks: Number(record.totalWrongClicks ?? record.regressions ?? 0),
+      consistencyValue: Number(record.consistencyValue || record.dispersion || 0),
+    };
+  })();
+
+  return { screening, therapy, eye };
+}
+
+function buildLocalComparison(sources) {
+  const screening = sources.screening || buildLiveScreeningSummary() || { severityScore: 0 };
+  const therapy = sources.therapy || {};
+  const eye = sources.eye || {};
+  const screeningSeverity = Number(screening.severityScore || screening.severity_score || 0) || 0;
+  const therapyScore = Number(therapy.score || therapy.overallScorePct || 0) > 1
+    ? Number(therapy.score || 0)
+    : Number(therapy.score || therapy.overallScorePct || 0);
+  const eyeWrongClicks = Number(eye.totalWrongClicks ?? eye.regressions ?? 0) || 0;
+  const eyeConsistency = Number(eye.consistencyValue ?? eye.dispersion ?? 0) || 0;
+  const base = ((screeningSeverity / 10) * 0.45)
+    + ((1 - Math.max(0, Math.min(1, therapyScore))) * 0.30)
+    + (Math.min(1, eyeWrongClicks / 10) * 0.15)
+    + (Math.min(1, eyeConsistency * 4) * 0.10);
+  const modelNames = ["cnn", "lstm", "transformer", "vit", "multimodal_attention"];
+  const biasMap = { cnn: 0.02, lstm: -0.01, transformer: 0.03, vit: 0.01, multimodal_attention: 0.05 };
+  const predictions = modelNames.map((modelName) => {
+    const risk = Math.max(0, Math.min(1, base + (biasMap[modelName] || 0)));
+    const level = risk < 0.33 ? "Mild" : risk < 0.66 ? "Moderate" : "Severe";
+    return { modelName, level, risk, confidence: 0 };
+  });
+  const averageRisk = predictions.reduce((sum, row) => sum + row.risk, 0) / Math.max(1, predictions.length);
+  const levelCounts = predictions.reduce((acc, row) => {
+    acc[row.level] = (acc[row.level] || 0) + 1;
+    return acc;
+  }, {});
+  const consensusLevel = ["Severe", "Moderate", "Mild"].sort((a, b) => (levelCounts[b] || 0) - (levelCounts[a] || 0))[0];
+  const mostCautious = predictions.reduce((best, row) => row.risk > best.risk ? row : best, predictions[0] || { modelName: "-", level: "-", risk: 0 });
+  const stabilitySpread = predictions.length
+    ? Math.max(...predictions.map((p) => p.risk)) - Math.min(...predictions.map((p) => p.risk))
+    : 0;
+  const confidenceDisagreement = Math.min(1, stabilitySpread / 0.35);
+  const calibratedPredictions = predictions.map((row) => ({
+    ...row,
+    confidence: Math.max(0.48, Math.min(0.95, 0.54 + (Math.abs(row.risk - 0.5) * 0.42) - (confidenceDisagreement * 0.22))),
+  }));
+  const mostConfident = calibratedPredictions.reduce((best, row) => row.confidence > best.confidence ? row : best, calibratedPredictions[0] || { modelName: "-", confidence: 0 });
+  const decisionStability = stabilitySpread < 0.08 ? "High agreement" : stabilitySpread < 0.16 ? "Moderate agreement" : "Low agreement";
+  const localizedDecisionStability = isBengaliUi()
+    ? ({ "High agreement": "উচ্চ সম্মতি", "Moderate agreement": "মাঝারি সম্মতি", "Low agreement": "কম সম্মতি" }[decisionStability] || decisionStability)
+    : decisionStability;
+  const localizedReadinessStatus = isBengaliUi()
+    ? (averageRisk < 0.66 ? "তুলনা প্রস্তুত" : "উচ্চ ঝুঁকির ধারা সনাক্ত")
+    : (averageRisk < 0.66 ? "Comparison ready" : "High-risk pattern detected");
+  return {
+    predictions: calibratedPredictions,
+    averageRisk,
+    consensusLevel,
+    mostCautious,
+    mostConfident,
+    stabilitySpread,
+    decisionStability,
+    localizedDecisionStability,
+    localizedReadinessStatus,
+  };
+}
+
+function buildLocalFinalReport(sources, studentInfo, comparison) {
+  const bengali = isBengaliUi();
+  const predictions = Array.isArray(comparison?.predictions) ? comparison.predictions : [];
+  const avgRisk = Number(comparison?.averageRisk || 0);
+  const severeVotes = predictions.filter((x) => x.level === "Severe").length;
+  const moderateVotes = predictions.filter((x) => x.level === "Moderate").length;
+  const finalLevel = severeVotes >= 3 ? "Severe" : moderateVotes >= 3 ? "Moderate" : "Mild";
+  const screening = sources.screening || buildLiveScreeningSummary();
+  const therapy = sources.therapy || null;
+  const eye = sources.eye || null;
+  const recommendation = finalLevel === "Severe"
+    ? (bengali
+      ? "উচ্চ-অগ্রাধিকার হস্তক্ষেপ: ঘন ঘন পড়া, উচ্চারণ, এবং বানান অনুশীলন, সঙ্গে বিশেষজ্ঞ পর্যালোচনা।"
+      : "High-priority intervention: intensive reading-pronunciation-spelling plan and specialist review.")
+    : finalLevel === "Moderate"
+      ? (bengali
+        ? "গঠনমূলক হস্তক্ষেপ: সপ্তাহে ৪-৫ দিন নির্দেশিত অনুশীলন এবং অগ্রগতি ট্র্যাকিং।"
+        : "Structured intervention: guided practice 4-5 days/week with progress tracking.")
+      : (bengali
+        ? "ভিত্তি-মজবুতকরণ পরিকল্পনা: নিয়মিত নির্দেশিত অনুশীলন এবং পর্যায়ক্রমিক পুনর্মূল্যায়ন।"
+        : "Foundation support: regular guided practice and periodic reassessment.");
+  const consensus = {
+    consensusLevel: comparison?.consensusLevel || finalLevel,
+    averageRisk: avgRisk,
+    decisionStability: comparison?.decisionStability || "Moderate agreement",
+    mostCautious: comparison?.mostCautious || (predictions.length ? predictions.reduce((best, row) => row.risk > best.risk ? row : best, predictions[0]) : null),
+    mostConfident: comparison?.mostConfident || (predictions.length ? predictions.reduce((best, row) => row.confidence > best.confidence ? row : best, predictions[0]) : null),
+  };
+  const overview = [];
+  if (screening) overview.push(`${bengali ? "স্ক্রিনিং" : "Screening"}: ${screening.label || "-"}`);
+  if (therapy) overview.push(`${bengali ? "স্পিচ থেরাপি" : "Speech Therapy"}: ${therapy.sessionBand || "-"}`);
+  if (eye) overview.push(`${bengali ? "ভিজ্যুয়াল ফোকাস" : "Visual Focus"}: ${localizeEyeStatusSummary(eye.eyeStatus, bengali ? "Bengali" : "English") || "-"}`);
+  overview.push(`${bengali ? "মডেল তুলনা" : "Comparison"}: ${consensus.consensusLevel}`);
+  return {
+    generatedAt: new Date().toISOString(),
+    studentInfo,
+    finalLevel,
+    avgRisk,
+    severeVotes,
+    moderateVotes,
+    predictions,
+    recommendation,
+    consensus,
+    screening: screening || null,
+    therapy: therapy || null,
+    visualFocus: eye || null,
+    overview,
+    sections: [],
+    recommendations: [recommendation],
+    comparisonVersion: reportSourceVersion,
+  };
+}
+
+function localizeEyeStatusSummary(status, language = getDashboardLanguage()) {
+  const text = String(status || "").trim();
+  if (!text) return text;
+  const bengali = isBengaliUi(language);
+  const map = bengali
+    ? {
+        "Usable visual focus with mild strain": "হালকা চাপসহ ব্যবহারযোগ্য ভিজ্যুয়াল ফোকাস",
+        "Some reading strain detected": "কিছু পড়ার চাপ ধরা পড়েছে",
+        "Good visual reading pattern": "ভালো ভিজ্যুয়াল পড়ার ধরণ",
+        "Needs extra reading support": "অতিরিক্ত পড়া সহায়তা দরকার",
+        "Ready for a new visual focus test.": "নতুন ভিজ্যুয়াল ফোকাস টেস্টের জন্য প্রস্তুত।",
+        "No test completed yet.": "এখনও কোনো পরীক্ষা সম্পন্ন হয়নি।",
+        "Pending": "অপেক্ষমাণ",
+      }
+    : {
+        "হালকা চাপসহ ব্যবহারযোগ্য ভিজ্যুয়াল ফোকাস": "Usable visual focus with mild strain",
+        "কিছু পড়ার চাপ ধরা পড়েছে": "Some reading strain detected",
+        "ভালো ভিজ্যুয়াল পড়ার ধরণ": "Good visual reading pattern",
+        "অতিরিক্ত পড়া সহায়তা দরকার": "Needs extra reading support",
+        "নতুন ভিজ্যুয়াল ফোকাস টেস্টের জন্য প্রস্তুত।": "Ready for a new visual focus test.",
+        "এখনও কোনো পরীক্ষা সম্পন্ন হয়নি।": "No test completed yet.",
+        "অপেক্ষমাণ": "Pending",
+      };
+  return map[text] || text;
+}
+
+function hydrateLatestComparisonSources() {
+  const sources = normalizeComparisonSources();
+  if (!latestScreening && sources.screening) latestScreening = sources.screening;
+  if (!latestTherapy && sources.therapy) latestTherapy = sources.therapy;
+  if (!latestEye && sources.eye) latestEye = sources.eye;
+  return sources;
 }
 
 function getReportFlowCopy(language = getDashboardLanguage()) {
@@ -1426,8 +1703,8 @@ function getReportFlowCopy(language = getDashboardLanguage()) {
       ? `${sourceLabel} পরিবর্তিত হয়েছে। রিপোর্ট সতেজ করতে আবার মডেল তুলনা চালান।`
       : `${sourceLabel} changed. Run model comparison again to refresh the report.`),
     compareFirst: bengali
-      ? "প্রথমে স্ক্রিনিং, স্পিচ থেরাপি, এবং ভিজ্যুয়াল ফোকাস টেস্ট শেষ করুন।"
-      : "Please complete Screening, Therapy, and the Visual Focus Test first.",
+      ? "প্রথমে স্পিচ থেরাপি এবং ভিজ্যুয়াল ফোকাস টেস্ট শেষ করুন। স্ক্রিনিং থাকলে সেটিও ব্যবহার হবে।"
+      : "Please complete Therapy and the Visual Focus Test first. Screening will be used if available.",
     comparisonDone: (consensusLevel) => (bengali
       ? `মডেল তুলনা সম্পন্ন হয়েছে। সম্মতির স্তর: ${consensusLevel}। এখন চূড়ান্ত রিপোর্ট তৈরি করুন।`
       : `Model comparison completed. Consensus level: ${consensusLevel}. Now click Generate Final Report.`),
@@ -1548,9 +1825,9 @@ function renderFinalReportPanel(reportData = null, message = "") {
       <p><strong>${bengali ? "মডেল সম্মতি" : "Model Agreement"}:</strong> ${bengali ? `তীব্র ভোট ${reportData.severeVotes}, মাঝারি ভোট ${reportData.moderateVotes}, মৃদু ভোট ${reportData.predictions.length - reportData.severeVotes - reportData.moderateVotes}` : `Severe votes ${reportData.severeVotes}, Moderate votes ${reportData.moderateVotes}, Mild votes ${reportData.predictions.length - reportData.severeVotes - reportData.moderateVotes}`}</p>
       <p><strong>${bengali ? "সিদ্ধান্তের স্থায়িত্ব" : "Decision Stability"}:</strong> ${localizedStability}</p>
       <p><strong>${bengali ? "সবচেয়ে সাবধানী মডেল" : "Most Cautious Model"}:</strong> ${reportData.consensus.mostCautious ? `${reportData.consensus.mostCautious.modelName} (${reportData.consensus.mostCautious.level})` : "-"}</p>
-      <p><strong>${bengali ? "স্ক্রিনিং সারাংশ" : "Screening Summary"}:</strong> ${reportData.screening ? `${reportData.screening.label} (${(reportData.screening.confidence * 100).toFixed(1)}%)` : "-"}</p>
+      <p><strong>${bengali ? "স্ক্রিনিং সারাংশ" : "Screening Summary"}:</strong> ${reportData.screening ? `${reportData.screening.label} (${(reportData.screening.confidence * 100).toFixed(1)}%)` : (bengali ? "চালানো হয়নি" : "Not run")}</p>
       <p><strong>${bengali ? "স্পিচ থেরাপি সারাংশ" : "Speech Therapy Summary"}:</strong> ${reportData.therapy ? `${reportData.therapy.sessionBand} (${(reportData.therapy.overallScorePct || reportData.therapy.score * 100).toFixed(1)}%)` : "-"}</p>
-      <p><strong>${bengali ? "ভিজ্যুয়াল ফোকাস সারাংশ" : "Visual Focus Summary"}:</strong> ${reportData.visualFocus ? `${reportData.visualFocus.eyeStatus} (${(reportData.visualFocus.eyeOverallScore || 0).toFixed(1)}%)` : "-"}</p>
+      <p><strong>${bengali ? "ভিজ্যুয়াল ফোকাস সারাংশ" : "Visual Focus Summary"}:</strong> ${reportData.visualFocus ? `${localizeEyeStatusSummary(reportData.visualFocus.eyeStatus, bengali ? "Bengali" : "English")} (${(reportData.visualFocus.eyeOverallScore || 0).toFixed(1)}%)` : "-"}</p>
       <p><strong>${bengali ? "পরবর্তী করণীয়" : "Recommended Next Step"}:</strong> ${localizedRecommendation}</p>
       <p><strong>${bengali ? "তৈরির সময়" : "Generated At"}:</strong> ${generatedText}</p>
     `;
@@ -1618,52 +1895,24 @@ function buildLiveScreeningSnapshot() {
   };
 }
 
-function scoreScreeningFromLiveData(language) {
+async function scoreScreeningViaBackend(language) {
   const snapshot = buildLiveScreeningSnapshot();
-  const readingRisk = (100 - snapshot.readingScore) / 100;
-  const audioRisk = (100 - snapshot.audioScore) / 100;
-  const spellingRisk = (100 - snapshot.spellingScore) / 100;
-  const paceRisk = clamp(Math.abs(snapshot.readingWpm - 65) / 65, 0, 1);
-  const timingRisk = clamp(Math.max(0, snapshot.readingTimeSeconds - 35) / 40, 0, 1);
-  const pronunciationRisk = clamp(snapshot.pronunciationErrors / 5, 0, 1);
-  const hesitationRisk = clamp(snapshot.hesitationCount / 8, 0, 1);
-  const repetitionRisk = clamp(snapshot.repetitionCount / 4, 0, 1);
-  const omissionRisk = clamp(snapshot.omissionCount / 4, 0, 1);
-  const reloadRisk = clamp(snapshot.reloadCount / 3, 0, 1);
-  const wrongAttemptRisk = clamp(snapshot.wrongAttempts / 3, 0, 1);
-  const segmentRisk = (readingRisk * 0.38) + (audioRisk * 0.32) + (spellingRisk * 0.30);
-  const behaviorRisk = clamp(
-    (pronunciationRisk * 0.20) +
-    (hesitationRisk * 0.18) +
-    (repetitionRisk * 0.12) +
-    (omissionRisk * 0.18) +
-    (timingRisk * 0.12) +
-    (paceRisk * 0.08) +
-    (reloadRisk * 0.06) +
-    (wrongAttemptRisk * 0.06),
-    0,
-    1,
-  );
-  const segmentSpread = Math.max(snapshot.readingScore, snapshot.audioScore, snapshot.spellingScore)
-    - Math.min(snapshot.readingScore, snapshot.audioScore, snapshot.spellingScore);
-  const agreementBonus = clamp(1 - (segmentSpread / 45), 0, 1);
-  const combinedRisk = clamp((segmentRisk * 0.72) + (behaviorRisk * 0.28) - (agreementBonus * 0.04), 0, 1);
-  const mildRaw = Math.exp(-(((combinedRisk - 0.14) ** 2) / (2 * (0.13 ** 2))));
-  const moderateRaw = Math.exp(-(((combinedRisk - 0.50) ** 2) / (2 * (0.16 ** 2))));
-  const severeRaw = Math.exp(-(((combinedRisk - 0.84) ** 2) / (2 * (0.14 ** 2))));
-  const rawProbabilities = [mildRaw, moderateRaw, severeRaw];
-  const sum = rawProbabilities.reduce((total, value) => total + value, 0) || 1;
-  const probabilities = rawProbabilities.map((value) => value / sum);
-  const labels = ["Mild", "Moderate", "Severe"];
-  const maxIndex = probabilities.indexOf(Math.max(...probabilities));
+  const response = await fetch(apiUrl("/api/screen"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...snapshot,
+      language,
+      uiLanguage: isBengaliUi() ? "Bengali" : "English",
+    }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Screening failed");
+  }
   return {
     ...snapshot,
-    language,
-    label: labels[maxIndex],
-    confidence: probabilities[maxIndex],
-    probabilities,
-    combinedRisk,
-    severityScore: combinedRisk * 10,
+    ...data,
   };
 }
 
@@ -3062,10 +3311,13 @@ function updateSegmentScoreMatrix() {
   const allPassed = readingTestState.score >= READING_PASS_THRESHOLD
     && (audioFeatures.comprehensionScore * 100) >= AUDIO_PASS_THRESHOLD
     && spellingScore >= SPELLING_PASS_THRESHOLD;
+  const nextRound = getNextRoundLabel("screening", bengali ? "Bengali" : "English");
   setNodeText("overallSegmentScore", `${overallScore.toFixed(1)}%`);
   setNodeText(
     "overallSegmentStatus",
-    bengali ? (allPassed ? "স্ক্রিনিংয়ের জন্য প্রস্তুত" : "স্ক্রিনিংয়ের আগে সহায়তা দরকার") : (allPassed ? "Ready for Screening" : "Needs Support Before Screening"),
+    allPassed
+      ? (bengali ? `পরবর্তী রাউন্ডের জন্য প্রস্তুত: ${nextRound}` : `Ready for next round: ${nextRound}`)
+      : (bengali ? "পরবর্তী রাউন্ডের আগে সহায়তা দরকার" : "Needs support before the next round"),
     allPassed ? "text-success fw-semibold" : "text-danger fw-semibold",
   );
 }
@@ -3134,15 +3386,13 @@ function finalizeReadingSession(transcription = null) {
   const promptWords = (document.getElementById("readingPrompt")?.value || "").trim().split(/\s+/).filter(Boolean).length || 1;
   const minutes = Math.max(0.1, readingTestState.seconds / 60);
   const spokenWords = Math.max(0, readingTestState.wordsSpoken || 0);
-  const fallbackWords = Math.max(1, Math.round(promptWords * 0.78));
-  const effectiveWords = spokenWords > 0 ? spokenWords : fallbackWords;
+  const effectiveWords = spokenWords;
   const wpm = effectiveWords / minutes;
   const completion = Math.min(1, effectiveWords / promptWords);
   const targetWpm = 65;
   const paceScore = Math.max(0, 1 - (Math.abs(wpm - targetWpm) / targetWpm));
   const hesitationPenalty = Math.min(0.6, readingTestState.hesitations * 0.08);
-  const transcriptPenalty = spokenWords > 0 ? 0 : 0.06;
-  const score = Math.max(0, Math.min(100, ((completion * 0.55) + (paceScore * 0.45) - hesitationPenalty - transcriptPenalty) * 100));
+  const score = Math.max(0, Math.min(100, ((completion * 0.55) + (paceScore * 0.45) - hesitationPenalty) * 100));
   readingTestState.wpm = wpm;
   readingTestState.score = score;
   const autoScoreNode = document.getElementById("readingAutoScore");
@@ -3157,9 +3407,7 @@ function finalizeReadingSession(transcription = null) {
   updateSegmentScoreMatrix();
   const transcriptNote = transcriptText
     ? ` (${transcription?.engine || "local transcript"})`
-    : spokenWords > 0
-      ? ""
-      : " (fallback scoring: partial/no transcript)";
+    : "";
   document.getElementById("readingTestStatus").textContent =
     `Completed${transcriptNote}. Duration: ${readingTestState.seconds.toFixed(1)}s, Auto hesitations: ${readingTestState.hesitations}, WPM: ${wpm.toFixed(1)}, Reading score: ${score.toFixed(1)}%`;
   maybeAutoRunScreening();
@@ -3300,80 +3548,6 @@ async function startLocalMicMonitor() {
   }
 }
 
-function startReadingSpeechRecognitionFallback() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    const statusNode = document.getElementById("readingTestStatus");
-    if (statusNode) statusNode.textContent = "This browser does not support microphone-based speech recognition.";
-    return false;
-  }
-  const language = document.getElementById("sampleLanguage")?.value || "Bengali";
-  const recognition = new SpeechRecognition();
-  readingRecognition = recognition;
-  readingRecognitionRunning = true;
-  readingOfflineMode = false;
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.lang = language === "English" ? "en-US" : "bn-BD";
-  let finalTranscript = "";
-
-  const updateTranscript = (text) => {
-    readingCurrentTranscript = text.trim();
-    readingTestState.wordsSpoken = countTranscriptWords(readingCurrentTranscript);
-    const transcriptNode = document.getElementById("readingTestStatus");
-    if (transcriptNode && !readingTestState.done) {
-      transcriptNode.textContent = language === "English"
-        ? "Browser speech recognition is active. Speak the prompt and click Stop when finished."
-        : "ব্রাউজার স্পিচ রেকগনিশন সক্রিয়। প্রম্পটটি পড়ুন এবং শেষ হলে Stop চাপুন।";
-    }
-  };
-
-  recognition.onresult = (event) => {
-    let interimTranscript = "";
-    for (let i = event.resultIndex; i < event.results.length; i += 1) {
-      const piece = event.results[i][0]?.transcript || "";
-      if (event.results[i].isFinal) {
-        finalTranscript += `${piece} `;
-      } else {
-        interimTranscript += piece;
-      }
-    }
-    updateTranscript((finalTranscript + interimTranscript).trim());
-  };
-
-  recognition.onerror = (event) => {
-    const statusNode = document.getElementById("readingTestStatus");
-    if (statusNode) statusNode.textContent = describeMicAccessError(event, "Reading test");
-  };
-
-  recognition.onend = () => {
-    if (readingRecognitionRunning && !readingStopRequested && !readingTestState.done) {
-      try {
-        recognition.start();
-      } catch (_err) {}
-    }
-  };
-
-  try {
-    updateTranscript("");
-    recognition.start();
-    const statusNode = document.getElementById("readingTestStatus");
-    if (statusNode) {
-      statusNode.textContent = language === "English"
-        ? "Microphone connected through browser speech recognition. Click Stop when you finish reading."
-        : "ব্রাউজার স্পিচ রেকগনিশনের মাধ্যমে মাইক্রোফোন সংযুক্ত হয়েছে। পড়া শেষ হলে Stop চাপুন।";
-    }
-    setReadingListeningUI(true);
-    return true;
-  } catch (error) {
-    readingRecognitionRunning = false;
-    readingRecognition = null;
-    const statusNode = document.getElementById("readingTestStatus");
-    if (statusNode) statusNode.textContent = describeMicAccessError(error, "Reading test");
-    return false;
-  }
-}
-
 function resetReadingRecorderState() {
   readingRecorder = null;
   readingRecorderMimeType = "";
@@ -3458,7 +3632,7 @@ async function transcribeReadingAudio(blob) {
   if (!blob || !blob.size) return null;
   const language = document.getElementById("sampleLanguage")?.value || "Bengali";
   const extension = blob.type && blob.type.includes("ogg") ? ".ogg" : blob.type && blob.type.includes("mp4") ? ".mp4" : ".webm";
-  const response = await fetch("/api/reading-transcribe", {
+  const response = await fetch(apiUrl("/api/reading-transcribe"), {
     method: "POST",
     headers: {
       "Content-Type": blob.type || "application/octet-stream",
@@ -3582,17 +3756,12 @@ document.getElementById("startReadingTest")?.addEventListener("click", async () 
 
   const micReady = await startLocalMicMonitor();
   if (!micReady) {
-    const fallbackReady = startReadingSpeechRecognitionFallback();
-    if (!fallbackReady) {
-      const statusNode = document.getElementById("readingTestStatus");
-      if (statusNode && !statusNode.textContent.trim()) {
-        statusNode.textContent = describeMicAccessError(null, "Reading test");
-      }
-      readingRecognitionRunning = false;
-      readingTestState.startedAt = 0;
-    } else {
-      readingTestState.recognitionAvailable = true;
+    const statusNode = document.getElementById("readingTestStatus");
+    if (statusNode && !statusNode.textContent.trim()) {
+      statusNode.textContent = describeMicAccessError(null, "Reading test");
     }
+    readingRecognitionRunning = false;
+    readingTestState.startedAt = 0;
     return;
   }
 
@@ -3621,27 +3790,57 @@ document.getElementById("stopReadingTest")?.addEventListener("click", async () =
     try { readingRecognition.stop(); } catch (_err) {}
   }
   stopReadingMonitor();
-  document.getElementById("readingTestStatus").textContent = "Stopping capture and preparing the reading score...";
+  document.getElementById("readingTestStatus").textContent = "Stopping capture and transcribing the reading sample...";
   const recordedAudio = await stopReadingRecorderAndCollect();
   stopLocalMicMonitor();
   setReadingListeningUI(false);
-  const browserTranscript = readingCurrentTranscript.trim()
-    ? {
-        text: readingCurrentTranscript,
-        engine: "browser speech recognition",
-      }
-    : null;
-  finalizeReadingSession(browserTranscript);
-  if (recordedAudio && !browserTranscript) {
-    transcribeReadingAudio(recordedAudio)
-      .then((transcription) => {
-        if (!transcription?.text || readingTestState.done) return;
-        // Whisper can enrich later exports, but the score is already shown.
-        readingCurrentTranscript = String(transcription.text || "").trim();
-      })
-      .catch((error) => {
-        console.debug("Whisper transcription failed after fallback scoring:", error);
+  const browserTranscript = String(readingCurrentTranscript || "").trim();
+  if (browserTranscript) {
+    finalizeReadingSession({
+      text: browserTranscript,
+      engine: "browser transcript",
+    });
+    return;
+  }
+  if (!recordedAudio) {
+    document.getElementById("readingTestStatus").textContent = "Recording ended before audio was captured. Please try the test again.";
+    readingTestState.done = false;
+    readingRecognitionRunning = false;
+    return;
+  }
+  document.getElementById("readingTestStatus").textContent = "Transcribing the reading sample locally with Whisper...";
+  try {
+    const transcription = await transcribeReadingAudio(recordedAudio);
+    const transcriptText = String(transcription?.text || "").trim();
+    if (!transcriptText) {
+      throw new Error("No transcript was produced.");
+    }
+    readingCurrentTranscript = transcriptText;
+    finalizeReadingSession({
+      text: transcriptText,
+      engine: transcription.engine || "Whisper",
+    });
+  } catch (error) {
+    console.warn("Reading transcription failed.", error);
+    const promptText = (document.getElementById("readingPrompt")?.value || "").trim();
+    const fallbackTranscript = String(readingCurrentTranscript || promptText || "").trim();
+    if (fallbackTranscript) {
+      readingCurrentTranscript = fallbackTranscript;
+      finalizeReadingSession({
+        text: fallbackTranscript,
+        engine: isBengaliUi() ? "স্থানীয় অনুমান" : "local estimate",
       });
+      document.getElementById("readingTestStatus").textContent = isBengaliUi()
+        ? "ট্রান্সক্রিপশন পাওয়া যায়নি। স্থানীয় অনুমান দিয়ে স্কোর তৈরি করা হয়েছে।"
+        : "Transcription was unavailable. A local estimate was used to generate the score.";
+    } else {
+      document.getElementById("readingTestStatus").textContent = isBengaliUi()
+        ? "পড়ার নমুনা ট্রান্সক্রাইব করা যায়নি এবং কোন পাঠ্যও পাওয়া যায়নি। আবার চেষ্টা করুন।"
+        : "The reading sample could not be transcribed and no text estimate was available. Please try again.";
+      readingTestState.done = false;
+      readingRecognitionRunning = false;
+      setReadingListeningUI(false);
+    }
   }
 });
 
@@ -3835,13 +4034,6 @@ async function loadBengaliListeningSet() {
   }
 }
 
-function getAudioFallbackPath(path) {
-  if (!path) return "";
-  if (path.toLowerCase().endsWith(".wav")) return path.replace(/\.wav$/i, ".mp3");
-  if (path.toLowerCase().endsWith(".mp3")) return path.replace(/\.mp3$/i, ".wav");
-  return "";
-}
-
 function getVoiceForLanguage(language, timeoutMs = 1500) {
   return new Promise((resolve) => {
     const synth = window.speechSynthesis;
@@ -3868,13 +4060,6 @@ function getVoiceForLanguage(language, timeoutMs = 1500) {
     };
     synth.addEventListener("voiceschanged", handler);
   });
-}
-
-function getAnyAvailableVoice() {
-  const synth = window.speechSynthesis;
-  if (!synth) return null;
-  const voices = synth.getVoices() || [];
-  return voices.length ? voices[0] : null;
 }
 
 function populateVoiceSelector() {
@@ -3922,7 +4107,6 @@ async function speakPrompt() {
       return;
     }
     const primaryPath = currentListeningAudioPath;
-    const fallbackPath = getAudioFallbackPath(primaryPath);
     const tryPlay = async (path) => {
       player.pause();
       player.src = path;
@@ -3936,15 +4120,7 @@ async function speakPrompt() {
         status.textContent = "Audio finished. Choose the best answer and click Check Answer.";
       };
     } catch (_err1) {
-      try {
-        if (!fallbackPath) throw new Error("no fallback path");
-        await tryPlay(fallbackPath);
-        player.onended = () => {
-          status.textContent = "Audio finished. Choose the best answer and click Check Answer.";
-        };
-      } catch (_err2) {
-        status.textContent = "Audio file could not be played. Please try the next sample.";
-      }
+      status.textContent = "Audio file could not be played. Please try the next sample.";
     }
     return;
   }
@@ -3954,32 +4130,9 @@ async function speakPrompt() {
     return;
   }
   let playbackStarted = false;
-  const voice = await getVoiceForLanguage(currentListeningLanguage) || getAnyAvailableVoice();
+  const voice = await getVoiceForLanguage(currentListeningLanguage);
   if (!voice) {
-    const fallbackVoice = getAnyAvailableVoice();
-    if (!fallbackVoice) {
-      document.getElementById("audioTestStatus").textContent = "No TTS voice available in this browser/device.";
-      return;
-    }
-    const speechTextFallback = currentListeningLanguage === "English"
-      ? `${currentListeningItem.paragraph}. Question: ${currentListeningItem.question}`
-      : `${currentListeningItem.paragraph}। প্রশ্ন: ${currentListeningItem.question}`;
-    const utterFallback = new SpeechSynthesisUtterance(speechTextFallback);
-    utterFallback.lang = fallbackVoice.lang;
-    utterFallback.voice = fallbackVoice;
-    utterFallback.rate = 0.9;
-    utterFallback.pitch = 1.0;
-    utterFallback.onstart = () => {
-      playbackStarted = true;
-      document.getElementById("audioTestStatus").textContent = `Native ${currentListeningLanguage} voice unavailable. Playing fallback voice (${fallbackVoice.lang}).`;
-    };
-    utterFallback.onend = () => {
-      document.getElementById("audioTestStatus").textContent = playbackStarted
-        ? "Playback ended. If you heard the prompt, select an option and click Verify Answer."
-        : "Audio playback did not start. Check browser audio permission/volume and try again.";
-    };
-    synth.cancel();
-    synth.speak(utterFallback);
+    document.getElementById("audioTestStatus").textContent = `No ${currentListeningLanguage} TTS voice available in this browser/device.`;
     return;
   }
   synth.cancel();
@@ -4086,7 +4239,6 @@ async function playListeningSample() {
   if (currentListeningAudioPath) {
     if (!player) return;
     const primaryPath = currentListeningAudioPath;
-    const fallbackPath = getAudioFallbackPath(primaryPath);
     const tryPlay = async (path) => {
       player.pause();
       player.src = path;
@@ -4099,14 +4251,9 @@ async function playListeningSample() {
     try {
       await tryPlay(primaryPath);
     } catch (_primaryError) {
-      try {
-        if (!fallbackPath) throw new Error("no fallback path");
-        await tryPlay(fallbackPath);
-      } catch (_fallbackError) {
-        audioPlaybackInProgress = false;
-        updateAudioControlState();
-        status.textContent = "Audio file could not be played. Please try the next sample.";
-      }
+      audioPlaybackInProgress = false;
+      updateAudioControlState();
+      status.textContent = "Audio file could not be played. Please try the next sample.";
     }
     return;
   }
@@ -4126,12 +4273,18 @@ async function playListeningSample() {
     English: "en-US",
     Multilingual: "en-US",
   };
-  const voice = await getVoiceForLanguage(currentListeningLanguage) || getAnyAvailableVoice();
+  const voice = await getVoiceForLanguage(currentListeningLanguage);
   let playbackStarted = false;
   synth.cancel();
+  if (!voice) {
+    audioPlaybackInProgress = false;
+    updateAudioControlState();
+    status.textContent = `No ${currentListeningLanguage} TTS voice available in this browser/device.`;
+    return;
+  }
   const utter = new SpeechSynthesisUtterance(currentListeningItem.paragraph || "");
-  utter.lang = voice?.lang || languageMap[currentListeningLanguage] || "en-US";
-  if (voice) utter.voice = voice;
+  utter.lang = voice.lang || languageMap[currentListeningLanguage] || "en-US";
+  utter.voice = voice;
   utter.rate = 0.9;
   utter.pitch = 1.0;
   utter.volume = 1.0;
@@ -4266,9 +4419,9 @@ document.getElementById("testVoiceButton")?.addEventListener("click", () => {
     document.getElementById("audioTestStatus").textContent = "Speech synthesis not supported in this browser.";
     return;
   }
-  const voice = findVoiceByURI(selectedVoiceURI) || getAnyAvailableVoice();
+  const voice = findVoiceByURI(selectedVoiceURI);
   if (!voice) {
-    document.getElementById("audioTestStatus").textContent = "No TTS voice available in this browser/device.";
+    document.getElementById("audioTestStatus").textContent = "Selected TTS voice is not available in this browser/device.";
     return;
   }
   synth.cancel();
@@ -4328,7 +4481,7 @@ document.getElementById("therapyType")?.addEventListener("change", () => {
   }
 });
 
-document.getElementById("runScreening").addEventListener("click", () => {
+document.getElementById("runScreening")?.addEventListener("click", async () => {
   if (!readingTestState.done) {
     setScreeningResult(`<p>${isBengaliUi() ? "প্রথমে পড়ার সাবলীলতা পরীক্ষা সম্পন্ন করুন।" : "Please complete Reading Fluency Test first."}</p>`);
     setScreeningChartVisible(false);
@@ -4345,7 +4498,20 @@ document.getElementById("runScreening").addEventListener("click", () => {
     return;
   }
   const language = document.getElementById("sampleLanguage").value;
-  const screening = scoreScreeningFromLiveData(language);
+  let screening;
+  try {
+    screening = await scoreScreeningViaBackend(language);
+  } catch (error) {
+    console.warn("Backend screening unavailable.", error);
+    latestScreening = null;
+    window.__latestModelPredictions = [];
+    window.__latestConsensus = null;
+    window.__latestComparisonVersion = 0;
+    setScreeningResult(`<p>${isBengaliUi(language) ? "স্ক্রিনিং সম্পন্ন করা যায়নি। ব্যাকএন্ড চালু আছে কিনা নিশ্চিত করুন, তারপর আবার চেষ্টা করুন।" : "Screening could not be completed. Make sure the backend is running, then try again."}</p>`);
+    setScreeningChartVisible(false);
+    updateTestLabStatus();
+    return;
+  }
   const spelling = screening.spellingErrors;
   const pron = screening.pronunciationErrors;
   const time = screening.readingTimeSeconds;
@@ -5020,14 +5186,28 @@ document.getElementById("recordSearch")?.addEventListener("input", renderRecords
 renderRecords();
 
 function updateTestLabStatus() {
-  const { screeningDone, therapyDone, eyeDone, ready } = getReportSourceReadiness();
+  const sources = hydrateLatestComparisonSources();
+  const screeningReady = !!sources.screening;
+  const therapyReady = !!sources.therapy;
+  const eyeReady = !!sources.eye;
+  const { screeningDone, therapyDone, eyeDone, ready } = {
+    screeningDone: screeningReady,
+    therapyDone: therapyReady,
+    eyeDone: eyeReady,
+    ready: screeningReady && therapyReady && eyeReady,
+  };
   const node = document.getElementById("testStatus");
   if (!node) return;
   const bengali = isBengaliUi();
-  const screeningSummary = screeningDone ? `${latestScreening.label} (${(latestScreening.confidence * 100).toFixed(1)}%)` : (bengali ? "অপেক্ষমাণ" : "Pending");
-  const therapySummary = therapyDone ? `${latestTherapy.sessionBand} (${(latestTherapy.overallScorePct || latestTherapy.score * 100).toFixed(1)}%)` : (bengali ? "অপেক্ষমাণ" : "Pending");
-  const eyeSummary = eyeDone ? `${latestEye.eyeStatus || (bengali ? "সম্পন্ন" : "Done")} (${(latestEye.eyeOverallScore || 0).toFixed(1)}%)` : (bengali ? "অপেক্ষমাণ" : "Pending");
-  const comparisonReady = isComparisonCurrent();
+  const screeningSummary = screeningDone
+    ? `${sources.screening.label} (${(sources.screening.confidence * 100).toFixed(1)}%)`
+    : (bengali ? "চালানো হয়নি" : "Not run");
+  const therapySummary = therapyDone ? `${sources.therapy.sessionBand} (${(sources.therapy.overallScorePct || sources.therapy.score * 100).toFixed(1)}%)` : (bengali ? "অপেক্ষমাণ" : "Pending");
+  const eyeSummary = eyeDone ? `${localizeEyeStatusSummary(sources.eye.eyeStatus, bengali ? "Bengali" : "English") || (bengali ? "সম্পন্ন" : "Done")} (${(sources.eye.eyeOverallScore || 0).toFixed(1)}%)` : (bengali ? "অপেক্ষমাণ" : "Pending");
+  const comparisonReady = ready;
+  const comparisonStatusText = isComparisonCurrent()
+    ? (bengali ? "হালনাগাদ" : "Current")
+    : (ready ? (bengali ? "তৈরির জন্য প্রস্তুত" : "Ready to run") : (bengali ? "চালাতে/হালনাগাদ করতে হবে" : "Needs run/update"));
   const consensusLevelLabel = document.getElementById("labConsensusLevelLabel");
   if (consensusLevelLabel) consensusLevelLabel.textContent = bengali ? "সম্মতির স্তর:" : "Consensus Level:";
   const averageRiskLabel = document.getElementById("labAverageRiskLabel");
@@ -5046,58 +5226,64 @@ function updateTestLabStatus() {
     <p>${bengali ? "স্পিচ থেরাপি" : "Speech Therapy"}: ${therapySummary}</p>
     <p>${bengali ? "ভিজ্যুয়াল ফোকাস টেস্ট" : "Visual Focus Test"}: ${eyeSummary}</p>
     <p><strong>${bengali ? "মডেল তুলনার জন্য প্রস্তুত:" : "Ready for model comparison:"}</strong> <span class="${ready ? "text-success" : "text-danger"} fw-semibold">${ready ? (bengali ? "হ্যাঁ" : "Yes") : (bengali ? "না" : "No")}</span></p>
-    <p><strong>${bengali ? "তুলনার অবস্থা:" : "Comparison Status:"}</strong> <span class="${comparisonReady ? "text-success" : "text-secondary"} fw-semibold">${comparisonReady ? (bengali ? "হালনাগাদ" : "Current") : (bengali ? "চালাতে/হালনাগাদ করতে হবে" : "Needs run/update")}</span></p>
+    <p><strong>${bengali ? "তুলনার অবস্থা:" : "Comparison Status:"}</strong> <span class="${comparisonReady ? "text-success" : "text-secondary"} fw-semibold">${comparisonStatusText}</span></p>
   `;
 }
 
-function modelPredict(scoreBase, modelName) {
-  const biases = {
-    cnn: 0.02,
-    lstm: -0.01,
-    transformer: 0.03,
-    vit: 0.01,
-    multimodal_attention: 0.05,
-  };
-  const risk = Math.max(0, Math.min(1, scoreBase + (biases[modelName] || 0)));
-  const level = risk < 0.33 ? "Mild" : risk < 0.66 ? "Moderate" : "Severe";
-  const confidence = Math.max(0.5, Math.min(0.97, 0.58 + risk * 0.35));
-  return { modelName, level, confidence, risk };
+async function fetchComparisonFromBackend(sources) {
+  const response = await fetch(apiUrl("/api/comparison"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...sources,
+      language: isBengaliUi() ? "Bengali" : "English",
+    }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Comparison failed");
+  }
+  return data;
 }
 
-document.getElementById("runComparison")?.addEventListener("click", () => {
+async function fetchFinalReportFromBackend(sources, studentInfo) {
+  const response = await fetch(apiUrl("/api/final-report"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      studentInfo,
+      screening: sources.screening,
+      therapy: sources.therapy,
+      eye: sources.eye,
+      biomarkers: null,
+      language: isBengaliUi() ? "Bengali" : "English",
+    }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Final report failed");
+  }
+  return data;
+}
+
+async function runModelComparison() {
   const copy = getReportFlowCopy();
-  if (!latestScreening || !latestTherapy || !latestEye) {
+  const sources = normalizeComparisonSources();
+  const hydratedSources = hydrateLatestComparisonSources();
+  if (!hydratedSources.therapy || !hydratedSources.eye) {
     renderFinalReportPanel(null, copy.compareFirst);
     setDownloadReportEnabled(false);
-    return;
+    updateTestLabStatus();
+    return false;
   }
-  const base =
-    (latestScreening.severityScore / 10) * 0.45 +
-    (1 - latestTherapy.score) * 0.30 +
-    Math.min(1, (latestEye.totalWrongClicks ?? latestEye.regressions ?? 0) / 10) * 0.15 +
-    Math.min(1, (latestEye.consistencyValue ?? latestEye.dispersion ?? 0) * 4) * 0.10;
-  const models = ["cnn", "lstm", "transformer", "vit", "multimodal_attention"];
-  const predictions = models.map((m) => modelPredict(base, m));
-  const averageRisk = predictions.reduce((sum, row) => sum + row.risk, 0) / predictions.length;
-  const levelCounts = predictions.reduce((acc, row) => {
-    acc[row.level] = (acc[row.level] || 0) + 1;
-    return acc;
-  }, {});
-  const consensusLevel = ["Severe", "Moderate", "Mild"].sort((a, b) => (levelCounts[b] || 0) - (levelCounts[a] || 0))[0];
-  const mostCautious = predictions.reduce((best, row) => row.risk > best.risk ? row : best, predictions[0]);
-  const mostConfident = predictions.reduce((best, row) => row.confidence > best.confidence ? row : best, predictions[0]);
-  const stabilitySpread = Math.max(...predictions.map((p) => p.risk)) - Math.min(...predictions.map((p) => p.risk));
-  const decisionStability = stabilitySpread < 0.08 ? "High agreement" : stabilitySpread < 0.16 ? "Moderate agreement" : "Low agreement";
-  const localizedDecisionStability = isBengaliUi()
-    ? ({
-        "High agreement": "উচ্চ সম্মতি",
-        "Moderate agreement": "মাঝারি সম্মতি",
-        "Low agreement": "কম সম্মতি",
-      }[decisionStability] || decisionStability)
-    : decisionStability;
-  const localizedReadinessStatus = isBengaliUi()
-    ? (averageRisk < 0.66 ? "তুলনা প্রস্তুত" : "উচ্চ ঝুঁকির ধারা সনাক্ত")
-    : (averageRisk < 0.66 ? "Comparison ready" : "High-risk pattern detected");
+  let comparison;
+  try {
+    comparison = await fetchComparisonFromBackend(hydratedSources);
+  } catch (error) {
+    console.warn("Backend comparison unavailable.", error);
+    comparison = buildLocalComparison(hydratedSources);
+  }
+  const { predictions, averageRisk, consensusLevel, mostCautious, mostConfident, stabilitySpread, localizedDecisionStability, localizedReadinessStatus, decisionStability } = comparison;
 
   const table = document.getElementById("modelCompareTable");
   table.innerHTML = predictions
@@ -5134,16 +5320,38 @@ document.getElementById("runComparison")?.addEventListener("click", () => {
   setDownloadReportEnabled(false);
   renderFinalReportPanel(null, copy.comparisonDone(consensusLevel));
   updateTestLabStatus();
-});
+  return true;
+}
 
-document.getElementById("generateFinal")?.addEventListener("click", () => {
+async function generateFinalReport() {
   const copy = getReportFlowCopy();
-  if (!isComparisonCurrent()) {
-    renderFinalReportPanel(null, copy.compareAgain);
+  const hydratedSources = hydrateLatestComparisonSources();
+  if (!hydratedSources.therapy || !hydratedSources.eye) {
+    renderFinalReportPanel(null, copy.compareFirst);
     setDownloadReportEnabled(false);
-    return;
+    updateTestLabStatus();
+    return false;
   }
-  const predictions = window.__latestModelPredictions || [];
+  let comparison = null;
+  if (!isComparisonCurrent()) {
+    try {
+      comparison = await fetchComparisonFromBackend(hydratedSources);
+    } catch (error) {
+      console.warn("Backend comparison unavailable.", error);
+      comparison = buildLocalComparison(hydratedSources);
+    }
+    window.__latestModelPredictions = comparison.predictions;
+    window.__latestConsensus = {
+      consensusLevel: comparison.consensusLevel,
+      averageRisk: comparison.averageRisk,
+      decisionStability: comparison.decisionStability,
+      mostCautious: comparison.mostCautious,
+      mostConfident: comparison.mostConfident,
+    };
+    window.__latestComparisonVersion = reportSourceVersion;
+    renderFinalReportPanel(null, getReportFlowCopy().comparisonDone(comparison.consensusLevel));
+  }
+  const predictions = (comparison?.predictions || window.__latestModelPredictions || []);
   const { info: studentInfo, missing } = validateStudentReportInfo();
   if (missing.length) {
     renderFinalReportPanel(null, copy.completeFields(missing));
@@ -5151,41 +5359,45 @@ document.getElementById("generateFinal")?.addEventListener("click", () => {
     document.getElementById("reportStudentCard")?.scrollIntoView({ behavior: "smooth", block: "center" });
     return;
   }
-  const avgRisk = predictions.reduce((a, b) => a + b.risk, 0) / predictions.length;
-  const severeVotes = predictions.filter((x) => x.level === "Severe").length;
-  const moderateVotes = predictions.filter((x) => x.level === "Moderate").length;
-  const finalLevel = severeVotes >= 3 ? "Severe" : moderateVotes >= 3 ? "Moderate" : "Mild";
-  const recommendation =
-    finalLevel === "Severe"
-      ? "High-priority intervention: intensive reading-pronunciation-spelling plan and specialist review."
-      : finalLevel === "Moderate"
-      ? "Structured intervention: guided practice 4-5 days/week with progress tracking."
-        : "Foundation support: regular guided practice and periodic reassessment.";
-  const consensus = window.__latestConsensus || {};
-  const reportData = {
-    studentInfo,
-    finalLevel,
-    avgRisk,
-    severeVotes,
-    moderateVotes,
-    predictions,
-    recommendation,
-    consensus,
-    screening: latestScreening,
-    therapy: latestTherapy,
-    visualFocus: latestEye,
-    generatedAt: new Date().toISOString(),
-    comparisonVersion: reportSourceVersion,
-  };
+  let reportData;
+  try {
+    reportData = await fetchFinalReportFromBackend(hydratedSources, studentInfo);
+  } catch (error) {
+    console.warn("Backend final report unavailable.", error);
+    reportData = buildLocalFinalReport(hydratedSources, studentInfo, comparison || buildLocalComparison(hydratedSources));
+  }
 
+  reportData.comparisonVersion = reportSourceVersion;
   window.__latestFinalReport = reportData;
+  window.__latestModelPredictions = reportData.predictions || [];
+  window.__latestConsensus = reportData.consensus || null;
   renderFinalReportPanel(reportData);
   setDownloadReportEnabled(true);
-  saveRecord({ type: "final_report", finalLevel, avgRisk, severeVotes, moderateVotes, predictions, studentInfo, generatedAt: reportData.generatedAt, comparisonVersion: reportSourceVersion });
+  saveRecord({
+    type: "final_report",
+    finalLevel: reportData.finalLevel,
+    avgRisk: reportData.avgRisk,
+    severeVotes: reportData.severeVotes,
+    moderateVotes: reportData.moderateVotes,
+    predictions: reportData.predictions,
+    studentInfo,
+    generatedAt: reportData.generatedAt,
+    comparisonVersion: reportSourceVersion,
+  });
   updateTestLabStatus();
+  return true;
+}
+
+document.getElementById("runComparison")?.addEventListener("click", () => {
+  runModelComparison();
+});
+
+document.getElementById("generateFinal")?.addEventListener("click", () => {
+  generateFinalReport();
 });
 
 document.getElementById("downloadFinalPdf")?.addEventListener("click", () => {
+  const button = document.getElementById("downloadFinalPdf");
   const report = window.__latestFinalReport;
   const copy = getReportFlowCopy();
   if (!report) {
@@ -5193,7 +5405,7 @@ document.getElementById("downloadFinalPdf")?.addEventListener("click", () => {
     setDownloadReportEnabled(false);
     return;
   }
-  if (report.comparisonVersion !== reportSourceVersion || !isComparisonCurrent()) {
+  if (report.comparisonVersion && report.comparisonVersion !== reportSourceVersion && !isComparisonCurrent()) {
     invalidateReportFlow(isBengaliUi()
       ? "রিপোর্ট প্রস্তুত হওয়ার পরে টেস্ট ফলাফল পরিবর্তিত হয়েছে। মডেল তুলনা আবার চালিয়ে রিপোর্ট পুনরায় তৈরি করুন।"
       : "Test results changed after the report was prepared. Run model comparison and generate the report again.");
@@ -5212,76 +5424,88 @@ document.getElementById("downloadFinalPdf")?.addEventListener("click", () => {
     setDownloadReportEnabled(false);
     return;
   }
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  const bengali = isBengaliUi();
-  const finalLevelText = report.finalLevel || "-";
-  const localizedFinalLevel = bengali
-    ? ({
-        Severe: "গুরুতর",
-        Moderate: "মাঝারি",
-        Mild: "হালকা",
-      }[finalLevelText] || finalLevelText)
-    : finalLevelText;
-  const localizedDecisionStability = bengali
-    ? ({
-        "High agreement": "উচ্চ সম্মতি",
-        "Moderate agreement": "মাঝারি সম্মতি",
-        "Low agreement": "কম সম্মতি",
-      }[report.consensus.decisionStability || "-"] || (report.consensus.decisionStability || "-"))
-    : (report.consensus.decisionStability || "-");
-  const localizedRecommendation = bengali
-    ? ({
-        Severe: "উচ্চ অগ্রাধিকার হস্তক্ষেপ: তীব্র রিডিং, উচ্চারণ, এবং বানান পরিকল্পনা এবং বিশেষজ্ঞ পর্যালোচনা।",
-        Moderate: "গঠিত হস্তক্ষেপ: সপ্তাহে ৪-৫ দিন নির্দেশিত অনুশীলন এবং অগ্রগতি ট্র্যাকিং।",
-        Mild: "ভিত্তি সহায়তা: নিয়মিত নির্দেশিত অনুশীলন এবং পর্যায়ক্রমিক পুনর্মূল্যায়ন।",
-      }[finalLevelText] || report.recommendation)
-    : report.recommendation;
-  const lines = [
-    bengali ? "ডিসলেক্সিয়া সনাক্তকরণ চূড়ান্ত রিপোর্ট" : "Dyslexia Detection Final Report",
-    "",
-    `${bengali ? "শিক্ষার্থীর নাম" : "Student Name"}: ${report.studentInfo.name}`,
-    `${bengali ? "বয়স" : "Age"}: ${report.studentInfo.age}`,
-    `${bengali ? "শ্রেণি" : "Class"}: ${report.studentInfo.studentClass}`,
-    `${bengali ? "রোল নং" : "Roll No"}: ${report.studentInfo.rollNo}`,
-    `${bengali ? "সেকশন" : "Section"}: ${report.studentInfo.section}`,
-    `${bengali ? "বিদ্যালয়ের নাম" : "School Name"}: ${report.studentInfo.schoolName}`,
-    "",
-    `${bengali ? "চূড়ান্ত সমন্বিত ফল" : "Final Aggregated Outcome"}: ${localizedFinalLevel}`,
-    `${bengali ? "গড় ঝুঁকি স্কোর" : "Average Risk Score"}: ${report.avgRisk.toFixed(3)}`,
-    `${bengali ? "মডেল সম্মতি" : "Model Agreement"}: ${bengali ? `তীব্র ভোট ${report.severeVotes}, মাঝারি ভোট ${report.moderateVotes}, মৃদু ভোট ${report.predictions.length - report.severeVotes - report.moderateVotes}` : `Severe votes ${report.severeVotes}, Moderate votes ${report.moderateVotes}, Mild votes ${report.predictions.length - report.severeVotes - report.moderateVotes}`}`,
-    `${bengali ? "সিদ্ধান্তের স্থায়িত্ব" : "Decision Stability"}: ${localizedDecisionStability}`,
-    `${bengali ? "সবচেয়ে সাবধানী মডেল" : "Most Cautious Model"}: ${report.consensus.mostCautious ? `${report.consensus.mostCautious.modelName} (${report.consensus.mostCautious.level})` : "-"}`,
-    `${bengali ? "সবচেয়ে আত্মবিশ্বাসী মডেল" : "Most Confident Model"}: ${report.consensus.mostConfident ? `${report.consensus.mostConfident.modelName} (${report.consensus.mostConfident.level})` : "-"}`,
-    "",
-    `${bengali ? "স্ক্রিনিং সারাংশ" : "Screening Summary"}: ${report.screening ? `${report.screening.label} (${(report.screening.confidence * 100).toFixed(1)}%)` : "-"}`,
-    `${bengali ? "স্পিচ থেরাপি সারাংশ" : "Speech Therapy Summary"}: ${report.therapy ? `${report.therapy.sessionBand} (${(report.therapy.overallScorePct || report.therapy.score * 100).toFixed(1)}%)` : "-"}`,
-    `${bengali ? "ভিজ্যুয়াল ফোকাস সারাংশ" : "Visual Focus Summary"}: ${report.visualFocus ? `${report.visualFocus.eyeStatus} (${(report.visualFocus.eyeOverallScore || 0).toFixed(1)}%)` : "-"}`,
-    "",
-    `${bengali ? "পরবর্তী করণীয়" : "Recommended Next Step"}: ${localizedRecommendation}`,
-    `${bengali ? "তৈরির সময়" : "Generated At"}: ${new Date(report.generatedAt).toLocaleString()}`,
-  ];
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(12);
-  let y = 20;
-  lines.forEach((line, index) => {
-    const split = doc.splitTextToSize(line, 170);
-    if (index === 0) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(16);
-    } else {
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(12);
+  const originalLabel = button?.textContent || "Download Report PDF";
+  if (button) {
+    button.disabled = true;
+    button.textContent = isBengaliUi() ? "পিডিএফ প্রস্তুত হচ্ছে..." : "Downloading PDF...";
+  }
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const bengali = isBengaliUi();
+    const finalLevelText = report.finalLevel || "-";
+    const localizedFinalLevel = bengali
+      ? ({
+          Severe: "গুরুতর",
+          Moderate: "মাঝারি",
+          Mild: "হালকা",
+        }[finalLevelText] || finalLevelText)
+      : finalLevelText;
+    const localizedDecisionStability = bengali
+      ? ({
+          "High agreement": "উচ্চ সম্মতি",
+          "Moderate agreement": "মাঝারি সম্মতি",
+          "Low agreement": "কম সম্মতি",
+        }[report.consensus.decisionStability || "-"] || (report.consensus.decisionStability || "-"))
+      : (report.consensus.decisionStability || "-");
+    const localizedRecommendation = bengali
+      ? ({
+          Severe: "উচ্চ অগ্রাধিকার হস্তক্ষেপ: তীব্র রিডিং, উচ্চারণ, এবং বানান পরিকল্পনা এবং বিশেষজ্ঞ পর্যালোচনা।",
+          Moderate: "গঠিত হস্তক্ষেপ: সপ্তাহে ৪-৫ দিন নির্দেশিত অনুশীলন এবং অগ্রগতি ট্র্যাকিং।",
+          Mild: "ভিত্তি সহায়তা: নিয়মিত নির্দেশিত অনুশীলন এবং পর্যায়ক্রমিক পুনর্মূল্যায়ন।",
+        }[finalLevelText] || report.recommendation)
+      : report.recommendation;
+    const lines = [
+      bengali ? "ডিসলেক্সিয়া সনাক্তকরণ চূড়ান্ত রিপোর্ট" : "Dyslexia Detection Final Report",
+      "",
+      `${bengali ? "শিক্ষার্থীর নাম" : "Student Name"}: ${report.studentInfo.name}`,
+      `${bengali ? "বয়স" : "Age"}: ${report.studentInfo.age}`,
+      `${bengali ? "শ্রেণি" : "Class"}: ${report.studentInfo.studentClass}`,
+      `${bengali ? "রোল নং" : "Roll No"}: ${report.studentInfo.rollNo}`,
+      `${bengali ? "সেকশন" : "Section"}: ${report.studentInfo.section}`,
+      `${bengali ? "বিদ্যালয়ের নাম" : "School Name"}: ${report.studentInfo.schoolName}`,
+      "",
+      `${bengali ? "চূড়ান্ত সমন্বিত ফল" : "Final Aggregated Outcome"}: ${localizedFinalLevel}`,
+      `${bengali ? "গড় ঝুঁকি স্কোর" : "Average Risk Score"}: ${report.avgRisk.toFixed(3)}`,
+      `${bengali ? "মডেল সম্মতি" : "Model Agreement"}: ${bengali ? `তীব্র ভোট ${report.severeVotes}, মাঝারি ভোট ${report.moderateVotes}, মৃদু ভোট ${report.predictions.length - report.severeVotes - report.moderateVotes}` : `Severe votes ${report.severeVotes}, Moderate votes ${report.moderateVotes}, Mild votes ${report.predictions.length - report.severeVotes - report.moderateVotes}`}`,
+      `${bengali ? "সিদ্ধান্তের স্থায়িত্ব" : "Decision Stability"}: ${localizedDecisionStability}`,
+      `${bengali ? "সবচেয়ে সাবধানী মডেল" : "Most Cautious Model"}: ${report.consensus.mostCautious ? `${report.consensus.mostCautious.modelName} (${report.consensus.mostCautious.level})` : "-"}`,
+      `${bengali ? "সবচেয়ে আত্মবিশ্বাসী মডেল" : "Most Confident Model"}: ${report.consensus.mostConfident ? `${report.consensus.mostConfident.modelName} (${report.consensus.mostConfident.level})` : "-"}`,
+      "",
+      `${bengali ? "স্ক্রিনিং সারাংশ" : "Screening Summary"}: ${report.screening ? `${report.screening.label} (${(report.screening.confidence * 100).toFixed(1)}%)` : (bengali ? "চালানো হয়নি" : "Not run")}`,
+      `${bengali ? "স্পিচ থেরাপি সারাংশ" : "Speech Therapy Summary"}: ${report.therapy ? `${report.therapy.sessionBand} (${(report.therapy.overallScorePct || report.therapy.score * 100).toFixed(1)}%)` : "-"}`,
+      `${bengali ? "ভিজ্যুয়াল ফোকাস সারাংশ" : "Visual Focus Summary"}: ${report.visualFocus ? `${localizeEyeStatusSummary(report.visualFocus.eyeStatus, bengali ? "Bengali" : "English")} (${(report.visualFocus.eyeOverallScore || 0).toFixed(1)}%)` : "-"}`,
+      "",
+      `${bengali ? "পরবর্তী করণীয়" : "Recommended Next Step"}: ${localizedRecommendation}`,
+      `${bengali ? "তৈরির সময়" : "Generated At"}: ${new Date(report.generatedAt).toLocaleString()}`,
+    ];
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+    let y = 20;
+    lines.forEach((line, index) => {
+      const split = doc.splitTextToSize(line, 170);
+      if (index === 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+      } else {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(12);
+      }
+      doc.text(split, 20, y);
+      y += split.length * (index === 0 ? 8 : 7);
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+    });
+    const safeName = report.studentInfo.name.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || "student";
+    doc.save(`${safeName}_final_report.pdf`);
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalLabel;
     }
-    doc.text(split, 20, y);
-    y += split.length * (index === 0 ? 8 : 7);
-    if (y > 270) {
-      doc.addPage();
-      y = 20;
-    }
-  });
-  const safeName = report.studentInfo.name.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || "student";
-  doc.save(`${safeName}_final_report.pdf`);
+  }
 });
 
 [

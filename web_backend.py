@@ -8,6 +8,13 @@ from tempfile import NamedTemporaryFile
 
 from flask import Flask, jsonify, make_response, send_from_directory, request
 
+from src.dyslexia_detection.web_api import (
+    summarize_comparison_payload,
+    summarize_final_report_payload,
+    predict_screening_from_files,
+    summarize_live_screening_payload,
+)
+
 
 BASE_DIR = Path(__file__).resolve().parent
 WEB_ROOT = BASE_DIR / "web"
@@ -81,6 +88,12 @@ def create_app() -> Flask:
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        origin = request.headers.get("Origin")
+        if origin:
+          response.headers["Access-Control-Allow-Origin"] = origin
+          response.headers["Vary"] = "Origin"
+          response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+          response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Reading-Language, X-Audio-Filename"
         return response
 
     @app.get("/healthz")
@@ -134,6 +147,65 @@ def create_app() -> Flask:
                     temp_path.unlink(missing_ok=True)
                 except OSError:
                     pass
+
+    @app.post("/api/screen")
+    def screen():
+        file_keys = {"handwriting_file", "audio_file"}
+        has_uploaded_media = any(key in request.files and request.files[key].filename for key in file_keys)
+
+        try:
+            if has_uploaded_media:
+                handwriting = request.files.get("handwriting_file")
+                audio = request.files.get("audio_file")
+                form = request.form
+                text_sample = form.get("text_sample", "") or ""
+                sample_language = form.get("sample_language", "Bengali") or "Bengali"
+                model_text_language = form.get("model_text_language", "bengali") or "bengali"
+                try:
+                    result = predict_screening_from_files(
+                        handwriting_bytes=handwriting.read() if handwriting and handwriting.filename else None,
+                        handwriting_filename=handwriting.filename if handwriting else None,
+                        audio_bytes=audio.read() if audio and audio.filename else None,
+                        audio_filename=audio.filename if audio else None,
+                        text_sample=text_sample,
+                        spelling_errors=int(float(form.get("spelling_errors", 0) or 0)),
+                        pronunciation_errors=int(float(form.get("pronunciation_errors", 0) or 0)),
+                        reading_time_seconds=float(form.get("reading_time_seconds", 0) or 0),
+                        hesitation_count=int(float(form.get("hesitation_count", 0) or 0)),
+                        repetition_count=int(float(form.get("repetition_count", 0) or 0)),
+                        omission_count=int(float(form.get("omission_count", 0) or 0)),
+                        sample_language=sample_language,
+                        model_text_language=model_text_language,
+                    )
+                    return jsonify(result)
+                except FileNotFoundError:
+                    return jsonify(summarize_live_screening_payload(form.to_dict(flat=True)))
+
+            payload = request.get_json(silent=True)
+            if payload is None:
+                payload = request.form.to_dict(flat=True)
+            result = summarize_live_screening_payload(payload)
+            return jsonify(result)
+        except Exception as exc:
+            return jsonify({"error": f"Screening failed: {exc}"}), 500
+
+    @app.post("/api/comparison")
+    def comparison():
+        payload = request.get_json(silent=True) or request.form.to_dict(flat=True)
+        try:
+            result = summarize_comparison_payload(payload)
+            return jsonify(result)
+        except Exception as exc:
+            return jsonify({"error": f"Comparison failed: {exc}"}), 500
+
+    @app.post("/api/final-report")
+    def final_report():
+        payload = request.get_json(silent=True) or request.form.to_dict(flat=True)
+        try:
+            result = summarize_final_report_payload(payload)
+            return jsonify(result)
+        except Exception as exc:
+            return jsonify({"error": f"Final report failed: {exc}"}), 500
 
     @app.get("/", defaults={"path": "index.html"})
     @app.get("/<path:path>")

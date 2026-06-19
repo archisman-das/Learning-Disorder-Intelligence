@@ -135,9 +135,8 @@
                 </div>
               </div>
               <button id="runScreening" class="btn btn-primary mt-3">Manual Refresh Screening</button>
-              <div id="screeningOutputRow" class="row g-3 mt-2 d-none">
-                <div class="col-xl-6"><div id="screeningResult" class="result-card"></div></div>
-                <div class="col-xl-6"><div id="screeningChartWrap" class="chart-wrap"><canvas id="screeningChart"></canvas></div></div>
+              <div class="d-flex justify-content-end mt-3">
+                <button type="button" class="btn btn-primary" data-nav-tab="therapy">Next: Speech Therapy</button>
               </div>
             </div>
           </div>
@@ -211,6 +210,10 @@
                 <div class="col-xl-6"><div id="therapyResult" class="result-card"></div></div>
                 <div class="col-xl-6"><div class="chart-wrap"><canvas id="therapyChart"></canvas></div></div>
               </div>
+              <div class="d-flex justify-content-between gap-2 mt-3">
+                <button type="button" class="btn btn-outline-secondary" data-nav-tab="screening">Previous: Screening</button>
+                <button type="button" class="btn btn-primary" data-nav-tab="eye">Next: Visual Focus Test</button>
+              </div>
             </div>
           </div>
         </section>
@@ -280,6 +283,10 @@
                 <p class="mb-0 text-muted">A plain-language recommendation will appear here after the test is analyzed.</p>
               </div>
               <button id="runEye" type="button" class="d-none" aria-hidden="true" tabindex="-1"></button>
+              <div class="d-flex justify-content-between gap-2 mt-3">
+                <button type="button" class="btn btn-outline-secondary" data-nav-tab="therapy">Previous: Speech Therapy</button>
+                <button type="button" class="btn btn-primary" data-nav-tab="testlab">Next: Test Lab & Report</button>
+              </div>
             </div>
           </div>
         </section>
@@ -308,9 +315,9 @@
                 </div>
               </div>
               <div class="d-flex gap-2 flex-wrap">
-                <button id="runComparison" class="btn btn-primary">Run Model Comparison</button>
-                <button id="generateFinal" class="btn btn-success">Generate Final Report</button>
-                <button id="downloadFinalPdf" class="btn btn-outline-secondary" disabled>Download Report PDF</button>
+                <button id="runComparison" type="button" class="btn btn-primary">Run Model Comparison</button>
+                <button id="generateFinal" type="button" class="btn btn-success">Generate Final Report</button>
+                <button id="downloadFinalPdf" type="button" class="btn btn-outline-secondary" disabled>Download Report PDF</button>
               </div>
               <div class="row g-2 mt-2">
                 <div class="col-md-4"><div class="score-overall"><p class="mb-1"><strong id="labConsensusLevelLabel">Consensus Level:</strong> <span id="labConsensusLevel">-</span></p><p class="mb-0"><strong id="labAverageRiskLabel">Average Risk:</strong> <span id="labAverageRisk">-</span></p></div></div>
@@ -332,6 +339,10 @@
               </div>
               <div id="finalReport" class="result-card mt-3">
                 <p class="mb-0 text-muted">Fill in the student details above, run model comparison, then click <strong>Generate Final Report</strong>. The same details will be included automatically in the PDF.</p>
+              </div>
+              <div class="d-flex justify-content-between gap-2 mt-3">
+                <button type="button" class="btn btn-outline-secondary" data-nav-tab="eye">Previous: Visual Focus Test</button>
+                <button type="button" class="btn btn-primary" data-nav-tab="biomarkers">Next: Biomarkers</button>
               </div>
             </div>
           </div>
@@ -416,6 +427,10 @@
                   <tbody id="biomarkerTable"></tbody>
                 </table>
               </div>
+              <div class="d-flex justify-content-between gap-2 mt-3">
+                <button type="button" class="btn btn-outline-secondary" data-nav-tab="testlab">Previous: Test Lab & Report</button>
+                <button type="button" class="btn btn-primary" data-nav-tab="records">Next: Records</button>
+              </div>
             </div>
           </div>
         </section>
@@ -464,6 +479,9 @@
                     <p class="mb-0 text-muted">Select a record from the table to inspect details.</p>
                   </div>
                 </div>
+              </div>
+              <div class="d-flex justify-content-start gap-2 mt-3">
+                <button type="button" class="btn btn-outline-secondary" data-nav-tab="biomarkers">Previous: Biomarkers</button>
               </div>
             </div>
           </div>

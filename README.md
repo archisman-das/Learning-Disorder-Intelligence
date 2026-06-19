@@ -12,6 +12,8 @@ The codebase supports handwriting images, reading audio features, multilingual t
 
 For full web deployment, see [docs/DEPLOYMENT.md](/d:/Project/Dyslexia_Detection_System/docs/DEPLOYMENT.md).
 
+Live demo: [https://learning-disorder-intelligence.onrender.com/](https://learning-disorder-intelligence.onrender.com/)
+
 ### Web Deployment Checklist
 
 1. Push the latest `main` branch to GitHub.

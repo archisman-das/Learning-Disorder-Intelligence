@@ -20,6 +20,12 @@ The project now includes configuration for three common hosting paths:
 | Railway | [`railway.json`](/d:/Project/Dyslexia_Detection_System/railway.json) | Fast app deployment from GitHub |
 | Fly.io | [`fly.toml`](/d:/Project/Dyslexia_Detection_System/fly.toml) | Global app hosting with region control |
 
+## Live Deployment
+
+Current public demo:
+
+- [https://learning-disorder-intelligence.onrender.com/](https://learning-disorder-intelligence.onrender.com/)
+
 ### Render
 
 Render is the simplest path if you want a quick public URL.

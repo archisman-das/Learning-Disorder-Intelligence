@@ -18,6 +18,46 @@ function apiUrl(path) {
   return `${apiBase}${cleanPath.startsWith("/") ? cleanPath : `/${cleanPath}`}`;
 }
 
+function resolveWebAssetUrl(assetPath) {
+  const raw = String(assetPath || "").trim();
+  if (!raw) return "";
+  if (/^(https?:|blob:|data:)/i.test(raw)) return raw;
+  const normalized = raw.startsWith("/") ? raw : `/${raw.replace(/^\.\//, "")}`;
+  return new URL(normalized, window.location.origin).toString();
+}
+
+async function playResolvedAudio(player, assetPath) {
+  const resolvedUrl = resolveWebAssetUrl(assetPath);
+  if (!resolvedUrl || !player) {
+    throw new Error("Missing audio source.");
+  }
+
+  player.pause();
+  player.src = resolvedUrl;
+  player.load();
+
+  try {
+    await player.play();
+    return;
+  } catch (_directError) {
+    const response = await fetch(resolvedUrl, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Audio fetch failed with status ${response.status}.`);
+    }
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    player.src = blobUrl;
+    player.load();
+    try {
+      await player.play();
+    } catch (blobError) {
+      URL.revokeObjectURL(blobUrl);
+      throw blobError;
+    }
+    player.addEventListener("ended", () => URL.revokeObjectURL(blobUrl), { once: true });
+  }
+}
+
 const tabButtons = [...document.querySelectorAll(".tab-btn")];
 const tabPanels = [...document.querySelectorAll(".tab-panel")];
 
@@ -3893,7 +3933,7 @@ function pickListeningParagraph(language) {
   if (player) {
     player.pause();
     if (currentListeningAudioPath) {
-      player.src = currentListeningAudioPath;
+      player.src = resolveWebAssetUrl(currentListeningAudioPath);
     } else {
       player.removeAttribute("src");
     }
@@ -4014,7 +4054,7 @@ function finalizeAudioPlaybackState() {
 
 async function loadBengaliListeningSet() {
   try {
-    const response = await fetch("./assets/audio/bengali_listening_set.json", { cache: "no-store" });
+    const response = await fetch(resolveWebAssetUrl("./assets/audio/bengali_listening_set.json"), { cache: "no-store" });
     if (!response.ok) throw new Error("dataset fetch failed");
     const payload = await response.json();
     const items = Array.isArray(payload?.items) ? payload.items : [];
@@ -4106,16 +4146,9 @@ async function speakPrompt() {
       status.textContent = "This sample audio is not available yet.";
       return;
     }
-    const primaryPath = currentListeningAudioPath;
-    const tryPlay = async (path) => {
-      player.pause();
-      player.src = path;
-      player.load();
-      await player.play();
-    };
     status.textContent = "Playing audio...";
     try {
-      await tryPlay(primaryPath);
+      await playResolvedAudio(player, currentListeningAudioPath);
       player.onended = () => {
         status.textContent = "Audio finished. Choose the best answer and click Check Answer.";
       };
@@ -4238,18 +4271,11 @@ async function playListeningSample() {
   updateAudioControlState();
   if (currentListeningAudioPath) {
     if (!player) return;
-    const primaryPath = currentListeningAudioPath;
-    const tryPlay = async (path) => {
-      player.pause();
-      player.src = path;
-      player.load();
-      await player.play();
-    };
     status.textContent = currentListeningLanguage === "English"
       ? "Playing English listening sample..."
       : "Playing audio...";
     try {
-      await tryPlay(primaryPath);
+      await playResolvedAudio(player, currentListeningAudioPath);
     } catch (_primaryError) {
       audioPlaybackInProgress = false;
       updateAudioControlState();

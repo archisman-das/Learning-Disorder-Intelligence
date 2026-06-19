@@ -12,6 +12,8 @@ The codebase supports handwriting images, reading audio features, multilingual t
 
 For full web deployment, see [docs/DEPLOYMENT.md](/d:/Project/Dyslexia_Detection_System/docs/DEPLOYMENT.md).
 
+For ready-to-upload biomarker test CSVs, see [docs/BIOMARKER_TEST_DATA.md](/d:/Project/Dyslexia_Detection_System/docs/BIOMARKER_TEST_DATA.md).
+
 Live demo: [https://learning-disorder-intelligence.onrender.com/](https://learning-disorder-intelligence.onrender.com/)
 
 ### Web Deployment Checklist
@@ -22,6 +24,23 @@ Live demo: [https://learning-disorder-intelligence.onrender.com/](https://learni
 4. Ensure the service exposes port `10000` and serves `/healthz`.
 5. Open the public HTTPS URL and verify the microphone flow in the browser.
 6. If transcription is slow on the first request, wait for Whisper to finish loading the model.
+
+### Render Auto-Deploy Notes
+
+The Render setup in this repository is configured for automatic deploys:
+
+- `render.yaml` sets `autoDeploy: true`
+- the container listens on port `10000`
+- the health check path is `/healthz`
+
+That means a push to the connected GitHub branch, usually `main`, should trigger a fresh Render build automatically if the Render service is already linked to this repo.
+
+If the site does not refresh after a push, check these Render settings:
+
+1. The service is connected to `archisman-das/Learning-Disorder-Intelligence`
+2. The deploy branch is `main`
+3. Auto-deploy is enabled in the Render dashboard
+4. The latest build did not fail during image build or health check
 
 ## At A Glance
 
@@ -262,6 +281,14 @@ Train Transformer, ViT, and ViT+Transformer multimodal models:
 ```powershell
 python scripts/train_advanced_models.py --manifest data/demo/audio_augmented_manifest.csv --epochs 3 --batch-size 8
 ```
+
+Train every supported model family in one pass:
+
+```powershell
+python scripts/train_all_models.py --manifest data/demo/audio_augmented_manifest.csv --epochs 5 --batch-size 8 --text-language multilingual
+```
+
+For best results, point `--manifest` at your largest cleaned and anonymized labeled dataset. More real samples usually helps accuracy and makes confidence values more reliable.
 
 Train attention-based multimodal fusion:
 

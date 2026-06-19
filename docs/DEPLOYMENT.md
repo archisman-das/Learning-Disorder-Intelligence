@@ -10,11 +10,21 @@ The deployment serves:
 - the local transcription API at `/api/reading-transcribe`
 - a health check at `/healthz`
 
-## Best cloud target
+## Deployment Options
 
-The easiest global deployment path is Render using the provided [`render.yaml`](/d:/Project/Dyslexia_Detection_System/render.yaml).
+The project now includes configuration for three common hosting paths:
 
-### Steps
+| Platform | File | Best for |
+|---|---|---|
+| Render | [`render.yaml`](/d:/Project/Dyslexia_Detection_System/render.yaml) | Simple Docker deployment with automatic HTTPS |
+| Railway | [`railway.json`](/d:/Project/Dyslexia_Detection_System/railway.json) | Fast app deployment from GitHub |
+| Fly.io | [`fly.toml`](/d:/Project/Dyslexia_Detection_System/fly.toml) | Global app hosting with region control |
+
+### Render
+
+Render is the simplest path if you want a quick public URL.
+
+Steps:
 
 1. Push this repository to GitHub.
 2. Connect the repo to Render.
@@ -22,12 +32,37 @@ The easiest global deployment path is Render using the provided [`render.yaml`](
 4. Open the public URL and verify `/healthz` returns `ok`.
 5. Test the dashboard microphone workflow from the HTTPS URL.
 
+### Railway
+
+Railway works well if you want a quick Git-based deploy with a Dockerfile.
+
+Steps:
+
+1. Push this repository to GitHub.
+2. Create a Railway project from the repo.
+3. Railway should use [`railway.json`](/d:/Project/Dyslexia_Detection_System/railway.json) and [`Dockerfile`](/d:/Project/Dyslexia_Detection_System/Dockerfile).
+4. Confirm the service exposes the app on the assigned `$PORT`.
+5. Visit `/healthz` and then open the public dashboard URL.
+
+### Fly.io
+
+Fly is a strong choice if you want region-aware global deployment.
+
+Steps:
+
+1. Install `flyctl`.
+2. Run `fly launch` or reuse the included [`fly.toml`](/d:/Project/Dyslexia_Detection_System/fly.toml).
+3. Deploy with `fly deploy`.
+4. Confirm the app is reachable over HTTPS and `/healthz` responds successfully.
+5. Open the dashboard and test the microphone workflow.
+
 ## Important notes
 
 - Microphone access requires HTTPS or localhost.
 - The transcription endpoint depends on `openai-whisper` and `ffmpeg`.
 - The first audio request may be slower because the Whisper model is loaded on demand.
 - The dashboard itself is mostly client-side, so browser state and records are stored locally in the user session unless you extend the backend further.
+- For Fly.io, the app is configured to listen on port `10000` and expose `/healthz` as a health check.
 
 ## Local run
 
@@ -42,4 +77,3 @@ For production-like local testing:
 ```bash
 gunicorn -b 0.0.0.0:10000 web_backend:app
 ```
-

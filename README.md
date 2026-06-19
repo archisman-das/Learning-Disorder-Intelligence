@@ -12,6 +12,15 @@ The codebase supports handwriting images, reading audio features, multilingual t
 
 For full web deployment, see [docs/DEPLOYMENT.md](/d:/Project/Dyslexia_Detection_System/docs/DEPLOYMENT.md).
 
+### Web Deployment Checklist
+
+1. Push the latest `main` branch to GitHub.
+2. Choose one host: Render, Railway, or Fly.io.
+3. Use the matching config file from [`render.yaml`](/d:/Project/Dyslexia_Detection_System/render.yaml), [`railway.json`](/d:/Project/Dyslexia_Detection_System/railway.json), or [`fly.toml`](/d:/Project/Dyslexia_Detection_System/fly.toml).
+4. Ensure the service exposes port `10000` and serves `/healthz`.
+5. Open the public HTTPS URL and verify the microphone flow in the browser.
+6. If transcription is slow on the first request, wait for Whisper to finish loading the model.
+
 ## At A Glance
 
 | Area | Summary |

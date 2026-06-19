@@ -475,52 +475,54 @@ const saveRecord = (entry) => {
 };
 
 function recordTypeLabel(type) {
+  const bengali = isBengaliUi();
   const labels = {
-    screening: "Screening",
-    therapy: "Therapy",
-    eye_tracking: "Visual Focus Test",
-    biomarkers: "Biomarkers",
-    final_report: "Final Report",
+    screening: bengali ? "স্ক্রিনিং" : "Screening",
+    therapy: bengali ? "থেরাপি" : "Therapy",
+    eye_tracking: bengali ? "ভিজ্যুয়াল ফোকাস টেস্ট" : "Visual Focus Test",
+    biomarkers: bengali ? "বায়োমার্কার্স" : "Biomarkers",
+    final_report: bengali ? "চূড়ান্ত রিপোর্ট" : "Final Report",
   };
   return labels[type] || (type ? String(type).replace(/_/g, " ") : "Unknown");
 }
 
 function getRecordStatusMeta(record) {
+  const bengali = isBengaliUi();
   if (!record || typeof record !== "object") {
     return { label: "-", className: "text-secondary fw-semibold" };
   }
   if (record.type === "screening") {
     const score = Number(record.confidence || 0) * 100;
     return score >= 75
-      ? { label: "High confidence", className: "text-success fw-semibold" }
+      ? { label: bengali ? "উচ্চ আত্মবিশ্বাস" : "High confidence", className: "text-success fw-semibold" }
       : score >= 55
-        ? { label: "Moderate confidence", className: "text-warning fw-semibold" }
-        : { label: "Low confidence", className: "text-danger fw-semibold" };
+        ? { label: bengali ? "মাঝারি আত্মবিশ্বাস" : "Moderate confidence", className: "text-warning fw-semibold" }
+        : { label: bengali ? "কম আত্মবিশ্বাস" : "Low confidence", className: "text-danger fw-semibold" };
   }
   if (record.type === "therapy") {
     const score = Number(record.overallScorePct || (record.score || 0) * 100);
     return score >= THERAPY_PASS_THRESHOLD
-      ? { label: "On track", className: "text-success fw-semibold" }
-      : { label: "Needs support", className: "text-danger fw-semibold" };
+      ? { label: bengali ? "সঠিক পথে" : "On track", className: "text-success fw-semibold" }
+      : { label: bengali ? "সহায়তা দরকার" : "Needs support", className: "text-danger fw-semibold" };
   }
   if (record.type === "eye_tracking") {
     const score = Number(record.eyeOverallScore || 0);
     return score >= 80
-      ? { label: "Stable", className: "text-success fw-semibold" }
+      ? { label: bengali ? "স্থিতিশীল" : "Stable", className: "text-success fw-semibold" }
       : score >= 65
-        ? { label: "Watch", className: "text-warning fw-semibold" }
-        : { label: "Support needed", className: "text-danger fw-semibold" };
+        ? { label: bengali ? "খেয়াল করুন" : "Watch", className: "text-warning fw-semibold" }
+        : { label: bengali ? "সহায়তা দরকার" : "Support needed", className: "text-danger fw-semibold" };
   }
   if (record.type === "final_report") {
     const risk = Number(record.avgRisk || 0);
     return risk <= 0.35
-      ? { label: "Lower risk", className: "text-success fw-semibold" }
+      ? { label: bengali ? "কম ঝুঁকি" : "Lower risk", className: "text-success fw-semibold" }
       : risk <= 0.65
-        ? { label: "Moderate risk", className: "text-warning fw-semibold" }
-        : { label: "Higher risk", className: "text-danger fw-semibold" };
+        ? { label: bengali ? "মাঝারি ঝুঁকি" : "Moderate risk", className: "text-warning fw-semibold" }
+        : { label: bengali ? "উচ্চ ঝুঁকি" : "Higher risk", className: "text-danger fw-semibold" };
   }
   if (record.type === "biomarkers") {
-    return { label: `${(record.biomarkers || []).length || 0} markers`, className: "text-primary fw-semibold" };
+    return { label: bengali ? `${(record.biomarkers || []).length || 0} চিহ্ন` : `${(record.biomarkers || []).length || 0} markers`, className: "text-primary fw-semibold" };
   }
   return { label: "-", className: "text-secondary fw-semibold" };
 }
@@ -556,7 +558,7 @@ const renderRecords = () => {
           <td><span class="${getRecordStatusMeta(record).className}">${getRecordStatusMeta(record).label}</span></td>
         </tr>
       `).join("")
-      : `<tr><td colspan="4" class="text-muted">No records match the current filter.</td></tr>`;
+      : `<tr><td colspan="4" class="text-muted">${isBengaliUi() ? "বর্তমান ফিল্টারের সাথে কোনো রেকর্ড মেলেনি।" : "No records match the current filter."}</td></tr>`;
     [...table.querySelectorAll(".record-row")].forEach((row) => {
       row.addEventListener("click", () => {
         const idx = Number(row.dataset.recordIndex);
@@ -826,6 +828,457 @@ GUIDE_CONTENT_V2.testlab = {
   `,
 };
 
+function getDashboardLanguage() {
+  return document.getElementById("sampleLanguage")?.value || "Bengali";
+}
+
+function isBengaliUi(language = getDashboardLanguage()) {
+  return language === "Bengali";
+}
+
+function setText(selector, value) {
+  const node = document.querySelector(selector);
+  if (node) node.textContent = value;
+}
+
+function setSelectOptions(selectId, options, selectedValue) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  const currentValue = selectedValue ?? select.value;
+  select.innerHTML = options.map(({ value, label }) => `<option value="${value}">${label}</option>`).join("");
+  if (options.some((option) => option.value === currentValue)) {
+    select.value = currentValue;
+  }
+}
+
+function applyDashboardLanguage(language = getDashboardLanguage()) {
+  const bengali = isBengaliUi(language);
+
+  const navLabels = bengali
+    ? ["স্ক্রিনিং", "স্পিচ থেরাপি", "ভিজুয়াল ফোকাস টেস্ট", "টেস্ট ল্যাব ও রিপোর্ট", "বায়োমার্কার্স", "রেকর্ডস"]
+    : ["Screening", "Speech Therapy", "Visual Focus Test", "Test Lab & Report", "Biomarkers", "Records"];
+  const navIcons = ["bi-clipboard2-pulse", "bi-soundwave", "bi-eye", "bi-bar-chart-steps", "bi-activity", "bi-journal-text"];
+  tabButtons.forEach((button, index) => {
+    button.innerHTML = `<i class="bi ${navIcons[index]} me-2"></i>${navLabels[index]}`;
+  });
+
+  const sectionTitles = bengali
+    ? {
+        screening: "স্বয়ংক্রিয় স্ক্রিনিং ওয়ার্কফ্লো",
+        therapy: "স্পিচ থেরাপি সেশন অ্যানালাইজার",
+        eye: "ভিজুয়াল ফোকাস টেস্ট",
+        testlab: "এন্ড-ইউজার ফুল টেস্ট ল্যাব ও রিপোর্ট",
+        biomarkers: "ডিজিটাল বায়োমার্কার ডিসকভারি (ক্লায়েন্ট-সাইড)",
+        records: "সেশন রেকর্ডস",
+      }
+    : {
+        screening: "Automated Screening Workflow",
+        therapy: "Speech Therapy Session Analyzer",
+        eye: "Visual Focus Test",
+        testlab: "End-User Full Test Lab & Report",
+        biomarkers: "Digital Biomarker Discovery (Client-side)",
+        records: "Session Records",
+      };
+  Object.entries(sectionTitles).forEach(([sectionId, title]) => setText(`#${sectionId} h5`, title));
+
+  document.querySelectorAll(".user-guide-btn").forEach((button) => {
+    button.textContent = bengali ? "নির্দেশনা" : "User Guidance";
+  });
+
+  const sectionMessages = {
+    screening: bengali
+      ? "স্বয়ংক্রিয় ফিচার এক্সট্র্যাকশন মোড: টেস্ট পারফরম্যান্স, পড়ার সময়, এবং অডিও আচরণ থেকে ফলাফল তৈরি হয়।"
+      : "Automatic feature extraction mode: result is generated from test performance, reading timing, and audio behavior.",
+    therapy: bengali
+      ? "এই অংশটি একটি নির্দেশিত কথা বলার অনুশীলন চালায়। রাউন্ড শুরু করুন, প্রম্পটটি উচ্চস্বরে পড়ুন, এবং ড্যাশবোর্ড স্বয়ংক্রিয়ভাবে ফল সংগ্রহ করবে।"
+      : "This section runs a guided speaking practice round. Start the round, say the prompt aloud, and the dashboard will collect the result automatically.",
+    eye: bengali
+      ? "এখানে একটি সহজ অন-স্ক্রিন প্রতীক পরীক্ষা চালান। ফলাফল স্বয়ংক্রিয়ভাবে স্কোর হয় এবং চূড়ান্ত রিপোর্টের জন্য ব্যাকগ্রাউন্ডে সংরক্ষিত হয়।"
+      : "Run a simple on-screen symbol test here. The result is scored automatically and saved in the background for the final report.",
+    testlab: bengali
+      ? "রিপোর্ট এলাকা: এই অংশে শিক্ষার্থীর তথ্য পূরণ করুন, তুলনা চালান, তারপর চূড়ান্ত PDF রিপোর্ট তৈরি ও ডাউনলোড করুন।"
+      : "Report Area: Fill the student details in this section, run the comparison, then generate and download the final PDF report here.",
+    biomarkers: bengali
+      ? "একটি CSV ডেটাসেট আপলোড করুন এবং ড্যাশবোর্ড পড়া, কথা বলা, হাতের লেখা, সময়, এবং ভিজ্যুয়াল মার্কারগুলোকে সহজভাবে দেখাবে।"
+      : "Upload one dataset CSV file and the dashboard will highlight the strongest reading, speech, handwriting, timing, and visual markers in a simple way.",
+    records: bengali
+      ? "সেভ করা স্ক্রিনিং, থেরাপি, ভিজ্যুয়াল ফোকাস, বায়োমার্কার, এবং ফাইনাল রিপোর্ট সেশন এক জায়গায় দেখুন।"
+      : "Review saved screening, therapy, eye-tracking, biomarker, and final report sessions in one place.",
+  };
+  setText("#screening .alert-primary", sectionMessages.screening);
+  setText("#therapy .alert-primary", sectionMessages.therapy);
+  setText("#eye .alert-primary", sectionMessages.eye);
+  setText("#testlab .alert-success", sectionMessages.testlab);
+  setText("#biomarkers .alert-primary", sectionMessages.biomarkers);
+  setText("#records .alert-primary", sectionMessages.records);
+  const screeningAlerts = document.querySelectorAll("#screening .alert-info");
+  if (screeningAlerts[0]) screeningAlerts[0].textContent = bengali
+    ? "স্বয়ংক্রিয় মোড: শুরু চাপুন এবং মাইক্রোফোন অ্যাক্সেস দিন। সিস্টেম শোনার পরে আপনি বন্ধ করলে স্কোর দেবে।"
+    : "Auto Mode: Click Start and allow microphone access. The system will listen automatically and score the reading when you click Stop.";
+  if (screeningAlerts[1]) screeningAlerts[1].textContent = bengali
+    ? "স্বয়ংক্রিয় মোড: প্লে অডিও চাপুন, একবার শুনুন, তারপর সেরা উত্তরটি বেছে নিন। স্কোর স্বয়ংক্রিয়ভাবে তৈরি হবে।"
+    : "Auto Mode: Click Play Audio, listen once, then choose the best answer. The score is generated automatically.";
+
+  const screeningTableHeaders = document.querySelectorAll("#screening .score-matrix-table thead th");
+  if (screeningTableHeaders[0]) screeningTableHeaders[0].textContent = bengali ? "সেগমেন্ট" : "Segment";
+  if (screeningTableHeaders[1]) screeningTableHeaders[1].textContent = bengali ? "স্কোর" : "Score";
+  if (screeningTableHeaders[2]) screeningTableHeaders[2].textContent = bengali ? "সীমা" : "Threshold";
+  if (screeningTableHeaders[3]) screeningTableHeaders[3].textContent = bengali ? "অবস্থা" : "Status";
+
+  const testLabHeaders = document.querySelectorAll("#testlab table thead th");
+  if (testLabHeaders[0]) testLabHeaders[0].textContent = bengali ? "মডেল" : "Model";
+  if (testLabHeaders[1]) testLabHeaders[1].textContent = bengali ? "অনুমানিত স্তর" : "Predicted Level";
+  if (testLabHeaders[2]) testLabHeaders[2].textContent = bengali ? "আত্মবিশ্বাস" : "Confidence";
+  if (testLabHeaders[3]) testLabHeaders[3].textContent = bengali ? "ঝুঁকি স্কোর" : "Risk Score";
+  if (testLabHeaders[4]) testLabHeaders[4].textContent = bengali ? "ক্লিনিকাল নোট" : "Clinical Note";
+
+  const biomarkerHeaders = document.querySelectorAll("#biomarkers table thead th");
+  if (biomarkerHeaders[0]) biomarkerHeaders[0].textContent = bengali ? "বায়োমার্কার" : "Biomarker";
+  if (biomarkerHeaders[1]) biomarkerHeaders[1].textContent = bengali ? "পরিবার" : "Family";
+  if (biomarkerHeaders[2]) biomarkerHeaders[2].textContent = bengali ? "সহসম্বন্ধ" : "Correlation";
+  if (biomarkerHeaders[3]) biomarkerHeaders[3].textContent = bengali ? "গুরুত্ব" : "Importance";
+  if (biomarkerHeaders[4]) biomarkerHeaders[4].textContent = bengali ? "ব্যাখ্যা" : "Interpretation";
+
+  const recordsHeaders = document.querySelectorAll("#records table thead th");
+  if (recordsHeaders[0]) recordsHeaders[0].textContent = bengali ? "সময়" : "Time";
+  if (recordsHeaders[1]) recordsHeaders[1].textContent = bengali ? "ধরন" : "Type";
+  if (recordsHeaders[2]) recordsHeaders[2].textContent = bengali ? "সারাংশ" : "Summary";
+  if (recordsHeaders[3]) recordsHeaders[3].textContent = bengali ? "অবস্থা" : "Status";
+  const recordTotalLabel = document.getElementById("recordTotalLabel");
+  if (recordTotalLabel) recordTotalLabel.textContent = bengali ? "মোট রেকর্ড" : "Total Records";
+  const recordFilteredLabel = document.getElementById("recordFilteredLabel");
+  if (recordFilteredLabel) recordFilteredLabel.textContent = bengali ? "ফিল্টারকৃত ফলাফল" : "Filtered Results";
+  const recordLatestLabel = document.getElementById("recordLatestLabel");
+  if (recordLatestLabel) recordLatestLabel.textContent = bengali ? "সর্বশেষ এন্ট্রি" : "Latest Entry";
+  const recordSavedLabel = document.getElementById("recordSavedLabel");
+  if (recordSavedLabel) recordSavedLabel.textContent = bengali ? "শেষ সংরক্ষণ" : "Last Saved";
+  const recordsEmptyStateText = document.getElementById("recordsEmptyStateText");
+  if (recordsEmptyStateText) recordsEmptyStateText.textContent = bengali
+    ? "এখনও কোনো সংরক্ষিত সেশন নেই। স্থানীয় ইতিহাস তৈরি শুরু করতে একটি টেস্ট চালান।"
+    : "No saved sessions yet. Run a test to start building your local history.";
+
+  const sectionStrongLabels = document.querySelectorAll("#screening .result-card > p.mb-2 strong");
+  if (sectionStrongLabels[0]) sectionStrongLabels[0].textContent = bengali ? "পড়ার সাবলীলতা পরীক্ষা" : "Reading Fluency Test";
+  if (sectionStrongLabels[1]) sectionStrongLabels[1].textContent = bengali ? "অডিও পরীক্ষা (স্বয়ংক্রিয়)" : "Audio Test (Automatic)";
+  if (sectionStrongLabels[2]) sectionStrongLabels[2].textContent = bengali ? "বানান পরীক্ষা (স্বয়ংক্রিয় স্কোরিং)" : "Spelling Test (Automatic Scoring)";
+  const readingAutoScoreLabel = document.getElementById("readingAutoScoreLabel");
+  if (readingAutoScoreLabel) readingAutoScoreLabel.textContent = bengali ? "স্বয়ংক্রিয় স্কোর:" : "Auto Score:";
+  const spellingAutoScoreLabel = document.getElementById("spellingAutoScoreLabel");
+  if (spellingAutoScoreLabel) spellingAutoScoreLabel.textContent = bengali ? "বানানের স্কোর:" : "Spelling Score:";
+  const readingPassThresholdLabel = document.getElementById("readingPassThresholdLabel");
+  if (readingPassThresholdLabel) readingPassThresholdLabel.textContent = bengali ? "পাসের সীমা:" : "Passing Threshold:";
+  const readingPassResultLabel = document.getElementById("readingPassResultLabel");
+  if (readingPassResultLabel) readingPassResultLabel.textContent = bengali ? "ফলাফল:" : "Result:";
+  const audioAutoScoreLabel = document.getElementById("audioAutoScoreLabel");
+  if (audioAutoScoreLabel) audioAutoScoreLabel.textContent = bengali ? "শোনার স্কোর:" : "Listening Score:";
+  const audioPassThresholdLabel = document.getElementById("audioPassThresholdLabel");
+  if (audioPassThresholdLabel) audioPassThresholdLabel.textContent = bengali ? "পাসের সীমা:" : "Passing Threshold:";
+  const audioPassResultLabel = document.getElementById("audioPassResultLabel");
+  if (audioPassResultLabel) audioPassResultLabel.textContent = bengali ? "ফলাফল:" : "Result:";
+  const spellingPassThresholdLabel = document.getElementById("spellingPassThresholdLabel");
+  if (spellingPassThresholdLabel) spellingPassThresholdLabel.textContent = bengali ? "পাসের সীমা:" : "Passing Threshold:";
+  const spellingPassResultLabel = document.getElementById("spellingPassResultLabel");
+  if (spellingPassResultLabel) spellingPassResultLabel.textContent = bengali ? "ফলাফল:" : "Result:";
+  const overallSegmentScoreLabel = document.getElementById("overallSegmentScoreLabel");
+  if (overallSegmentScoreLabel) overallSegmentScoreLabel.textContent = bengali ? "মোট স্কোর:" : "Overall Score:";
+  const overallSegmentStatusLabel = document.getElementById("overallSegmentStatusLabel");
+  if (overallSegmentStatusLabel) overallSegmentStatusLabel.textContent = bengali ? "সামগ্রিক অবস্থা:" : "Overall Status:";
+  const matrixReadingLabel = document.getElementById("matrixReadingLabel");
+  if (matrixReadingLabel) matrixReadingLabel.textContent = bengali ? "পড়া" : "Reading";
+  const matrixAudioLabel = document.getElementById("matrixAudioLabel");
+  if (matrixAudioLabel) matrixAudioLabel.textContent = bengali ? "অডিও" : "Audio";
+  const matrixSpellingLabel = document.getElementById("matrixSpellingLabel");
+  if (matrixSpellingLabel) matrixSpellingLabel.textContent = bengali ? "বানান" : "Spelling";
+  const matrixReadingStatus = document.getElementById("matrixReadingStatus");
+  if (matrixReadingStatus && matrixReadingStatus.textContent === "Pending") matrixReadingStatus.textContent = bengali ? "অপেক্ষমাণ" : "Pending";
+  const matrixAudioStatus = document.getElementById("matrixAudioStatus");
+  if (matrixAudioStatus && matrixAudioStatus.textContent === "Pending") matrixAudioStatus.textContent = bengali ? "অপেক্ষমাণ" : "Pending";
+  const matrixSpellingStatus = document.getElementById("matrixSpellingStatus");
+  if (matrixSpellingStatus && matrixSpellingStatus.textContent === "Pending") matrixSpellingStatus.textContent = bengali ? "অপেক্ষমাণ" : "Pending";
+  const therapyRoundLabel = document.querySelector("#therapy .result-card > .d-flex > p strong");
+  if (therapyRoundLabel) therapyRoundLabel.textContent = bengali ? "লাইভ থেরাপি রাউন্ড" : "Live Therapy Round";
+  const therapyEasyStepsTitle = document.getElementById("therapyEasyStepsTitle");
+  if (therapyEasyStepsTitle) therapyEasyStepsTitle.textContent = bengali ? "সহজ ধাপ" : "Easy Steps";
+  const therapyCurrentPromptTitle = document.getElementById("therapyCurrentPromptTitle");
+  if (therapyCurrentPromptTitle) therapyCurrentPromptTitle.textContent = bengali ? "বর্তমান প্রম্পট" : "Current Prompt";
+  const therapyRecognizedResponseTitle = document.getElementById("therapyRecognizedResponseTitle");
+  if (therapyRecognizedResponseTitle) therapyRecognizedResponseTitle.textContent = bengali ? "শনাক্তকৃত উত্তর" : "Recognized Response";
+  const therapyEasyStep1 = document.getElementById("therapyEasyStep1");
+  const therapyEasyStep2 = document.getElementById("therapyEasyStep2");
+  const therapyEasyStep3 = document.getElementById("therapyEasyStep3");
+  const therapyEasyStep4 = document.getElementById("therapyEasyStep4");
+  if (therapyEasyStep1) therapyEasyStep1.innerHTML = bengali ? "একবার <strong>রাউন্ড শুরু</strong> চাপুন।" : "Click <strong>Start Round</strong> once.";
+  if (therapyEasyStep2) therapyEasyStep2.innerHTML = bengali ? "মাইক্রোফোন শুনতে শুরু করলে দেখানো প্রম্পটটি উচ্চস্বরে পড়ুন।" : "Read the shown prompt aloud when the mic starts listening.";
+  if (therapyEasyStep3) therapyEasyStep3.innerHTML = bengali ? "প্রতিটি উত্তরের পরে প্রম্পটটি স্বয়ংক্রিয়ভাবে বদলে যায়।" : "After each response, the prompt changes automatically.";
+  if (therapyEasyStep4) therapyEasyStep4.innerHTML = bengali ? "এরপর সিস্টেম স্বয়ংক্রিয়ভাবে পরের প্রম্পটের জন্য শুনতে থাকে।" : "The system then listens for the next prompt automatically.";
+  const therapyPromptText = document.getElementById("therapyPromptText");
+  if (therapyPromptText && !therapyRoundState.active) {
+    therapyPromptText.textContent = bengali
+      ? "প্রথম থেরাপি প্রম্পট পেতে রাউন্ড শুরু চাপুন।"
+      : "Press Start Round to generate the first therapy prompt.";
+  }
+  const therapyRoundProgress = document.getElementById("therapyRoundProgress");
+  if (therapyRoundProgress && !therapyRoundState.active) {
+    therapyRoundProgress.textContent = bengali ? "রাউন্ড শুরু হয়নি।" : "Round not started.";
+  }
+  const therapyRoundStatus = document.getElementById("therapyRoundStatus");
+  if (therapyRoundStatus && !therapyRoundState.active) {
+    therapyRoundStatus.textContent = bengali
+      ? "সিস্টেম প্রতিটি উচ্চারিত উত্তর শুনবে এবং সেশন মান স্বয়ংক্রিয়ভাবে পূরণ করবে।"
+      : "The system will listen to each spoken response and fill the session values automatically.";
+  }
+  const therapyTranscriptText = document.getElementById("therapyTranscriptText");
+  if (therapyTranscriptText && !therapyTranscriptText.textContent.trim()) {
+    therapyTranscriptText.textContent = bengali ? "এখনও কোনো উত্তর ধরা হয়নি।" : "No response captured yet.";
+    therapyTranscriptText.className = "mb-0 small text-muted";
+  }
+
+  const eyeHowToUseTitle = document.getElementById("eyeHowToUseTitle");
+  if (eyeHowToUseTitle) eyeHowToUseTitle.textContent = bengali ? "কীভাবে ব্যবহার করবেন" : "How To Use";
+  const eyeHowToUseStep1 = document.getElementById("eyeHowToUseStep1");
+  const eyeHowToUseStep2 = document.getElementById("eyeHowToUseStep2");
+  const eyeHowToUseStep3 = document.getElementById("eyeHowToUseStep3");
+  const eyeHowToUseStep4 = document.getElementById("eyeHowToUseStep4");
+  if (eyeHowToUseStep1) eyeHowToUseStep1.textContent = bengali ? "অক্ষর, সংখ্যা, বা মিশ্র প্রতীক থেকে একটি টেস্ট মোড বেছে নিন।" : "Choose a test mode like letters, digits, or mixed symbols.";
+  if (eyeHowToUseStep2) eyeHowToUseStep2.innerHTML = bengali ? "<strong>পরীক্ষা শুরু</strong> চাপুন।" : "Press <strong>Start Test</strong>.";
+  if (eyeHowToUseStep3) eyeHowToUseStep3.textContent = bengali
+    ? "প্রতিটি রাউন্ডে মিল থাকা চিহ্নটি যত দ্রুত এবং সঠিকভাবে সম্ভব ট্যাপ করুন। আরও নির্ভরযোগ্য সামঞ্জস্য স্কোর পেতে এখন প্রতিটি টেস্ট ২০ থেকে ২৪ রাউন্ড চলে।"
+    : "Tap the matching symbol in each round as quickly and accurately as you can. Each test now runs for 20 to 24 rounds to give a more reliable consistency score.";
+  if (eyeHowToUseStep4) eyeHowToUseStep4.textContent = bengali
+    ? "শেষ রাউন্ড শেষ হলে ফলাফল বিশ্লেষণ করা হয় এবং স্বয়ংক্রিয়ভাবে সংরক্ষিত হয়।"
+    : "When the last round finishes, the result is analyzed and saved automatically.";
+
+  const eyeRoundTargetLabel = document.getElementById("eyeRoundTargetLabel");
+  if (eyeRoundTargetLabel) eyeRoundTargetLabel.textContent = bengali ? "রাউন্ড লক্ষ্য" : "Round Target";
+  const eyeRoundTargetHelp = document.getElementById("eyeRoundTargetHelp");
+  if (eyeRoundTargetHelp) eyeRoundTargetHelp.textContent = bengali ? "উত্তর গ্রিড থেকে একই চিহ্নটি ট্যাপ করুন।" : "Tap the same symbol from the answer grid.";
+  const eyeInteractiveBoardLabel = document.getElementById("eyeInteractiveBoardLabel");
+  if (eyeInteractiveBoardLabel) eyeInteractiveBoardLabel.textContent = bengali ? "ইন্টারেকটিভ টেস্ট বোর্ড" : "Interactive Test Board";
+  const eyeOverallScoreLabel = document.getElementById("eyeOverallScoreLabel");
+  if (eyeOverallScoreLabel) eyeOverallScoreLabel.textContent = bengali ? "ভিজ্যুয়াল ফোকাস স্কোর:" : "Visual Focus Score:";
+  const eyeOverallStatusLabel = document.getElementById("eyeOverallStatusLabel");
+  if (eyeOverallStatusLabel) eyeOverallStatusLabel.textContent = bengali ? "সামগ্রিক ভিজ্যুয়াল অবস্থা:" : "Overall Visual Status:";
+  const eyeTestProgress = document.getElementById("eyeTestProgress");
+  if (eyeTestProgress && !eyeTestState.active) {
+    eyeTestProgress.textContent = bengali ? "শুরু করতে পরীক্ষা শুরু চাপুন।" : "Press Start Test to begin.";
+  }
+  const eyeTestStatus = document.getElementById("eyeTestStatus");
+  if (eyeTestStatus && !eyeTestState.active) {
+    eyeTestStatus.textContent = bengali ? "নতুন ভিজ্যুয়াল ফোকাস টেস্টের জন্য প্রস্তুত।" : "Ready for a new visual focus test.";
+  }
+
+  const screeningButtons = [
+    ["#startReadingTest", bengali ? "শুরু" : "Start"],
+    ["#markHesitation", bengali ? "স্বয়ংক্রিয় দ্বিধা" : "Auto Hesitation"],
+    ["#stopReadingTest", bengali ? "বন্ধ" : "Stop"],
+    ["#playAudioParagraph", bengali ? "অডিও চালান" : "Play Audio"],
+    ["#verifyAudioAnswer", bengali ? "উত্তর জমা দিন" : "Submit Answer"],
+    ["#reloadAudioParagraph", bengali ? "স্কিপ" : "Skip"],
+    ["#scoreSpellingTest", bengali ? "ম্যানুয়াল স্কোর" : "Manual Score"],
+    ["#runScreening", bengali ? "ম্যানুয়াল রিফ্রেশ স্ক্রিনিং" : "Manual Refresh Screening"],
+    ["#startTherapyRound", bengali ? "রাউন্ড শুরু" : "1. Start Round"],
+    ["#captureTherapyResponse", bengali ? "উত্তর আবার শুনুন" : "2. Retry Listening"],
+    ["#startEyeVisualTest", bengali ? "পরীক্ষা শুরু" : "Start Test"],
+    ["#resetEyeVisualTest", bengali ? "রিসেট" : "Reset"],
+    ["#runComparison", bengali ? "মডেল তুলনা চালান" : "Run Model Comparison"],
+    ["#generateFinal", bengali ? "চূড়ান্ত রিপোর্ট তৈরি করুন" : "Generate Final Report"],
+    ["#downloadFinalPdf", bengali ? "রিপোর্ট PDF ডাউনলোড করুন" : "Download Report PDF"],
+    ["#runBiomarkers", bengali ? "বায়োমার্কার বিশ্লেষণ" : "Analyze Biomarkers"],
+    ["#resetBiomarkers", bengali ? "রিসেট" : "Reset"],
+    ["#exportJson", bengali ? "JSON রপ্তানি" : "Export JSON"],
+    ["#clearRecords", bengali ? "রেকর্ড মুছুন" : "Clear Records"],
+  ];
+  screeningButtons.forEach(([selector, label]) => setText(selector, label));
+
+  const screeningFormLabels = document.querySelectorAll("#screening .form-label");
+  if (screeningFormLabels[0]) screeningFormLabels[0].textContent = bengali ? "নমুনার ভাষা" : "Sample Language";
+  if (screeningFormLabels[1]) screeningFormLabels[1].textContent = bengali ? "পড়ার অনুচ্ছেদ" : "Reading Prompt";
+
+  const therapyFormLabels = document.querySelectorAll("#therapy .form-label");
+  if (therapyFormLabels[0]) therapyFormLabels[0].textContent = bengali ? "থেরাপির ভাষা" : "Therapy Language";
+  if (therapyFormLabels[1]) therapyFormLabels[1].textContent = bengali ? "সেশন ধরন" : "Session Type";
+  if (therapyFormLabels[2]) therapyFormLabels[2].textContent = bengali ? "অনুশীলনের শব্দ" : "Practice Sound";
+  if (therapyFormLabels[3]) therapyFormLabels[3].textContent = bengali ? "কঠিনতা" : "Difficulty";
+  if (therapyFormLabels[4]) therapyFormLabels[4].textContent = bengali ? "ইঙ্গিত সহায়তা" : "Cue Support";
+  if (therapyFormLabels[5]) therapyFormLabels[5].textContent = bengali ? "সময়কাল (স্বয়ংক্রিয় সেকেন্ড)" : "Duration (Auto Seconds)";
+  if (therapyFormLabels[6]) therapyFormLabels[6].textContent = bengali ? "সফল ট্রায়াল (স্বয়ংক্রিয়)" : "Successful Trials (Auto)";
+  if (therapyFormLabels[7]) therapyFormLabels[7].textContent = bengali ? "মোট ট্রায়াল (স্বয়ংক্রিয়)" : "Total Trials (Auto)";
+  if (therapyFormLabels[8]) therapyFormLabels[8].textContent = bengali ? "উচ্চারণ ত্রুটি (স্বয়ংক্রিয়)" : "Pronunciation Errors (Auto)";
+  if (therapyFormLabels[9]) therapyFormLabels[9].textContent = bengali ? "অক্ষরাংশ পুনরাবৃত্তি (স্বয়ংক্রিয়)" : "Syllable Repetitions (Auto)";
+  if (therapyFormLabels[10]) therapyFormLabels[10].textContent = bengali ? "ধ্বনি প্রতিস্থাপন (স্বয়ংক্রিয়)" : "Sound Substitutions (Auto)";
+  if (therapyFormLabels[11]) therapyFormLabels[11].textContent = bengali ? "স্ব-সংশোধন (স্বয়ংক্রিয়)" : "Self-Corrections (Auto)";
+  if (therapyFormLabels[12]) therapyFormLabels[12].textContent = bengali ? "মনোযোগ রেটিং (স্বয়ংক্রিয় 1-5)" : "Attention Rating (Auto 1-5)";
+  if (therapyFormLabels[13]) therapyFormLabels[13].textContent = bengali ? "শ্বাস/কণ্ঠস্বর নিয়ন্ত্রণ (স্বয়ংক্রিয় 1-5)" : "Breath/Voice Control (Auto 1-5)";
+  if (therapyFormLabels[14]) therapyFormLabels[14].textContent = bengali ? "বোধগম্যতা রেটিং (স্বয়ংক্রিয় 1-5)" : "Intelligibility Rating (Auto 1-5)";
+
+  const eyeFormLabels = document.querySelectorAll("#eye .form-label");
+  if (eyeFormLabels[0]) eyeFormLabels[0].textContent = bengali ? "পরীক্ষার ধরন" : "Test Mode";
+  if (eyeFormLabels[1]) eyeFormLabels[1].textContent = bengali ? "পূর্বরূপ নির্দেশনা" : "Preset Guidance";
+
+  const testLabFormLabels = document.querySelectorAll("#testlab .form-label");
+  if (testLabFormLabels[0]) testLabFormLabels[0].textContent = bengali ? "শিক্ষার্থীর নাম" : "Student Name";
+  if (testLabFormLabels[1]) testLabFormLabels[1].textContent = bengali ? "বয়স" : "Age";
+  if (testLabFormLabels[2]) testLabFormLabels[2].textContent = bengali ? "শ্রেণি" : "Class";
+  if (testLabFormLabels[3]) testLabFormLabels[3].textContent = bengali ? "রোল নং" : "Roll No";
+  if (testLabFormLabels[4]) testLabFormLabels[4].textContent = bengali ? "সেকশন" : "Section";
+  if (testLabFormLabels[5]) testLabFormLabels[5].textContent = bengali ? "বিদ্যালয়ের নাম" : "School Name";
+  const reportStudentCardTitle = document.getElementById("reportStudentCardTitle");
+  if (reportStudentCardTitle) reportStudentCardTitle.textContent = bengali ? "শিক্ষার্থীর রিপোর্টের বিবরণ" : "Student Report Details";
+  const reportStudentCardHelp = document.getElementById("reportStudentCardHelp");
+  if (reportStudentCardHelp) reportStudentCardHelp.textContent = bengali
+    ? "রিপোর্ট তৈরির আগে শিক্ষক, অভিভাবক, বা পরীক্ষার দায়িত্বপ্রাপ্ত ব্যক্তি এই তথ্যগুলো পূরণ করবেন। এগুলো PDF-এ স্বয়ংক্রিয়ভাবে অন্তর্ভুক্ত হবে।"
+    : "The teacher, parent, or test correspondent should fill these details before generating the report. These details will be included automatically in the PDF.";
+  const reportStudentNameLabel = document.getElementById("reportStudentNameLabel");
+  if (reportStudentNameLabel) reportStudentNameLabel.textContent = bengali ? "শিক্ষার্থীর নাম" : "Student Name";
+  const reportStudentAgeLabel = document.getElementById("reportStudentAgeLabel");
+  if (reportStudentAgeLabel) reportStudentAgeLabel.textContent = bengali ? "বয়স" : "Age";
+  const reportStudentClassLabel = document.getElementById("reportStudentClassLabel");
+  if (reportStudentClassLabel) reportStudentClassLabel.textContent = bengali ? "শ্রেণি" : "Class";
+  const reportStudentRollLabel = document.getElementById("reportStudentRollLabel");
+  if (reportStudentRollLabel) reportStudentRollLabel.textContent = bengali ? "রোল নং" : "Roll No";
+  const reportStudentSectionLabel = document.getElementById("reportStudentSectionLabel");
+  if (reportStudentSectionLabel) reportStudentSectionLabel.textContent = bengali ? "সেকশন" : "Section";
+  const reportSchoolNameLabel = document.getElementById("reportSchoolNameLabel");
+  if (reportSchoolNameLabel) reportSchoolNameLabel.textContent = bengali ? "বিদ্যালয়ের নাম" : "School Name";
+  const reportStudentNameInput = document.getElementById("reportStudentName");
+  if (reportStudentNameInput) reportStudentNameInput.placeholder = bengali ? "শিক্ষার্থীর নাম লিখুন" : "Enter student name";
+  const reportStudentAgeInput = document.getElementById("reportStudentAge");
+  if (reportStudentAgeInput) reportStudentAgeInput.placeholder = bengali ? "বয়স" : "Age";
+  const reportStudentClassInput = document.getElementById("reportStudentClass");
+  if (reportStudentClassInput) reportStudentClassInput.placeholder = bengali ? "শ্রেণি" : "Class";
+  const reportStudentRollInput = document.getElementById("reportStudentRoll");
+  if (reportStudentRollInput) reportStudentRollInput.placeholder = bengali ? "রোল" : "Roll";
+  const reportStudentSectionInput = document.getElementById("reportStudentSection");
+  if (reportStudentSectionInput) reportStudentSectionInput.placeholder = bengali ? "সেকশন" : "Section";
+  const reportSchoolNameInput = document.getElementById("reportSchoolName");
+  if (reportSchoolNameInput) reportSchoolNameInput.placeholder = bengali ? "বিদ্যালয়ের নাম লিখুন" : "Enter school name";
+  const labConsensusLevelLabel = document.getElementById("labConsensusLevelLabel");
+  if (labConsensusLevelLabel) labConsensusLevelLabel.textContent = bengali ? "সম্মতির স্তর:" : "Consensus Level:";
+  const labAverageRiskLabel = document.getElementById("labAverageRiskLabel");
+  if (labAverageRiskLabel) labAverageRiskLabel.textContent = bengali ? "গড় ঝুঁকি:" : "Average Risk:";
+  const labMostCautiousLabel = document.getElementById("labMostCautiousLabel");
+  if (labMostCautiousLabel) labMostCautiousLabel.textContent = bengali ? "সবচেয়ে সাবধানী মডেল:" : "Most Cautious Model:";
+  const labMostConfidentLabel = document.getElementById("labMostConfidentLabel");
+  if (labMostConfidentLabel) labMostConfidentLabel.textContent = bengali ? "সবচেয়ে আত্মবিশ্বাসী মডেল:" : "Most Confident Model:";
+  const labDecisionStabilityLabel = document.getElementById("labDecisionStabilityLabel");
+  if (labDecisionStabilityLabel) labDecisionStabilityLabel.textContent = bengali ? "সিদ্ধান্তের স্থায়িত্ব:" : "Decision Stability:";
+  const labReadinessStatusLabel = document.getElementById("labReadinessStatusLabel");
+  if (labReadinessStatusLabel) labReadinessStatusLabel.textContent = bengali ? "প্রস্তুতি:" : "Readiness:";
+
+  const biomarkerLabels = document.querySelectorAll("#biomarkers .form-label");
+  if (biomarkerLabels[0]) biomarkerLabels[0].textContent = bengali ? "ডেটাসেট CSV" : "Dataset CSV";
+  if (biomarkerLabels[1]) biomarkerLabels[1].textContent = bengali ? "ঝুঁকি লেবেল কলাম" : "Risk Label Column";
+  if (biomarkerLabels[2]) biomarkerLabels[2].textContent = bengali ? "শীর্ষ ফলাফল দেখান" : "Show Top Results";
+  if (biomarkerLabels[3]) biomarkerLabels[3].textContent = bengali ? "ফিচার পরিবার" : "Feature Family";
+  if (biomarkerLabels[4]) biomarkerLabels[4].textContent = bengali ? "ন্যূনতম গুরুত্ব" : "Minimum Importance";
+  const biomarkerFileTypeBadge = document.getElementById("biomarkerFileTypeBadge");
+  if (biomarkerFileTypeBadge) biomarkerFileTypeBadge.textContent = bengali ? "শুধু CSV" : "CSV only";
+  const biomarkerStep1Title = document.getElementById("biomarkerStep1Title");
+  if (biomarkerStep1Title) biomarkerStep1Title.textContent = bengali ? "ধাপ ১: ডেটাসেট আপলোড করুন" : "Step 1: Upload Dataset";
+  const biomarkerRequirementsTitle = document.getElementById("biomarkerRequirementsTitle");
+  if (biomarkerRequirementsTitle) biomarkerRequirementsTitle.textContent = bengali ? "প্রয়োজনীয় ফাইল শর্ত" : "Mandatory file requirements";
+  const biomarkerRequirementsIntro = document.getElementById("biomarkerRequirementsIntro");
+  if (biomarkerRequirementsIntro) biomarkerRequirementsIntro.textContent = bengali ? "নির্ভরযোগ্য বায়োমার্কার বিশ্লেষণের জন্য আপনার ফাইলে থাকতে হবে:" : "For reliable biomarker analysis, your file must include:";
+  const biomarkerReq1 = document.getElementById("biomarkerReq1");
+  if (biomarkerReq1) biomarkerReq1.textContent = bengali ? "একটি স্পষ্ট শিরোনাম সারিসহ একটি গঠিত টেবিল" : "one structured table with a clear header row";
+  const biomarkerReq2 = document.getElementById("biomarkerReq2");
+  if (biomarkerReq2) biomarkerReq2.textContent = bengali ? "একটি লেবেল কলাম যেমন `label`, `risk_label`, `class`, বা `target`" : "one label column such as `label`, `risk_label`, `class`, or `target`";
+  const biomarkerReq3 = document.getElementById("biomarkerReq3");
+  if (biomarkerReq3) biomarkerReq3.textContent = bengali ? "পড়ার গতি, ত্রুটি সংখ্যা, দ্বিধা সংখ্যা, gaze মান, বা সময় মানের মতো সংখ্যাসূচক ফিচার কলাম" : "numeric feature columns such as reading speed, error count, hesitation count, gaze values, or timing values";
+  const biomarkerReq4 = document.getElementById("biomarkerReq4");
+  if (biomarkerReq4) biomarkerReq4.textContent = bengali ? "প্রতি সারিতে একটি নমুনা" : "one sample per row";
+  const biomarkerStep2Title = document.getElementById("biomarkerStep2Title");
+  if (biomarkerStep2Title) biomarkerStep2Title.textContent = bengali ? "ধাপ ২: বিশ্লেষণ সেটিংস বেছে নিন" : "Step 2: Choose Analysis Settings";
+  const biomarkerRiskLabel = document.getElementById("biomarkerRiskLabel");
+  if (biomarkerRiskLabel) biomarkerRiskLabel.textContent = bengali ? "ঝুঁকি লেবেল কলাম" : "Risk Label Column";
+  const biomarkerLabelHint = document.getElementById("biomarkerLabelHint");
+  if (biomarkerLabelHint) biomarkerLabelHint.textContent = bengali ? "সিস্টেম যদি সম্ভাব্য লেবেল কলাম শনাক্ত করে, তা স্বয়ংক্রিয়ভাবে সাজেস্ট করবে।" : "If the system detects a likely label column, it will suggest it automatically.";
+  const biomarkerTopResultsLabel = document.getElementById("biomarkerTopResultsLabel");
+  if (biomarkerTopResultsLabel) biomarkerTopResultsLabel.textContent = bengali ? "শীর্ষ ফলাফল দেখান" : "Show Top Results";
+  const biomarkerFamilyLabel = document.getElementById("biomarkerFamilyLabel");
+  if (biomarkerFamilyLabel) biomarkerFamilyLabel.textContent = bengali ? "ফিচার পরিবার" : "Feature Family";
+  const biomarkerMinImportanceLabel = document.getElementById("biomarkerMinImportanceLabel");
+  if (biomarkerMinImportanceLabel) biomarkerMinImportanceLabel.textContent = bengali ? "ন্যূনতম গুরুত্ব" : "Minimum Importance";
+  const biomarkerImportanceHint = document.getElementById("biomarkerImportanceHint");
+  if (biomarkerImportanceHint) biomarkerImportanceHint.textContent = bengali ? "কম মানে আরও মার্কার দেখাবে। বেশি মানে শুধু শক্তিশালী সিগন্যাল দেখাবে।" : "Lower values show more markers. Higher values keep only stronger signals.";
+  const biomarkerSamplesLabel = document.getElementById("biomarkerSamplesLabel");
+  if (biomarkerSamplesLabel) biomarkerSamplesLabel.textContent = bengali ? "নমুনা" : "Samples";
+  const biomarkerEvaluatedLabel = document.getElementById("biomarkerEvaluatedLabel");
+  if (biomarkerEvaluatedLabel) biomarkerEvaluatedLabel.textContent = bengali ? "পরীক্ষিত মার্কার" : "Markers Checked";
+  const biomarkerShownLabel = document.getElementById("biomarkerShownLabel");
+  if (biomarkerShownLabel) biomarkerShownLabel.textContent = bengali ? "দেখানো মার্কার" : "Markers Shown";
+  const biomarkerStrongestLabel = document.getElementById("biomarkerStrongestLabel");
+  if (biomarkerStrongestLabel) biomarkerStrongestLabel.textContent = bengali ? "সবচেয়ে শক্তিশালী সিগন্যাল" : "Strongest Signal";
+  const runBiomarkersButton = document.getElementById("runBiomarkers");
+  if (runBiomarkersButton) runBiomarkersButton.textContent = bengali ? "বায়োমার্কার বিশ্লেষণ করুন" : "Analyze Biomarkers";
+  const resetBiomarkersButton = document.getElementById("resetBiomarkers");
+  if (resetBiomarkersButton) resetBiomarkersButton.textContent = bengali ? "রিসেট" : "Reset";
+  const biomarkerSummaryText = document.getElementById("biomarkerSummaryText");
+  if (biomarkerSummaryText) biomarkerSummaryText.textContent = bengali
+    ? "একটি ডেটাসেট আপলোড করুন এবং বিশ্লেষণ চালিয়ে এখানে সহজ ভাষায় বায়োমার্কার সারাংশ দেখুন।"
+    : "Upload a dataset and run the analysis to see a plain-language biomarker summary here.";
+
+  setSelectOptions("sampleLanguage", [
+    { value: "Bengali", label: bengali ? "বাংলা" : "Bengali" },
+    { value: "Hindi", label: bengali ? "হিন্দি" : "Hindi" },
+    { value: "English", label: bengali ? "ইংরেজি" : "English" },
+    { value: "Multilingual", label: bengali ? "বহুভাষিক" : "Multilingual" },
+  ]);
+  setSelectOptions("therapyLanguage", [
+    { value: "Bengali", label: bengali ? "বাংলা" : "Bengali" },
+    { value: "Hindi", label: bengali ? "হিন্দি" : "Hindi" },
+    { value: "English", label: bengali ? "ইংরেজি" : "English" },
+    { value: "Multilingual", label: bengali ? "বহুভাষিক" : "Multilingual" },
+  ]);
+  setSelectOptions("therapyType", [
+    { value: "Sound Drill", label: bengali ? "ধ্বনি অনুশীলন" : "Sound Drill" },
+    { value: "Syllable Drill", label: bengali ? "অক্ষরাংশ অনুশীলন" : "Syllable Drill" },
+    { value: "Word Reading", label: bengali ? "শব্দ পড়া" : "Word Reading" },
+    { value: "Phrase Practice", label: bengali ? "বাক্যাংশ অনুশীলন" : "Phrase Practice" },
+    { value: "Sentence Reading", label: bengali ? "বাক্য পড়া" : "Sentence Reading" },
+  ]);
+  setSelectOptions("therapyDifficulty", [
+    { value: "Foundation", label: bengali ? "ভিত্তি" : "Foundation" },
+    { value: "Guided", label: bengali ? "নির্দেশিত" : "Guided" },
+    { value: "Independent", label: bengali ? "স্বতন্ত্র" : "Independent" },
+  ]);
+  setSelectOptions("therapyCueLevel", [
+    { value: "High Cueing", label: bengali ? "উচ্চ ইঙ্গিত" : "High Cueing" },
+    { value: "Moderate Cueing", label: bengali ? "মাঝারি ইঙ্গিত" : "Moderate Cueing" },
+    { value: "Low Cueing", label: bengali ? "কম ইঙ্গিত" : "Low Cueing" },
+  ]);
+  setSelectOptions("eyePreset", [
+    { value: "letters", label: bengali ? "অক্ষর মিল" : "Alphabet Match" },
+    { value: "digits", label: bengali ? "সংখ্যা মিল" : "Digit Match" },
+    { value: "mixed", label: bengali ? "মিশ্র প্রতীক" : "Mixed Symbols" },
+  ]);
+  setSelectOptions("recordTypeFilter", [
+    { value: "all", label: bengali ? "সব রেকর্ড ধরন" : "All record types" },
+    { value: "screening", label: bengali ? "স্ক্রিনিং" : "Screening" },
+    { value: "therapy", label: bengali ? "থেরাপি" : "Therapy" },
+    { value: "eye_tracking", label: bengali ? "ভিজ্যুয়াল ফোকাস" : "Eye Tracking" },
+    { value: "biomarkers", label: bengali ? "বায়োমার্কার্স" : "Biomarkers" },
+    { value: "final_report", label: bengali ? "চূড়ান্ত রিপোর্ট" : "Final Report" },
+  ]);
+  setSelectOptions("biomarkerFamily", [
+    { value: "all", label: bengali ? "সব পরিবার" : "All families" },
+    { value: "reading", label: bengali ? "পড়া" : "Reading" },
+    { value: "speech", label: bengali ? "কথা বলা" : "Speech" },
+    { value: "handwriting", label: bengali ? "হাতের লেখা" : "Handwriting" },
+    { value: "eye_tracking", label: bengali ? "চোখের ট্র্যাকিং" : "Eye Tracking" },
+    { value: "timing", label: bengali ? "সময়" : "Timing" },
+  ]);
+
+  const recordSearch = document.getElementById("recordSearch");
+  if (recordSearch) recordSearch.placeholder = bengali ? "রেকর্ড খুঁজুন" : "Search records";
+  const eyePresetHint = document.getElementById("eyePresetHint");
+  if (eyePresetHint) {
+    eyePresetHint.value = bengali
+      ? "২০ রাউন্ড জুড়ে মেলে এমন অক্ষর দ্রুত খুঁজুন, যাতে একটি নির্ভরযোগ্য ক্লাসরুম মনোযোগ যাচাই হয়।"
+      : "Find the matching letter quickly across 20 rounds for a more reliable classroom attention check.";
+  }
+}
+
 function openGuideModal(key) {
   const modal = document.getElementById("guideModal");
   const title = document.getElementById("guideTitle");
@@ -880,7 +1333,11 @@ function renderRandomSpellingWords(language = "Bengali") {
     document.getElementById("spellLabel3"),
   ];
   picked.forEach((word, index) => {
-    if (labels[index]) labels[index].textContent = `${index + 1}) Correct spelling: ${word}`;
+    if (labels[index]) {
+      labels[index].textContent = language === "Bengali"
+        ? `${index + 1}) সঠিক বানান: ${word}`
+        : `${index + 1}) Correct spelling: ${word}`;
+    }
   });
   ["spellQ1", "spellQ2", "spellQ3"].forEach((id) => {
     const input = document.getElementById(id);
@@ -891,7 +1348,9 @@ function renderRandomSpellingWords(language = "Bengali") {
   setNodeText("spellingPassThreshold", `${SPELLING_PASS_THRESHOLD}%`);
   setNodeText("spellingPassResult", "-");
   const status = document.getElementById("spellingTestStatus");
-  if (status) status.textContent = "Waiting for answers. Scoring happens automatically after all 3 answers are entered.";
+  if (status) status.textContent = language === "Bengali"
+    ? "উত্তরের অপেক্ষায়। তিনটি উত্তর দেওয়া হলে স্বয়ংক্রিয়ভাবে স্কোর হবে।"
+    : "Waiting for answers. Scoring happens automatically after all 3 answers are entered.";
 }
 
 function renderRandomReadingPrompt(language) {
@@ -1019,36 +1478,37 @@ function renderFinalReportPanel(reportData = null, message = "") {
   const node = document.getElementById("finalReport");
   if (!node) return;
   const { info, missing } = validateStudentReportInfo();
+  const bengali = isBengaliUi();
   if (reportData) {
     const generatedText = reportData.generatedAt ? new Date(reportData.generatedAt).toLocaleString() : "-";
     node.innerHTML = `
-      <p><strong>Student Name:</strong> ${escapeHtml(reportData.studentInfo.name)}</p>
-      <p><strong>Age:</strong> ${escapeHtml(reportData.studentInfo.age)} | <strong>Class:</strong> ${escapeHtml(reportData.studentInfo.studentClass)} | <strong>Roll No:</strong> ${escapeHtml(reportData.studentInfo.rollNo)}</p>
-      <p><strong>Section:</strong> ${escapeHtml(reportData.studentInfo.section)} | <strong>School Name:</strong> ${escapeHtml(reportData.studentInfo.schoolName)}</p>
-      <p><strong>Final Aggregated Outcome:</strong> ${reportData.finalLevel}</p>
-      <p><strong>Average Risk Score:</strong> ${reportData.avgRisk.toFixed(3)}</p>
-      <p><strong>Model Agreement:</strong> Severe votes ${reportData.severeVotes}, Moderate votes ${reportData.moderateVotes}, Mild votes ${reportData.predictions.length - reportData.severeVotes - reportData.moderateVotes}</p>
-      <p><strong>Decision Stability:</strong> ${reportData.consensus.decisionStability || "-"}</p>
-      <p><strong>Most Cautious Model:</strong> ${reportData.consensus.mostCautious ? `${reportData.consensus.mostCautious.modelName} (${reportData.consensus.mostCautious.level})` : "-"}</p>
-      <p><strong>Screening Summary:</strong> ${reportData.screening ? `${reportData.screening.label} (${(reportData.screening.confidence * 100).toFixed(1)}%)` : "-"}</p>
-      <p><strong>Speech Therapy Summary:</strong> ${reportData.therapy ? `${reportData.therapy.sessionBand} (${(reportData.therapy.overallScorePct || reportData.therapy.score * 100).toFixed(1)}%)` : "-"}</p>
-      <p><strong>Visual Focus Summary:</strong> ${reportData.visualFocus ? `${reportData.visualFocus.eyeStatus} (${(reportData.visualFocus.eyeOverallScore || 0).toFixed(1)}%)` : "-"}</p>
-      <p><strong>Recommended Next Step:</strong> ${reportData.recommendation}</p>
-      <p><strong>Generated At:</strong> ${generatedText}</p>
+      <p><strong>${bengali ? "শিক্ষার্থীর নাম" : "Student Name"}:</strong> ${escapeHtml(reportData.studentInfo.name)}</p>
+      <p><strong>${bengali ? "বয়স" : "Age"}:</strong> ${escapeHtml(reportData.studentInfo.age)} | <strong>${bengali ? "শ্রেণি" : "Class"}:</strong> ${escapeHtml(reportData.studentInfo.studentClass)} | <strong>${bengali ? "রোল নং" : "Roll No"}:</strong> ${escapeHtml(reportData.studentInfo.rollNo)}</p>
+      <p><strong>${bengali ? "সেকশন" : "Section"}:</strong> ${escapeHtml(reportData.studentInfo.section)} | <strong>${bengali ? "বিদ্যালয়ের নাম" : "School Name"}:</strong> ${escapeHtml(reportData.studentInfo.schoolName)}</p>
+      <p><strong>${bengali ? "চূড়ান্ত সমন্বিত ফল" : "Final Aggregated Outcome"}:</strong> ${reportData.finalLevel}</p>
+      <p><strong>${bengali ? "গড় ঝুঁকি স্কোর" : "Average Risk Score"}:</strong> ${reportData.avgRisk.toFixed(3)}</p>
+      <p><strong>${bengali ? "মডেল সম্মতি" : "Model Agreement"}:</strong> ${bengali ? `তীব্র ভোট ${reportData.severeVotes}, মাঝারি ভোট ${reportData.moderateVotes}, মৃদু ভোট ${reportData.predictions.length - reportData.severeVotes - reportData.moderateVotes}` : `Severe votes ${reportData.severeVotes}, Moderate votes ${reportData.moderateVotes}, Mild votes ${reportData.predictions.length - reportData.severeVotes - reportData.moderateVotes}`}</p>
+      <p><strong>${bengali ? "সিদ্ধান্তের স্থায়িত্ব" : "Decision Stability"}:</strong> ${reportData.consensus.decisionStability || "-"}</p>
+      <p><strong>${bengali ? "সবচেয়ে সাবধানী মডেল" : "Most Cautious Model"}:</strong> ${reportData.consensus.mostCautious ? `${reportData.consensus.mostCautious.modelName} (${reportData.consensus.mostCautious.level})` : "-"}</p>
+      <p><strong>${bengali ? "স্ক্রিনিং সারাংশ" : "Screening Summary"}:</strong> ${reportData.screening ? `${reportData.screening.label} (${(reportData.screening.confidence * 100).toFixed(1)}%)` : "-"}</p>
+      <p><strong>${bengali ? "স্পিচ থেরাপি সারাংশ" : "Speech Therapy Summary"}:</strong> ${reportData.therapy ? `${reportData.therapy.sessionBand} (${(reportData.therapy.overallScorePct || reportData.therapy.score * 100).toFixed(1)}%)` : "-"}</p>
+      <p><strong>${bengali ? "ভিজ্যুয়াল ফোকাস সারাংশ" : "Visual Focus Summary"}:</strong> ${reportData.visualFocus ? `${reportData.visualFocus.eyeStatus} (${(reportData.visualFocus.eyeOverallScore || 0).toFixed(1)}%)` : "-"}</p>
+      <p><strong>${bengali ? "প্রস্তাবিত পরবর্তী পদক্ষেপ" : "Recommended Next Step"}:</strong> ${reportData.recommendation}</p>
+      <p><strong>${bengali ? "তৈরির সময়" : "Generated At"}:</strong> ${generatedText}</p>
     `;
     return;
   }
   const readiness = getReportSourceReadiness();
   const defaultMessage = missing.length
-    ? `Waiting for details: ${missing.join(", ")}`
+    ? (bengali ? `বিস্তারিতের অপেক্ষায়: ${missing.join(", ")}` : `Waiting for details: ${missing.join(", ")}`)
     : readiness.ready
-      ? "Student details ready. Run model comparison, then generate the final report."
-      : "Complete Screening, Speech Therapy, and the Visual Focus Test first.";
+      ? (bengali ? "শিক্ষার্থীর তথ্য প্রস্তুত। আগে মডেল তুলনা চালান, তারপর চূড়ান্ত রিপোর্ট তৈরি করুন।" : "Student details ready. Run model comparison, then generate the final report.")
+      : (bengali ? "প্রথমে স্ক্রিনিং, স্পিচ থেরাপি, এবং ভিজ্যুয়াল ফোকাস টেস্ট সম্পন্ন করুন।" : "Complete Screening, Speech Therapy, and the Visual Focus Test first.");
   node.innerHTML = `
-    <p><strong>Student Name:</strong> ${escapeHtml(info.name || "-")}</p>
-    <p><strong>Age:</strong> ${escapeHtml(info.age || "-")} | <strong>Class:</strong> ${escapeHtml(info.studentClass || "-")} | <strong>Roll No:</strong> ${escapeHtml(info.rollNo || "-")}</p>
-    <p><strong>Section:</strong> ${escapeHtml(info.section || "-")} | <strong>School Name:</strong> ${escapeHtml(info.schoolName || "-")}</p>
-    <p><strong>Report Status:</strong> ${message || defaultMessage}</p>
+    <p><strong>${bengali ? "শিক্ষার্থীর নাম" : "Student Name"}:</strong> ${escapeHtml(info.name || "-")}</p>
+    <p><strong>${bengali ? "বয়স" : "Age"}:</strong> ${escapeHtml(info.age || "-")} | <strong>${bengali ? "শ্রেণি" : "Class"}:</strong> ${escapeHtml(info.studentClass || "-")} | <strong>${bengali ? "রোল নং" : "Roll No"}:</strong> ${escapeHtml(info.rollNo || "-")}</p>
+    <p><strong>${bengali ? "সেকশন" : "Section"}:</strong> ${escapeHtml(info.section || "-")} | <strong>${bengali ? "বিদ্যালয়ের নাম" : "School Name"}:</strong> ${escapeHtml(info.schoolName || "-")}</p>
+    <p><strong>${bengali ? "রিপোর্টের অবস্থা" : "Report Status"}:</strong> ${message || defaultMessage}</p>
   `;
 }
 
@@ -1150,18 +1610,29 @@ function scoreScreeningFromLiveData(language) {
 }
 
 function summarizeRecord(record) {
+  const bengali = isBengaliUi();
   if (!record || typeof record !== "object") return "No summary available.";
   switch (record.type) {
     case "screening":
-      return `${record.language || "Unknown"} ${record.label || "screening"} result with ${((record.confidence || 0) * 100).toFixed(1)}% confidence`;
+      return bengali
+        ? `${record.language || "অজানা"} ${record.label || "স্ক্রিনিং"} ফলাফল, আত্মবিশ্বাস ${((record.confidence || 0) * 100).toFixed(1)}%`
+        : `${record.language || "Unknown"} ${record.label || "screening"} result with ${((record.confidence || 0) * 100).toFixed(1)}% confidence`;
     case "therapy":
-      return `${record.sessionType || "Session"} on ${record.target || "target"} scored ${(record.overallScorePct || (record.score || 0) * 100).toFixed(1)}%`;
+      return bengali
+        ? `${record.sessionType || "সেশন"} - ${record.target || "লক্ষ্য"} স্কোর ${(record.overallScorePct || (record.score || 0) * 100).toFixed(1)}%`
+        : `${record.sessionType || "Session"} on ${record.target || "target"} scored ${(record.overallScorePct || (record.score || 0) * 100).toFixed(1)}%`;
     case "eye_tracking":
-      return `Visual test ${record.preset || "session"} with ${Number(record.fixationScore || 0).toFixed(1)}% first-try accuracy`;
+      return bengali
+        ? `ভিজ্যুয়াল পরীক্ষা ${record.preset || "সেশন"} - প্রথম চেষ্টার নির্ভুলতা ${Number(record.fixationScore || 0).toFixed(1)}%`
+        : `Visual test ${record.preset || "session"} with ${Number(record.fixationScore || 0).toFixed(1)}% first-try accuracy`;
     case "biomarkers":
-      return `${record.analyzed_samples || 0} samples analyzed, ${(record.biomarkers || []).length} biomarkers shown`;
+      return bengali
+        ? `${record.analyzed_samples || 0} নমুনা বিশ্লেষণ হয়েছে, ${(record.biomarkers || []).length} চিহ্ন দেখানো হয়েছে`
+        : `${record.analyzed_samples || 0} samples analyzed, ${(record.biomarkers || []).length} biomarkers shown`;
     case "final_report":
-      return `${record.finalLevel || "Unknown"} risk report, average risk ${(record.avgRisk || 0).toFixed(3)}`;
+      return bengali
+        ? `${record.finalLevel || "অজানা"} ঝুঁকি রিপোর্ট, গড় ঝুঁকি ${(record.avgRisk || 0).toFixed(3)}`
+        : `${record.finalLevel || "Unknown"} risk report, average risk ${(record.avgRisk || 0).toFixed(3)}`;
     default:
       return Object.keys(record).slice(0, 4).join(", ");
   }
@@ -1178,7 +1649,14 @@ function classifyBiomarkerFamily(name) {
 }
 
 function biomarkerInterpretation(row) {
+  const bengali = isBengaliUi();
   const direction = row.correlation >= 0 ? "higher risk" : "lower risk";
+  if (bengali) {
+    const directionBn = row.correlation >= 0 ? "উচ্চ ঝুঁকির" : "কম ঝুঁকির";
+    if (row.importance >= 0.5) return `${directionBn} সঙ্গে দৃঢ়ভাবে সম্পর্কিত চিহ্ন।`;
+    if (row.importance >= 0.25) return `${directionBn} সঙ্গে মাঝারি ভাবে সম্পর্কিত চিহ্ন।`;
+    return `${directionBn} সঙ্গে দুর্বল কিন্তু ব্যবহারযোগ্য চিহ্ন।`;
+  }
   if (row.importance >= 0.5) return `Strong marker linked with ${direction}.`;
   if (row.importance >= 0.25) return `Moderate marker linked with ${direction}.`;
   return `Weak but usable marker linked with ${direction}.`;
@@ -1190,11 +1668,22 @@ function setBiomarkerMetric(id, value) {
   node.textContent = value;
 }
 
-function resetBiomarkerView(message = "Upload a dataset and run the analysis to see a plain-language biomarker summary here.") {
+function resetBiomarkerView(message = null) {
   const summaryNode = document.getElementById("biomarkerSummary");
+  const summaryTextNode = document.getElementById("biomarkerSummaryText");
   const tableNode = document.getElementById("biomarkerTable");
-  if (summaryNode) summaryNode.innerHTML = `<p class="mb-0 text-muted">${message}</p>`;
-  if (tableNode) tableNode.innerHTML = `<tr><td colspan="5" class="text-muted">Run the analysis to see biomarker results.</td></tr>`;
+  const bengali = isBengaliUi();
+  const defaultMessage = bengali
+    ? "একটি ডেটাসেট আপলোড করুন এবং বিশ্লেষণ চালিয়ে এখানে সহজ ভাষায় বায়োমার্কার সারাংশ দেখুন।"
+    : "Upload a dataset and run the analysis to see a plain-language biomarker summary here.";
+  if (summaryNode) {
+    if (summaryTextNode) {
+      summaryTextNode.textContent = message || defaultMessage;
+    } else {
+      summaryNode.innerHTML = `<p class="mb-0 text-muted">${message || defaultMessage}</p>`;
+    }
+  }
+  if (tableNode) tableNode.innerHTML = `<tr><td colspan="5" class="text-muted">${bengali ? "বায়োমার্কার ফলাফল দেখতে বিশ্লেষণ চালান।" : "Run the analysis to see biomarker results."}</td></tr>`;
   setBiomarkerMetric("biomarkerSamplesMetric", "-");
   setBiomarkerMetric("biomarkerEvaluatedMetric", "-");
   setBiomarkerMetric("biomarkerShownMetric", "-");
@@ -1270,19 +1759,50 @@ function updateBiomarkerFileInfo(file, header = [], rowCount = 0) {
   const infoNode = document.getElementById("biomarkerDetectedInfo");
   const suggestionList = document.getElementById("labelColumnSuggestions");
   const labelInput = document.getElementById("labelColumn");
+  const bengali = isBengaliUi();
   if (suggestionList) suggestionList.innerHTML = "";
+  const biomarkerStep1Title = document.getElementById("biomarkerStep1Title");
+  if (biomarkerStep1Title) biomarkerStep1Title.textContent = bengali ? "ধাপ ১: ডেটাসেট আপলোড করুন" : "Step 1: Upload Dataset";
+  const biomarkerDatasetLabel = document.getElementById("biomarkerDatasetLabel");
+  if (biomarkerDatasetLabel) biomarkerDatasetLabel.textContent = bengali ? "ডেটাসেট CSV" : "Dataset CSV";
+  const biomarkerFileTypeBadge = document.getElementById("biomarkerFileTypeBadge");
+  if (biomarkerFileTypeBadge) biomarkerFileTypeBadge.textContent = bengali ? "শুধু CSV" : "CSV only";
+  const biomarkerStep2Title = document.getElementById("biomarkerStep2Title");
+  if (biomarkerStep2Title) biomarkerStep2Title.textContent = bengali ? "ধাপ ২: বিশ্লেষণ সেটিংস বেছে নিন" : "Step 2: Choose Analysis Settings";
+  const biomarkerLabelHint = document.getElementById("biomarkerLabelHint");
+  if (biomarkerLabelHint) biomarkerLabelHint.textContent = bengali ? "সিস্টেম যদি সম্ভাব্য লেবেল কলাম শনাক্ত করে, তা স্বয়ংক্রিয়ভাবে সাজেস্ট করবে।" : "If the system detects a likely label column, it will suggest it automatically.";
+  const biomarkerImportanceHint = document.getElementById("biomarkerImportanceHint");
+  if (biomarkerImportanceHint) biomarkerImportanceHint.textContent = bengali ? "কম মানে আরও মার্কার দেখাবে। বেশি মানে শুধু শক্তিশালী সিগন্যাল দেখাবে।" : "Lower values show more markers. Higher values keep only stronger signals.";
+  const biomarkerSamplesLabel = document.getElementById("biomarkerSamplesLabel");
+  if (biomarkerSamplesLabel) biomarkerSamplesLabel.textContent = bengali ? "নমুনা" : "Samples";
+  const biomarkerEvaluatedLabel = document.getElementById("biomarkerEvaluatedLabel");
+  if (biomarkerEvaluatedLabel) biomarkerEvaluatedLabel.textContent = bengali ? "পরীক্ষিত মার্কার" : "Markers Checked";
+  const biomarkerShownLabel = document.getElementById("biomarkerShownLabel");
+  if (biomarkerShownLabel) biomarkerShownLabel.textContent = bengali ? "দেখানো মার্কার" : "Markers Shown";
+  const biomarkerStrongestLabel = document.getElementById("biomarkerStrongestLabel");
+  if (biomarkerStrongestLabel) biomarkerStrongestLabel.textContent = bengali ? "সবচেয়ে শক্তিশালী সিগন্যাল" : "Strongest Signal";
+  const runBiomarkersButton = document.getElementById("runBiomarkers");
+  if (runBiomarkersButton) runBiomarkersButton.textContent = bengali ? "বায়োমার্কার বিশ্লেষণ করুন" : "Analyze Biomarkers";
+  const resetBiomarkersButton = document.getElementById("resetBiomarkers");
+  if (resetBiomarkersButton) resetBiomarkersButton.textContent = bengali ? "রিসেট" : "Reset";
+  const biomarkerSummaryText = document.getElementById("biomarkerSummaryText");
+  if (biomarkerSummaryText && !file) {
+    biomarkerSummaryText.textContent = bengali
+      ? "একটি ডেটাসেট আপলোড করুন এবং বিশ্লেষণ চালিয়ে এখানে সহজ ভাষায় বায়োমার্কার সারাংশ দেখুন।"
+      : "Upload a dataset and run the analysis to see a plain-language biomarker summary here.";
+  }
 
   if (!file) {
-    if (statusNode) statusNode.textContent = "No dataset selected yet.";
+    if (statusNode) statusNode.textContent = bengali ? "এখনও কোনো ডেটাসেট নির্বাচন করা হয়নি।" : "No dataset selected yet.";
     if (infoNode) {
       infoNode.innerHTML = `
-        <h6 class="mb-2">Mandatory file requirements</h6>
-        <p class="small mb-2">For reliable biomarker analysis, your file must include:</p>
+        <h6 class="mb-2">${bengali ? "প্রয়োজনীয় ফাইল শর্ত" : "Mandatory file requirements"}</h6>
+        <p class="small mb-2">${bengali ? "নির্ভরযোগ্য বায়োমার্কার বিশ্লেষণের জন্য আপনার ফাইলে থাকতে হবে:" : "For reliable biomarker analysis, your file must include:"}</p>
         <ul class="small mb-0 ps-3">
-          <li>one structured table with a clear header row</li>
-          <li>one label column such as <code>label</code>, <code>risk_label</code>, <code>class</code>, or <code>target</code></li>
-          <li>numeric feature columns such as reading speed, error count, hesitation count, gaze values, or timing values</li>
-          <li>one sample per row</li>
+          <li>${bengali ? "একটি স্পষ্ট শিরোনাম সারিসহ একটি গঠিত টেবিল" : "one structured table with a clear header row"}</li>
+          <li>${bengali ? "একটি লেবেল কলাম যেমন <code>label</code>, <code>risk_label</code>, <code>class</code>, বা <code>target</code>" : "one label column such as <code>label</code>, <code>risk_label</code>, <code>class</code>, or <code>target</code>"}</li>
+          <li>${bengali ? "পড়ার গতি, ত্রুটি সংখ্যা, দ্বিধা সংখ্যা, gaze মান, বা সময় মানের মতো সংখ্যাসূচক ফিচার কলাম" : "numeric feature columns such as reading speed, error count, hesitation count, gaze values, or timing values"}</li>
+          <li>${bengali ? "প্রতি সারিতে একটি নমুনা" : "one sample per row"}</li>
         </ul>
       `;
     }
@@ -1297,16 +1817,26 @@ function updateBiomarkerFileInfo(file, header = [], rowCount = 0) {
     labelInput.value = suggestions[0];
   }
   if (statusNode) {
-    statusNode.textContent = `Selected ${file.name}. Found ${rowCount} data rows and ${header.length} columns.`;
+    statusNode.textContent = bengali
+      ? `${file.name} নির্বাচন করা হয়েছে। ${rowCount} ডেটা সারি এবং ${header.length} কলাম পাওয়া গেছে।`
+      : `Selected ${file.name}. Found ${rowCount} data rows and ${header.length} columns.`;
   }
   if (infoNode) {
-    infoNode.innerHTML = `
-      <h6 class="mb-2">Detected dataset preview</h6>
-      <p class="small mb-1"><strong>File type:</strong> CSV</p>
-      <p class="small mb-1"><strong>Rows:</strong> ${rowCount}</p>
-      <p class="small mb-1"><strong>Columns:</strong> ${header.length}</p>
-      <p class="small mb-0"><strong>Suggested label columns:</strong> ${suggestions.length ? suggestions.join(", ") : "No obvious label column detected. Enter it manually."}</p>
-    `;
+    infoNode.innerHTML = bengali
+      ? `
+        <h6 class="mb-2">সনাক্ত করা ডেটাসেট প্রিভিউ</h6>
+        <p class="small mb-1"><strong>ফাইলের ধরন:</strong> CSV</p>
+        <p class="small mb-1"><strong>সারি:</strong> ${rowCount}</p>
+        <p class="small mb-1"><strong>কলাম:</strong> ${header.length}</p>
+        <p class="small mb-0"><strong>প্রস্তাবিত লেবেল কলাম:</strong> ${suggestions.length ? suggestions.join(", ") : "স্পষ্ট কোনো লেবেল কলাম পাওয়া যায়নি। ম্যানুয়ালি দিন।"}</p>
+      `
+      : `
+        <h6 class="mb-2">Detected dataset preview</h6>
+        <p class="small mb-1"><strong>File type:</strong> CSV</p>
+        <p class="small mb-1"><strong>Rows:</strong> ${rowCount}</p>
+        <p class="small mb-1"><strong>Columns:</strong> ${header.length}</p>
+        <p class="small mb-0"><strong>Suggested label columns:</strong> ${suggestions.length ? suggestions.join(", ") : "No obvious label column detected. Enter it manually."}</p>
+      `;
   }
 }
 
@@ -1568,9 +2098,10 @@ function releaseTherapyMicrophone() {
 function setTherapyRoundStatus(message, transcript = "") {
   const statusNode = document.getElementById("therapyRoundStatus");
   const transcriptNode = document.getElementById("therapyTranscriptText");
+  const bengali = isBengaliUi();
   if (statusNode) statusNode.textContent = message;
   if (transcriptNode) {
-    transcriptNode.textContent = transcript || "No response captured yet.";
+    transcriptNode.textContent = transcript || (bengali ? "এখনও কোনো উত্তর ধরা হয়নি।" : "No response captured yet.");
     transcriptNode.className = transcript ? "mb-0 small" : "mb-0 small text-muted";
   }
 }
@@ -1587,15 +2118,18 @@ function updateTherapyPromptUI() {
   const promptNode = document.getElementById("therapyPromptText");
   const progressNode = document.getElementById("therapyRoundProgress");
   updateTherapyControlState();
+  const bengali = isBengaliUi();
   if (!promptNode || !progressNode) return;
   if (!therapyRoundState.active || !therapyRoundState.prompts.length) {
-    promptNode.textContent = "Press Start Round to begin the speaking practice.";
-    progressNode.textContent = "Round not started.";
+    promptNode.textContent = bengali ? "কথা বলার অনুশীলন শুরু করতে রাউন্ড শুরু চাপুন।" : "Press Start Round to begin the speaking practice.";
+    progressNode.textContent = bengali ? "রাউন্ড শুরু হয়নি।" : "Round not started.";
     return;
   }
   const prompt = therapyRoundState.prompts[therapyRoundState.currentIndex] || "";
   promptNode.textContent = prompt;
-  progressNode.textContent = `Practice ${therapyRoundState.currentIndex + 1} of ${therapyRoundState.prompts.length}`;
+  progressNode.textContent = bengali
+    ? `অনুশীলন ${therapyRoundState.currentIndex + 1} / ${therapyRoundState.prompts.length}`
+    : `Practice ${therapyRoundState.currentIndex + 1} of ${therapyRoundState.prompts.length}`;
   resetTherapyVoicePromptState();
 }
 
@@ -2064,45 +2598,46 @@ function renderRecordDetail(record) {
   const node = document.getElementById("recordDetailCard");
   if (!node) return;
   if (!record) {
-    node.innerHTML = `<p class="mb-0 text-muted">Select a record from the table to inspect details.</p>`;
+    node.innerHTML = `<p class="mb-0 text-muted">${isBengaliUi() ? "বিস্তারিত দেখতে টেবিল থেকে একটি রেকর্ড নির্বাচন করুন।" : "Select a record from the table to inspect details."}</p>`;
     return;
   }
   const meta = getRecordStatusMeta(record);
   const eyeConsistencyScore = record?.stabilityScore ?? record?.consistencyScore;
+  const bengali = isBengaliUi();
   const detailRows = [];
   if (record.type === "screening") {
-    detailRows.push(["Language", record.language || "-"]);
-    detailRows.push(["Predicted Level", record.label || "-"]);
-    detailRows.push(["Confidence", `${((record.confidence || 0) * 100).toFixed(1)}%`]);
-    detailRows.push(["Severity Score", record.severityScore !== undefined ? String(record.severityScore) : "-"]);
+    detailRows.push([bengali ? "ভাষা" : "Language", record.language || "-"]);
+    detailRows.push([bengali ? "অনুমানিত স্তর" : "Predicted Level", record.label || "-"]);
+    detailRows.push([bengali ? "আত্মবিশ্বাস" : "Confidence", `${((record.confidence || 0) * 100).toFixed(1)}%`]);
+    detailRows.push([bengali ? "তীব্রতা স্কোর" : "Severity Score", record.severityScore !== undefined ? String(record.severityScore) : "-"]);
   } else if (record.type === "therapy") {
-    detailRows.push(["Session Type", record.sessionType || "-"]);
-    detailRows.push(["Target", record.target || "-"]);
-    detailRows.push(["Overall Score", `${Number(record.overallScorePct || (record.score || 0) * 100).toFixed(1)}%`]);
-    detailRows.push(["Recommendation", record.recommendation || "-"]);
+    detailRows.push([bengali ? "সেশন ধরন" : "Session Type", record.sessionType || "-"]);
+    detailRows.push([bengali ? "লক্ষ্য" : "Target", record.target || "-"]);
+    detailRows.push([bengali ? "মোট স্কোর" : "Overall Score", `${Number(record.overallScorePct || (record.score || 0) * 100).toFixed(1)}%`]);
+    detailRows.push([bengali ? "সুপারিশ" : "Recommendation", record.recommendation || "-"]);
   } else if (record.type === "eye_tracking") {
-    detailRows.push(["Preset", record.preset || "-"]);
-    detailRows.push(["Items Per Minute", `${Number(record.wpm || 0).toFixed(1)} IPM`]);
-    detailRows.push(["Wrong Taps", record.regressions ?? "-"]);
-    detailRows.push(["First-Try Accuracy", record.fixationScore !== undefined ? `${Number(record.fixationScore).toFixed(1)}%` : "-"]);
-    detailRows.push(["Consistency", eyeConsistencyScore !== undefined ? `${Number(eyeConsistencyScore).toFixed(1)}%` : "-"]);
-    detailRows.push(["Overall Status", record.eyeStatus || "-"]);
+    detailRows.push([bengali ? "পূর্বনির্ধারিত ধরন" : "Preset", record.preset || "-"]);
+    detailRows.push([bengali ? "প্রতি মিনিটে আইটেম" : "Items Per Minute", `${Number(record.wpm || 0).toFixed(1)} IPM`]);
+    detailRows.push([bengali ? "ভুল ট্যাপ" : "Wrong Taps", record.regressions ?? "-"]);
+    detailRows.push([bengali ? "প্রথম চেষ্টার নির্ভুলতা" : "First-Try Accuracy", record.fixationScore !== undefined ? `${Number(record.fixationScore).toFixed(1)}%` : "-"]);
+    detailRows.push([bengali ? "সামঞ্জস্য" : "Consistency", eyeConsistencyScore !== undefined ? `${Number(eyeConsistencyScore).toFixed(1)}%` : "-"]);
+    detailRows.push([bengali ? "সামগ্রিক অবস্থা" : "Overall Status", record.eyeStatus || "-"]);
   } else if (record.type === "biomarkers") {
-    detailRows.push(["Samples Analyzed", String(record.analyzed_samples || 0)]);
-    detailRows.push(["Biomarkers Shown", String((record.biomarkers || []).length || 0)]);
-    detailRows.push(["Selected Family", record.selectedFamily || "all"]);
-    detailRows.push(["Minimum Importance", record.minImportance !== undefined ? String(record.minImportance) : "-"]);
+    detailRows.push([bengali ? "বিশ্লেষিত নমুনা" : "Samples Analyzed", String(record.analyzed_samples || 0)]);
+    detailRows.push([bengali ? "দেখানো মার্কার" : "Biomarkers Shown", String((record.biomarkers || []).length || 0)]);
+    detailRows.push([bengali ? "নির্বাচিত পরিবার" : "Selected Family", record.selectedFamily || "all"]);
+    detailRows.push([bengali ? "ন্যূনতম গুরুত্ব" : "Minimum Importance", record.minImportance !== undefined ? String(record.minImportance) : "-"]);
   } else if (record.type === "final_report") {
-    detailRows.push(["Final Level", record.finalLevel || "-"]);
-    detailRows.push(["Average Risk", record.avgRisk !== undefined ? Number(record.avgRisk).toFixed(3) : "-"]);
-    detailRows.push(["Consensus", record.consensusLevel || "-"]);
-    detailRows.push(["Readiness", record.readiness || "-"]);
+    detailRows.push([bengali ? "চূড়ান্ত স্তর" : "Final Level", record.finalLevel || "-"]);
+    detailRows.push([bengali ? "গড় ঝুঁকি" : "Average Risk", record.avgRisk !== undefined ? Number(record.avgRisk).toFixed(3) : "-"]);
+    detailRows.push([bengali ? "সম্মতি" : "Consensus", record.consensusLevel || "-"]);
+    detailRows.push([bengali ? "প্রস্তুতি" : "Readiness", record.readiness || "-"]);
   }
   node.innerHTML = `
-    <p><strong>Type:</strong> ${recordTypeLabel(record.type)}</p>
-    <p><strong>Saved:</strong> ${record.timestamp ? new Date(record.timestamp).toLocaleString() : "-"}</p>
-    <p><strong>Summary:</strong> ${summarizeRecord(record)}</p>
-    <p><strong>Status:</strong> <span class="${meta.className}">${meta.label}</span></p>
+    <p><strong>${bengali ? "ধরন" : "Type"}:</strong> ${recordTypeLabel(record.type)}</p>
+    <p><strong>${bengali ? "সংরক্ষিত" : "Saved"}:</strong> ${record.timestamp ? new Date(record.timestamp).toLocaleString() : "-"}</p>
+    <p><strong>${bengali ? "সারাংশ" : "Summary"}:</strong> ${summarizeRecord(record)}</p>
+    <p><strong>${bengali ? "অবস্থা" : "Status"}:</strong> <span class="${meta.className}">${meta.label}</span></p>
     ${detailRows.length ? `
       <div class="record-detail-grid">
         ${detailRows.map(([label, value]) => `
@@ -2429,6 +2964,7 @@ function parseEyeTraceCsv(text) {
 }
 
 function updateSegmentScoreMatrix() {
+  const bengali = isBengaliUi();
   const readingScore = readingTestState.done ? readingTestState.score : null;
   const audioScore = audioFeatures.analyzed ? audioFeatures.comprehensionScore * 100 : null;
   const spellingCorrect = spellingFeatures.scored ? (spellingFeatures.total - spellingFeatures.errors) : null;
@@ -2454,7 +2990,7 @@ function updateSegmentScoreMatrix() {
   const allCompleted = readingTestState.done && audioFeatures.analyzed && spellingFeatures.scored;
   if (!allCompleted) {
     setNodeText("overallSegmentScore", "-");
-    setNodeText("overallSegmentStatus", "Pending", "text-secondary fw-semibold");
+    setNodeText("overallSegmentStatus", bengali ? "অপেক্ষমাণ" : "Pending", "text-secondary fw-semibold");
     return;
   }
 
@@ -2465,7 +3001,7 @@ function updateSegmentScoreMatrix() {
   setNodeText("overallSegmentScore", `${overallScore.toFixed(1)}%`);
   setNodeText(
     "overallSegmentStatus",
-    allPassed ? "Ready for Screening" : "Needs Support Before Screening",
+    bengali ? (allPassed ? "স্ক্রিনিংয়ের জন্য প্রস্তুত" : "স্ক্রিনিংয়ের আগে সহায়তা দরকার") : (allPassed ? "Ready for Screening" : "Needs Support Before Screening"),
     allPassed ? "text-success fw-semibold" : "text-danger fw-semibold",
   );
 }
@@ -2483,7 +3019,9 @@ function scoreSpellingTestNow() {
   }
   const spellingScore = (correct / answers.length) * 100;
   spellingFeatures = { scored: true, errors: answers.length - correct, total: answers.length, correct, score: spellingScore };
-  document.getElementById("spellingTestStatus").textContent = `Completed automatically. Correct: ${correct}/${answers.length}, Errors: ${spellingFeatures.errors}`;
+  document.getElementById("spellingTestStatus").textContent = isBengaliUi(language)
+    ? `স্বয়ংক্রিয়ভাবে সম্পন্ন। সঠিক: ${correct}/${answers.length}, ভুল: ${spellingFeatures.errors}`
+    : `Completed automatically. Correct: ${correct}/${answers.length}, Errors: ${spellingFeatures.errors}`;
   setNodeText("spellingAutoScore", `${spellingScore.toFixed(1)}%`);
   setNodeText("spellingPassThreshold", `${SPELLING_PASS_THRESHOLD}%`);
   const spellingMeta = getStatusMeta(spellingScore, SPELLING_PASS_THRESHOLD, true);
@@ -2497,10 +3035,14 @@ function scheduleAutoSpellingScore() {
   const values = ["spellQ1", "spellQ2", "spellQ3"].map((fieldId) => (document.getElementById(fieldId)?.value || "").trim());
   const status = document.getElementById("spellingTestStatus");
   if (!values.every(Boolean)) {
-    if (status) status.textContent = "Keep typing. Scoring will run automatically after all 3 answers are filled.";
+    if (status) status.textContent = isBengaliUi()
+      ? "লিখতে থাকুন। তিনটি উত্তর পূর্ণ হলে স্কোর স্বয়ংক্রিয়ভাবে চলবে।"
+      : "Keep typing. Scoring will run automatically after all 3 answers are filled.";
     return;
   }
-  if (status) status.textContent = "All answers entered. Scoring automatically...";
+  if (status) status.textContent = isBengaliUi()
+    ? "সব উত্তর দেওয়া হয়েছে। স্বয়ংক্রিয়ভাবে স্কোর হচ্ছে..."
+    : "All answers entered. Scoring automatically...";
   spellingAutoScoreTimer = window.setTimeout(() => {
     scoreSpellingTestNow();
     spellingAutoScoreTimer = null;
@@ -2978,7 +3520,9 @@ function pickListeningParagraph(language) {
   setNodeText("audioPassResult", "-");
   updateAudioControlState();
   updateSegmentScoreMatrix();
-  document.getElementById("audioTestStatus").textContent = "Sample ready. Play the audio, choose one answer, then click Submit Answer.";
+  document.getElementById("audioTestStatus").textContent = isBengaliUi(language)
+    ? "নমুনা প্রস্তুত। অডিও চালান, একটি উত্তর বেছে নিন, তারপর উত্তর জমা দিন।"
+    : "Sample ready. Play the audio, choose one answer, then click Submit Answer.";
 }
 
 function updateAudioControlState() {
@@ -3010,7 +3554,9 @@ function attachPromptAudioPlayerListeners() {
     if (status) {
       status.textContent = currentListeningLanguage === "English"
         ? "Playing English listening sample..."
-        : "Playing audio...";
+        : isBengaliUi(currentListeningLanguage)
+          ? "অডিও চালানো হচ্ছে..."
+          : "Playing audio...";
     }
   });
 
@@ -3023,7 +3569,9 @@ function attachPromptAudioPlayerListeners() {
       audioPlaybackInProgress = false;
       updateAudioControlState();
       const status = document.getElementById("audioTestStatus");
-      if (status) status.textContent = "Audio paused. Resume playback or play again before submitting.";
+      if (status) status.textContent = isBengaliUi()
+        ? "অডিও থেমে গেছে। আবার চালিয়ে নিন বা জমা দেওয়ার আগে পুনরায় চালান।"
+        : "Audio paused. Resume playback or play again before submitting.";
     }
   });
 
@@ -3031,7 +3579,9 @@ function attachPromptAudioPlayerListeners() {
     audioPlaybackInProgress = false;
     updateAudioControlState();
     const status = document.getElementById("audioTestStatus");
-    if (status) status.textContent = "Audio playback failed. Click Play Audio to try again or Skip for another sample.";
+    if (status) status.textContent = isBengaliUi()
+      ? "অডিও চালানো যায়নি। আবার চালান বা অন্য নমুনা নিতে স্কিপ করুন।"
+      : "Audio playback failed. Click Play Audio to try again or Skip for another sample.";
   });
 }
 
@@ -3062,10 +3612,14 @@ function finalizeAudioPlaybackState() {
   updateAudioControlState();
   const status = document.getElementById("audioTestStatus");
   if (selectedAudioOptionIndex !== null && !audioAnswerLocked) {
-    if (status) status.textContent = "Audio finished. Click Submit Answer to see the score.";
+    if (status) status.textContent = isBengaliUi()
+      ? "অডিও শেষ হয়েছে। স্কোর দেখতে উত্তর জমা দিন।"
+      : "Audio finished. Click Submit Answer to see the score.";
     return;
   }
-  if (status) status.textContent = "Audio finished. Choose the best answer below, then click Submit Answer.";
+  if (status) status.textContent = isBengaliUi()
+    ? "অডিও শেষ হয়েছে। নিচের সেরা উত্তরটি বেছে নিয়ে উত্তর জমা দিন।"
+    : "Audio finished. Choose the best answer below, then click Submit Answer.";
 }
 
 async function loadBengaliListeningSet() {
@@ -3303,7 +3857,7 @@ function renderListeningOptions() {
   selectedAudioOptionIndex = null;
   updateAudioControlState();
   if (question) {
-    question.textContent = currentListeningItem.question || "Listen to the sample and answer the question below.";
+    question.textContent = currentListeningItem.question || (isBengaliUi() ? "নমুনা শুনে নিচের প্রশ্নের উত্তর দিন।" : "Listen to the sample and answer the question below.");
   }
   currentListeningItem.options.forEach((option, index) => {
     const wrapper = document.createElement("label");
@@ -3321,10 +3875,14 @@ function renderListeningOptions() {
       const status = document.getElementById("audioTestStatus");
       updateAudioControlState();
       if (!audioPlaybackCompleted) {
-        if (status) status.textContent = "Answer selected. Please let the audio finish, then click Submit Answer.";
+        if (status) status.textContent = isBengaliUi()
+          ? "উত্তর বেছে নেওয়া হয়েছে। অডিও শেষ হওয়া পর্যন্ত অপেক্ষা করুন, তারপর উত্তর জমা দিন।"
+          : "Answer selected. Please let the audio finish, then click Submit Answer.";
         return;
       }
-      if (status) status.textContent = "Answer selected. Click Submit Answer to view the score.";
+      if (status) status.textContent = isBengaliUi()
+        ? "উত্তর বেছে নেওয়া হয়েছে। স্কোর দেখতে উত্তর জমা দিন।"
+        : "Answer selected. Click Submit Answer to view the score.";
     });
     wrapper.appendChild(radio);
     wrapper.appendChild(document.createTextNode(option));
@@ -3398,13 +3956,17 @@ async function playListeningSample() {
     playbackStarted = true;
     status.textContent = currentListeningLanguage === "English"
       ? "Playing English listening sample..."
-      : "Playing audio...";
+      : isBengaliUi(currentListeningLanguage)
+        ? "অডিও চালানো হচ্ছে..."
+        : "Playing audio...";
   };
   utter.onend = () => {
     if (!playbackStarted) {
       audioPlaybackInProgress = false;
       updateAudioControlState();
-      status.textContent = "Audio playback did not start. Please try the next sample.";
+      status.textContent = isBengaliUi()
+        ? "অডিও চালু হয়নি। অনুগ্রহ করে পরের নমুনা চেষ্টা করুন।"
+        : "Audio playback did not start. Please try the next sample.";
       return;
     }
     finalizeAudioPlaybackState();
@@ -3420,7 +3982,9 @@ async function playListeningSample() {
   } catch (_err) {
     audioPlaybackInProgress = false;
     updateAudioControlState();
-    status.textContent = "Audio playback failed in this browser. Please check browser sound settings and try again.";
+    status.textContent = isBengaliUi()
+      ? "এই ব্রাউজারে অডিও চালানো যায়নি। ব্রাউজারের সাউন্ড সেটিংস পরীক্ষা করে আবার চেষ্টা করুন।"
+      : "Audio playback failed in this browser. Please check browser sound settings and try again.";
   }
 }
 
@@ -3486,6 +4050,9 @@ document.getElementById("verifyAudioAnswer")?.addEventListener("click", () => {
 
 document.getElementById("sampleLanguage")?.addEventListener("change", (event) => {
   const language = event.target.value;
+  applyDashboardLanguage(language);
+  const therapyLanguageNode = document.getElementById("therapyLanguage");
+  if (therapyLanguageNode) therapyLanguageNode.value = language;
   const player = document.getElementById("promptAudioPlayer");
   if (player) {
     player.pause();
@@ -3496,6 +4063,9 @@ document.getElementById("sampleLanguage")?.addEventListener("change", (event) =>
   pickListeningParagraph(language);
   renderRandomReadingPrompt(language);
   renderRandomSpellingWords(language);
+  updateTestLabStatus();
+  updateSegmentScoreMatrix();
+  renderRecords();
 });
 
 attachPromptAudioPlayerListeners();
@@ -3525,13 +4095,15 @@ document.getElementById("testVoiceButton")?.addEventListener("click", () => {
   utter.voice = voice;
   utter.lang = voice.lang;
   utter.onstart = () => {
-    document.getElementById("audioTestStatus").textContent = `Testing voice: ${voice.name} (${voice.lang})`;
+    document.getElementById("audioTestStatus").textContent = isBengaliUi()
+      ? `ভয়েস পরীক্ষা চলছে: ${voice.name} (${voice.lang})`
+      : `Testing voice: ${voice.name} (${voice.lang})`;
   };
   utter.onend = () => {
-    document.getElementById("audioTestStatus").textContent = "Voice test finished.";
+    document.getElementById("audioTestStatus").textContent = isBengaliUi() ? "ভয়েস পরীক্ষা শেষ হয়েছে।" : "Voice test finished.";
   };
   utter.onerror = () => {
-    document.getElementById("audioTestStatus").textContent = "Voice test failed. Try another voice.";
+    document.getElementById("audioTestStatus").textContent = isBengaliUi() ? "ভয়েস পরীক্ষা ব্যর্থ হয়েছে। অন্য ভয়েস চেষ্টা করুন।" : "Voice test failed. Try another voice.";
   };
   synth.speak(utter);
 });
@@ -3574,15 +4146,15 @@ document.getElementById("therapyType")?.addEventListener("change", () => {
 
 document.getElementById("runScreening").addEventListener("click", () => {
   if (!readingTestState.done) {
-    document.getElementById("screeningResult").innerHTML = "<p>Please complete Reading Fluency Test first.</p>";
+    document.getElementById("screeningResult").innerHTML = `<p>${isBengaliUi() ? "প্রথমে পড়ার সাবলীলতা পরীক্ষা সম্পন্ন করুন।" : "Please complete Reading Fluency Test first."}</p>`;
     return;
   }
   if (!audioFeatures.analyzed) {
-    document.getElementById("screeningResult").innerHTML = "<p>Please complete the audio test first.</p>";
+    document.getElementById("screeningResult").innerHTML = `<p>${isBengaliUi() ? "প্রথমে অডিও পরীক্ষা সম্পন্ন করুন।" : "Please complete the audio test first."}</p>`;
     return;
   }
   if (!spellingFeatures.scored) {
-    document.getElementById("screeningResult").innerHTML = "<p>Please score the spelling test first.</p>";
+    document.getElementById("screeningResult").innerHTML = `<p>${isBengaliUi() ? "প্রথমে বানান পরীক্ষা স্কোর করুন।" : "Please score the spelling test first."}</p>`;
     return;
   }
   const language = document.getElementById("sampleLanguage").value;
@@ -4150,21 +4722,27 @@ document.getElementById("runBiomarkers").addEventListener("click", async () => {
   setBiomarkerMetric("biomarkerSamplesMetric", String(samples.length));
   setBiomarkerMetric("biomarkerEvaluatedMetric", String(results.length));
   setBiomarkerMetric("biomarkerShownMetric", String(top.length));
-  setBiomarkerMetric("biomarkerStrongestMetric", strongest ? strongest.biomarker : "None");
-  summaryNode.innerHTML = `
-    <p><strong>What this means:</strong> The dashboard checked ${results.length} measurable features across ${samples.length} samples and kept the strongest ${top.length} signals after your filters.</p>
-    <p><strong>Strongest signal:</strong> ${strongest ? `${strongest.biomarker} from the ${strongest.family} family` : "No biomarker passed the current filter"}</p>
-    <p><strong>Plain-language note:</strong> Biomarkers with higher importance are more strongly linked with the selected risk label in this dataset. This helps you see which feature groups matter most in the uploaded file.</p>
-  `;
+  setBiomarkerMetric("biomarkerStrongestMetric", strongest ? strongest.biomarker : (bengali ? "কোনোটিই নয়" : "None"));
+  summaryNode.innerHTML = bengali
+    ? `
+      <p><strong>এর মানে কী:</strong> এই ড্যাশবোর্ডটি ${samples.length}টি নমুনাজুড়ে ${results.length}টি পরিমাপযোগ্য ফিচার পরীক্ষা করেছে এবং আপনার ফিল্টারের পরে সবচেয়ে শক্তিশালী ${top.length}টি সিগন্যাল রেখেছে।</p>
+      <p><strong>সবচেয়ে শক্তিশালী সিগন্যাল:</strong> ${strongest ? `${strongest.biomarker} (${strongest.family} পরিবার থেকে)` : "বর্তমান ফিল্টারে কোনো বায়োমার্কার উত্তীর্ণ হয়নি"}</p>
+      <p><strong>সহজ ভাষার নোট:</strong> যেসব বায়োমার্কারের গুরুত্ব বেশি, সেগুলো এই ডেটাসেটে নির্বাচিত ঝুঁকি লেবেলের সঙ্গে বেশি শক্তভাবে যুক্ত। এতে আপলোড করা ফাইলে কোন ফিচার গ্রুপ সবচেয়ে গুরুত্বপূর্ণ তা বোঝা সহজ হয়।</p>
+    `
+    : `
+      <p><strong>What this means:</strong> The dashboard checked ${results.length} measurable features across ${samples.length} samples and kept the strongest ${top.length} signals after your filters.</p>
+      <p><strong>Strongest signal:</strong> ${strongest ? `${strongest.biomarker} from the ${strongest.family} family` : "No biomarker passed the current filter"}</p>
+      <p><strong>Plain-language note:</strong> Biomarkers with higher importance are more strongly linked with the selected risk label in this dataset. This helps you see which feature groups matter most in the uploaded file.</p>
+    `;
   tableNode.innerHTML = top.length
     ? top.map((row) => `<tr><td>${row.biomarker}</td><td>${row.family}</td><td>${row.correlation.toFixed(4)}</td><td>${row.importance.toFixed(4)}</td><td>${row.interpretation}</td></tr>`).join("")
-    : `<tr><td colspan="5" class="text-muted">No biomarkers passed the current filters.</td></tr>`;
+    : `<tr><td colspan="5" class="text-muted">${bengali ? "কোনো বায়োমার্কার বর্তমান ফিল্টারে উত্তীর্ণ হয়নি।" : "No biomarkers passed the current filters."}</td></tr>`;
 
   biomarkerChart = drawChart(biomarkerChart, "biomarkerChart", {
     type: "bar",
     data: {
       labels: top.map((x) => x.biomarker),
-      datasets: [{ label: "Importance", data: top.map((x) => x.importance), backgroundColor: "#0891b2" }],
+      datasets: [{ label: bengali ? "গুরুত্ব" : "Importance", data: top.map((x) => x.importance), backgroundColor: "#0891b2" }],
     },
     options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 1 } } },
   });
@@ -4234,17 +4812,30 @@ function updateTestLabStatus() {
   const { screeningDone, therapyDone, eyeDone, ready } = getReportSourceReadiness();
   const node = document.getElementById("testStatus");
   if (!node) return;
-  const screeningSummary = screeningDone ? `${latestScreening.label} (${(latestScreening.confidence * 100).toFixed(1)}%)` : "Pending";
-  const therapySummary = therapyDone ? `${latestTherapy.sessionBand} (${(latestTherapy.overallScorePct || latestTherapy.score * 100).toFixed(1)}%)` : "Pending";
-  const eyeSummary = eyeDone ? `${latestEye.eyeStatus || "Done"} (${(latestEye.eyeOverallScore || 0).toFixed(1)}%)` : "Pending";
+  const bengali = isBengaliUi();
+  const screeningSummary = screeningDone ? `${latestScreening.label} (${(latestScreening.confidence * 100).toFixed(1)}%)` : (bengali ? "অপেক্ষমাণ" : "Pending");
+  const therapySummary = therapyDone ? `${latestTherapy.sessionBand} (${(latestTherapy.overallScorePct || latestTherapy.score * 100).toFixed(1)}%)` : (bengali ? "অপেক্ষমাণ" : "Pending");
+  const eyeSummary = eyeDone ? `${latestEye.eyeStatus || (bengali ? "সম্পন্ন" : "Done")} (${(latestEye.eyeOverallScore || 0).toFixed(1)}%)` : (bengali ? "অপেক্ষমাণ" : "Pending");
   const comparisonReady = isComparisonCurrent();
+  const consensusLevelLabel = document.getElementById("labConsensusLevelLabel");
+  if (consensusLevelLabel) consensusLevelLabel.textContent = bengali ? "সম্মতির স্তর:" : "Consensus Level:";
+  const averageRiskLabel = document.getElementById("labAverageRiskLabel");
+  if (averageRiskLabel) averageRiskLabel.textContent = bengali ? "গড় ঝুঁকি:" : "Average Risk:";
+  const mostCautiousLabel = document.getElementById("labMostCautiousLabel");
+  if (mostCautiousLabel) mostCautiousLabel.textContent = bengali ? "সবচেয়ে সাবধানী মডেল:" : "Most Cautious Model:";
+  const mostConfidentLabel = document.getElementById("labMostConfidentLabel");
+  if (mostConfidentLabel) mostConfidentLabel.textContent = bengali ? "সবচেয়ে আত্মবিশ্বাসী মডেল:" : "Most Confident Model:";
+  const decisionStabilityLabel = document.getElementById("labDecisionStabilityLabel");
+  if (decisionStabilityLabel) decisionStabilityLabel.textContent = bengali ? "সিদ্ধান্তের স্থায়িত্ব:" : "Decision Stability:";
+  const readinessStatusLabel = document.getElementById("labReadinessStatusLabel");
+  if (readinessStatusLabel) readinessStatusLabel.textContent = bengali ? "প্রস্তুতি:" : "Readiness:";
   node.innerHTML = `
-    <p><strong>Checklist</strong></p>
-    <p>Screening: ${screeningSummary}</p>
-    <p>Speech Therapy: ${therapySummary}</p>
-    <p>Visual Focus Test: ${eyeSummary}</p>
-    <p><strong>Ready for model comparison:</strong> <span class="${ready ? "text-success" : "text-danger"} fw-semibold">${ready ? "Yes" : "No"}</span></p>
-    <p><strong>Comparison Status:</strong> <span class="${comparisonReady ? "text-success" : "text-secondary"} fw-semibold">${comparisonReady ? "Current" : "Needs run/update"}</span></p>
+    <p><strong>${bengali ? "চেকলিস্ট" : "Checklist"}</strong></p>
+    <p>${bengali ? "স্ক্রিনিং" : "Screening"}: ${screeningSummary}</p>
+    <p>${bengali ? "স্পিচ থেরাপি" : "Speech Therapy"}: ${therapySummary}</p>
+    <p>${bengali ? "ভিজ্যুয়াল ফোকাস টেস্ট" : "Visual Focus Test"}: ${eyeSummary}</p>
+    <p><strong>${bengali ? "মডেল তুলনার জন্য প্রস্তুত:" : "Ready for model comparison:"}</strong> <span class="${ready ? "text-success" : "text-danger"} fw-semibold">${ready ? (bengali ? "হ্যাঁ" : "Yes") : (bengali ? "না" : "No")}</span></p>
+    <p><strong>${bengali ? "তুলনার অবস্থা:" : "Comparison Status:"}</strong> <span class="${comparisonReady ? "text-success" : "text-secondary"} fw-semibold">${comparisonReady ? (bengali ? "হালনাগাদ" : "Current") : (bengali ? "চালাতে/হালনাগাদ করতে হবে" : "Needs run/update")}</span></p>
   `;
 }
 
@@ -4264,7 +4855,7 @@ function modelPredict(scoreBase, modelName) {
 
 document.getElementById("runComparison")?.addEventListener("click", () => {
   if (!latestScreening || !latestTherapy || !latestEye) {
-    renderFinalReportPanel(null, "Please complete Screening, Therapy, and the Visual Focus Test first.");
+    renderFinalReportPanel(null, isBengaliUi() ? "প্রথমে স্ক্রিনিং, থেরাপি, এবং ভিজ্যুয়াল ফোকাস টেস্ট সম্পন্ন করুন।" : "Please complete Screening, Therapy, and the Visual Focus Test first.");
     setDownloadReportEnabled(false);
     return;
   }
@@ -4475,17 +5066,17 @@ function renderVisualFocusQuickStats(summary) {
   const node = document.getElementById("eyeTraceQuickStats");
   if (!node) return;
   if (!summary) {
-    node.innerHTML = `<p class="mb-0 text-muted small">After a test, this area will show round count, response speed, and first-try success.</p>`;
+    node.innerHTML = `<p class="mb-0 text-muted small">${isBengaliUi() ? "পরীক্ষার পরে এখানে রাউন্ড সংখ্যা, প্রতিক্রিয়ার গতি, এবং প্রথম চেষ্টার সাফল্য দেখাবে।" : "After a test, this area will show round count, response speed, and first-try success."}</p>`;
     return;
   }
   node.innerHTML = `
     <div class="row g-2 small">
-      <div class="col-md-4"><strong>Rounds:</strong> ${summary.totalRounds}</div>
-      <div class="col-md-4"><strong>Avg Response:</strong> ${summary.averageResponseMs.toFixed(0)} ms</div>
-      <div class="col-md-4"><strong>Items/Minute:</strong> ${summary.itemsPerMinute.toFixed(1)}</div>
-      <div class="col-md-4"><strong>First-Try Correct:</strong> ${summary.firstTryCorrectCount}/${summary.totalRounds}</div>
-      <div class="col-md-4"><strong>Wrong Taps:</strong> ${summary.totalWrongClicks}</div>
-      <div class="col-md-4"><strong>Total Time:</strong> ${summary.sessionSec.toFixed(2)}s</div>
+      <div class="col-md-4"><strong>${isBengaliUi() ? "রাউন্ড:" : "Rounds:"}</strong> ${summary.totalRounds}</div>
+      <div class="col-md-4"><strong>${isBengaliUi() ? "গড় প্রতিক্রিয়া:" : "Avg Response:"}</strong> ${summary.averageResponseMs.toFixed(0)} ms</div>
+      <div class="col-md-4"><strong>${isBengaliUi() ? "প্রতি মিনিটে আইটেম:" : "Items/Minute:"}</strong> ${summary.itemsPerMinute.toFixed(1)}</div>
+      <div class="col-md-4"><strong>${isBengaliUi() ? "প্রথম চেষ্টায় সঠিক:" : "First-Try Correct:"}</strong> ${summary.firstTryCorrectCount}/${summary.totalRounds}</div>
+      <div class="col-md-4"><strong>${isBengaliUi() ? "ভুল ট্যাপ:" : "Wrong Taps:"}</strong> ${summary.totalWrongClicks}</div>
+      <div class="col-md-4"><strong>${isBengaliUi() ? "মোট সময়:" : "Total Time:"}</strong> ${summary.sessionSec.toFixed(2)}s</div>
     </div>
   `;
 }
@@ -4494,11 +5085,11 @@ function resetVisualFocusOutputs(message) {
   const resultNode = document.getElementById("eyeResult");
   if (resultNode) resultNode.innerHTML = `<p>${message}</p>`;
   const checklistNode = document.getElementById("eyeChecklist");
-  if (checklistNode) checklistNode.innerHTML = `<p class="mb-0 text-muted small">After analysis, this area will show simple checks for speed, accuracy, control, and consistency.</p>`;
+  if (checklistNode) checklistNode.innerHTML = `<p class="mb-0 text-muted small">${isBengaliUi() ? "বিশ্লেষণের পরে এখানে গতি, নির্ভুলতা, নিয়ন্ত্রণ, এবং সামঞ্জস্যের সহজ চেক দেখাবে।" : "After analysis, this area will show simple checks for speed, accuracy, control, and consistency."}</p>`;
   const recommendationNode = document.getElementById("eyeRecommendation");
-  if (recommendationNode) recommendationNode.innerHTML = `<p class="mb-0 text-muted">A plain-language recommendation will appear here after the test is analyzed.</p>`;
+  if (recommendationNode) recommendationNode.innerHTML = `<p class="mb-0 text-muted">${isBengaliUi() ? "পরীক্ষা বিশ্লেষণের পরে এখানে সহজ ভাষায় সুপারিশ দেখাবে।" : "A plain-language recommendation will appear here after the test is analyzed."}</p>`;
   setNodeText("eyeOverallScore", "-");
-  setNodeText("eyeOverallStatus", "Pending", "text-secondary fw-semibold");
+  setNodeText("eyeOverallStatus", isBengaliUi() ? "অপেক্ষমাণ" : "Pending", "text-secondary fw-semibold");
   if (eyeChart) {
     eyeChart.destroy();
     eyeChart = null;
@@ -4513,7 +5104,13 @@ function getVisualFocusPreset() {
 function applyVisualFocusPreset(presetKey) {
   const preset = EYE_PRESETS[presetKey] || EYE_PRESETS.letters;
   const hintNode = document.getElementById("eyePresetHint");
-  if (hintNode) hintNode.value = preset.description;
+  if (hintNode) hintNode.value = isBengaliUi()
+    ? (presetKey === "letters"
+      ? "২০ রাউন্ড জুড়ে একই অক্ষর দ্রুত খুঁজুন, যাতে একটি নির্ভরযোগ্য ক্লাসরুম মনোযোগ যাচাই হয়।"
+      : presetKey === "digits"
+        ? "২০ রাউন্ড জুড়ে একই সংখ্যা দ্রুত খুঁজুন, যাতে কম ভাষাভিত্তিক একটি মনোযোগ যাচাই হয়।"
+        : "অক্ষর এবং সংখ্যা মিশিয়ে ২৪ রাউন্ডের আরও কঠিন সামঞ্জস্য পরীক্ষা।")
+    : preset.description;
   if (!eyeTestState.active) {
     const targetNode = document.getElementById("eyeTargetSymbol");
     if (targetNode) targetNode.textContent = "";
@@ -4628,10 +5225,11 @@ function renderVisualFocusChecklist(items) {
 function renderVisualFocusRecommendation(summary) {
   const node = document.getElementById("eyeRecommendation");
   if (!node) return;
+  const bengali = isBengaliUi();
   node.innerHTML = `
-    <p><strong>End-User Summary:</strong> ${summary.statusText}</p>
-    <p><strong>What this means:</strong> ${summary.interpretation}</p>
-    <p class="mb-0"><strong>Recommended next step:</strong> ${summary.nextStep}</p>
+    <p><strong>${bengali ? "ব্যবহারকারীর সারাংশ" : "End-User Summary"}:</strong> ${summary.statusText}</p>
+    <p><strong>${bengali ? "এর মানে" : "What this means"}:</strong> ${summary.interpretation}</p>
+    <p class="mb-0"><strong>${bengali ? "প্রস্তাবিত পরবর্তী পদক্ষেপ" : "Recommended next step"}:</strong> ${summary.nextStep}</p>
   `;
 }
 
@@ -4642,8 +5240,8 @@ function finishVisualFocusTest() {
   setVisualFocusPanelsActive(false);
   const results = eyeTestState.results;
   if (!results.length) {
-    setVisualFocusSessionStatus("No usable rounds were recorded.", "small text-warning mt-3 mb-0");
-    resetVisualFocusOutputs("Start the visual focus test to generate a result.");
+    setVisualFocusSessionStatus(isBengaliUi() ? "কোনো ব্যবহারযোগ্য রাউন্ড রেকর্ড হয়নি।" : "No usable rounds were recorded.", "small text-warning mt-3 mb-0");
+    resetVisualFocusOutputs(isBengaliUi() ? "ফল তৈরি করতে ভিজ্যুয়াল ফোকাস টেস্ট শুরু করুন।" : "Start the visual focus test to generate a result.");
     return false;
   }
   const totalRounds = results.length;
@@ -4662,33 +5260,33 @@ function finishVisualFocusTest() {
   const consistencyScore = clamp(100 - (consistencyValue * 150), 0, 100);
   const eyeOverallScore = (accuracyScore * 0.35) + (speedScore * 0.25) + (controlScore * 0.20) + (consistencyScore * 0.20);
   const eyeStatus = eyeOverallScore >= 80
-    ? "Strong visual focus pattern"
+    ? (isBengaliUi() ? "দৃঢ় ভিজ্যুয়াল ফোকাস প্যাটার্ন" : "Strong visual focus pattern")
     : eyeOverallScore >= 65
-      ? "Usable visual focus with mild strain"
-      : "Needs extra visual support";
+      ? (isBengaliUi() ? "হালকা চাপসহ ব্যবহারযোগ্য ভিজ্যুয়াল ফোকাস" : "Usable visual focus with mild strain")
+      : (isBengaliUi() ? "অতিরিক্ত ভিজ্যুয়াল সহায়তা দরকার" : "Needs extra visual support");
   const eyeStatusClass = eyeOverallScore >= 80 ? "text-success fw-semibold" : eyeOverallScore >= 65 ? "text-warning fw-semibold" : "text-danger fw-semibold";
   const checklistItems = [
     {
-      label: "First-try accuracy",
-      status: accuracyScore >= 85 ? "Strong" : accuracyScore >= 65 ? "Fair" : "Needs support",
+      label: isBengaliUi() ? "প্রথম চেষ্টার নির্ভুলতা" : "First-try accuracy",
+      status: accuracyScore >= 85 ? (isBengaliUi() ? "দৃঢ়" : "Strong") : accuracyScore >= 65 ? (isBengaliUi() ? "মোটামুটি" : "Fair") : (isBengaliUi() ? "সহায়তা দরকার" : "Needs support"),
       className: accuracyScore >= 85 ? "text-success fw-semibold" : accuracyScore >= 65 ? "text-warning fw-semibold" : "text-danger fw-semibold",
       detail: `${firstTryCorrectCount} of ${totalRounds} targets were chosen correctly on the first tap.`,
     },
     {
-      label: "Response speed",
-      status: speedScore >= 80 ? "On target" : speedScore >= 60 ? "Slightly slow" : "Slow for this mode",
+      label: isBengaliUi() ? "প্রতিক্রিয়ার গতি" : "Response speed",
+      status: speedScore >= 80 ? (isBengaliUi() ? "লক্ষ্যে" : "On target") : speedScore >= 60 ? (isBengaliUi() ? "সামান্য ধীর" : "Slightly slow") : (isBengaliUi() ? "এই মোডের জন্য ধীর" : "Slow for this mode"),
       className: speedScore >= 80 ? "text-success fw-semibold" : speedScore >= 60 ? "text-warning fw-semibold" : "text-danger fw-semibold",
       detail: `Average response time was ${averageResponseMs.toFixed(0)} ms. Target for this mode is about ${preset.targetResponseMs} ms.`,
     },
     {
-      label: "Tap control",
-      status: totalWrongClicks <= Math.ceil(totalRounds / 3) ? "Controlled" : "Too many extra taps",
+      label: isBengaliUi() ? "ট্যাপ নিয়ন্ত্রণ" : "Tap control",
+      status: totalWrongClicks <= Math.ceil(totalRounds / 3) ? (isBengaliUi() ? "নিয়ন্ত্রিত" : "Controlled") : (isBengaliUi() ? "অনেক বেশি অতিরিক্ত ট্যাপ" : "Too many extra taps"),
       className: totalWrongClicks <= Math.ceil(totalRounds / 3) ? "text-success fw-semibold" : "text-warning fw-semibold",
       detail: `${totalWrongClicks} wrong taps were made across ${totalRounds} rounds.`,
     },
     {
-      label: "Consistency",
-      status: consistencyScore >= 80 ? "Consistent" : consistencyScore >= 60 ? "Some variation" : "Large variation",
+      label: isBengaliUi() ? "সামঞ্জস্য" : "Consistency",
+      status: consistencyScore >= 80 ? (isBengaliUi() ? "সামঞ্জস্যপূর্ণ" : "Consistent") : consistencyScore >= 60 ? (isBengaliUi() ? "কিছু তারতম্য" : "Some variation") : (isBengaliUi() ? "বড় তারতম্য" : "Large variation"),
       className: consistencyScore >= 80 ? "text-success fw-semibold" : consistencyScore >= 60 ? "text-warning fw-semibold" : "text-danger fw-semibold",
       detail: `Response-time variation score is ${consistencyScore.toFixed(1)}%.`,
     },
@@ -4700,23 +5298,25 @@ function finishVisualFocusTest() {
     { key: "consistency", score: consistencyScore },
   ].sort((a, b) => a.score - b.score)[0];
   const interpretation = eyeOverallScore >= 80
-    ? "The user stayed visually organized and responded with strong control in this short matching task."
+    ? (isBengaliUi() ? "ব্যবহারকারী ভিজ্যুয়ালি সংগঠিত ছিল এবং এই ছোট মিল খোঁজার কাজে ভালো নিয়ন্ত্রণ দেখিয়েছে।" : "The user stayed visually organized and responded with strong control in this short matching task.")
     : eyeOverallScore >= 65
-      ? "The task was completed successfully, but the response pattern showed mild slowing or inconsistency."
-      : "The response pattern suggests the user may benefit from shorter visual tasks and more guided practice.";
+      ? (isBengaliUi() ? "কাজটি সফলভাবে সম্পন্ন হয়েছে, তবে প্রতিক্রিয়ার ধরণে সামান্য ধীরগতি বা অসামঞ্জস্য দেখা গেছে।" : "The task was completed successfully, but the response pattern showed mild slowing or inconsistency.")
+      : (isBengaliUi() ? "প্রতিক্রিয়ার ধরণ বলছে ছোট ভিজ্যুয়াল কাজ এবং আরও নির্দেশিত অনুশীলন উপকারী হতে পারে।" : "The response pattern suggests the user may benefit from shorter visual tasks and more guided practice.");
   const nextStep = weakestArea.key === "accuracy"
-    ? "Repeat the same mode with fewer distractors and encourage careful matching before tapping."
+    ? (isBengaliUi() ? "কম বিভ্রান্তি রেখে একই মোড আবার করুন, এবং ট্যাপের আগে ভালোভাবে মিলিয়ে নিন।" : "Repeat the same mode with fewer distractors and encourage careful matching before tapping.")
     : weakestArea.key === "speed"
-      ? "Try one shorter round first, then repeat this mode and aim for steadier response speed."
+      ? (isBengaliUi() ? "প্রথমে একটি ছোট রাউন্ড করুন, তারপর এই মোডটি আবার করে আরও স্থির প্রতিক্রিয়া গতি রাখুন।" : "Try one shorter round first, then repeat this mode and aim for steadier response speed.")
       : weakestArea.key === "control"
-        ? "Encourage a brief pause before tapping so the user confirms the target first."
-        : "Repeat the task after a short break and watch for a more even response pace.";
+        ? (isBengaliUi() ? "ট্যাপ করার আগে একটু থামতে বলুন, যাতে ব্যবহারকারী আগে লক্ষ্যটি নিশ্চিত করতে পারে।" : "Encourage a brief pause before tapping so the user confirms the target first.")
+        : (isBengaliUi() ? "একটি ছোট বিরতির পরে কাজটি আবার করুন এবং আরও সমান প্রতিক্রিয়া গতি লক্ষ্য করুন।" : "Repeat the task after a short break and watch for a more even response pace.");
 
-  setVisualFocusSessionStatus(`Completed ${preset.label}. The result has been saved automatically in the background.`, "small text-success mt-3 mb-0");
+  setVisualFocusSessionStatus(isBengaliUi()
+    ? `${preset.label} সম্পন্ন হয়েছে। ফলাফল ব্যাকগ্রাউন্ডে স্বয়ংক্রিয়ভাবে সংরক্ষিত হয়েছে।`
+    : `Completed ${preset.label}. The result has been saved automatically in the background.`, "small text-success mt-3 mb-0");
   renderVisualFocusQuickStats({ totalRounds, averageResponseMs, itemsPerMinute, firstTryCorrectCount, totalWrongClicks, sessionSec });
   renderVisualFocusChecklist(checklistItems);
   renderVisualFocusRecommendation({
-    statusText: `${eyeStatus} in ${preset.label.toLowerCase()}.`,
+    statusText: isBengaliUi() ? `${preset.label} মোডে ${eyeStatus}.` : `${eyeStatus} in ${preset.label.toLowerCase()}.`,
     interpretation,
     nextStep,
   });
@@ -4725,7 +5325,7 @@ function finishVisualFocusTest() {
   const resultNode = document.getElementById("eyeResult");
   if (resultNode) {
     resultNode.innerHTML = `
-      <p><strong>Test Mode:</strong> ${preset.label}</p>
+    <p><strong>Test Mode:</strong> ${preset.label}</p>
       <p><strong>Rounds Completed:</strong> ${totalRounds}</p>
       <p><strong>Items Per Minute:</strong> ${itemsPerMinute.toFixed(1)}</p>
       <p><strong>Average Response Time:</strong> ${averageResponseMs.toFixed(0)} ms</p>
@@ -4734,8 +5334,8 @@ function finishVisualFocusTest() {
       <p><strong>Consistency Score:</strong> ${consistencyScore.toFixed(1)}%</p>
       <p><strong>Tap Control Score:</strong> ${controlScore.toFixed(1)}%</p>
       <p><strong>Speed Score:</strong> ${speedScore.toFixed(1)}%</p>
-      <p><strong>Simple Summary:</strong> ${eyeStatus}.</p>
-      <p><strong>Interpretation:</strong> This result is based on first-try accuracy, response speed, wrong taps, and response consistency.</p>
+      <p><strong>${isBengaliUi() ? "সহজ সারাংশ" : "Simple Summary"}:</strong> ${eyeStatus}.</p>
+      <p><strong>${isBengaliUi() ? "ব্যাখ্যা" : "Interpretation"}:</strong> ${isBengaliUi() ? "এই ফলাফল প্রথম চেষ্টার নির্ভুলতা, প্রতিক্রিয়ার গতি, ভুল ট্যাপ, এবং প্রতিক্রিয়া-সামঞ্জস্যের উপর ভিত্তি করে।" : "This result is based on first-try accuracy, response speed, wrong taps, and response consistency."}</p>
     `;
   }
   eyeChart = drawChart(eyeChart, "eyeChart", {
@@ -4826,8 +5426,8 @@ function startVisualFocusTest() {
   eyeTestState.startedAt = performance.now();
   updateVisualFocusButtons();
   setVisualFocusPanelsActive(true);
-  setVisualFocusSessionStatus("Visual focus test started. Results will be saved automatically after the last round.", "small text-primary mt-3 mb-0");
-  resetVisualFocusOutputs("Test in progress. Results will appear automatically when the final round ends.");
+  setVisualFocusSessionStatus(isBengaliUi() ? "ভিজ্যুয়াল ফোকাস টেস্ট শুরু হয়েছে। শেষ রাউন্ডের পরে ফলাফল স্বয়ংক্রিয়ভাবে সংরক্ষিত হবে।" : "Visual focus test started. Results will be saved automatically after the last round.", "small text-primary mt-3 mb-0");
+  resetVisualFocusOutputs(isBengaliUi() ? "পরীক্ষা চলছে। চূড়ান্ত রাউন্ড শেষ হলে ফলাফল স্বয়ংক্রিয়ভাবে দেখাবে।" : "Test in progress. Results will appear automatically when the final round ends.");
   renderVisualFocusQuickStats(null);
   startVisualFocusRound();
 }
@@ -4842,9 +5442,9 @@ function resetVisualFocusTest() {
   updateVisualFocusProgress();
   applyVisualFocusPreset(document.getElementById("eyePreset")?.value || "letters");
   const statusNode = document.getElementById("eyeTestStatus");
-  if (statusNode) statusNode.textContent = "Ready for a new visual focus test.";
-  setVisualFocusSessionStatus("No test completed yet.");
-  resetVisualFocusOutputs("Start the visual focus test to generate a result.");
+  if (statusNode) statusNode.textContent = isBengaliUi() ? "নতুন ভিজ্যুয়াল ফোকাস টেস্টের জন্য প্রস্তুত।" : "Ready for a new visual focus test.";
+  setVisualFocusSessionStatus(isBengaliUi() ? "এখনও কোনো পরীক্ষা সম্পন্ন হয়নি।" : "No test completed yet.");
+  resetVisualFocusOutputs(isBengaliUi() ? "ফল তৈরি করতে ভিজ্যুয়াল ফোকাস টেস্ট শুরু করুন।" : "Start the visual focus test to generate a result.");
   renderVisualFocusQuickStats(null);
 }
 
@@ -4854,6 +5454,9 @@ async function initializeDashboard() {
   const therapyLanguage = document.getElementById("therapyLanguage")?.value || "Bengali";
   const therapySessionType = document.getElementById("therapyType")?.value || "Sound Drill";
   const eyePreset = document.getElementById("eyePreset")?.value || "letters";
+  applyDashboardLanguage(language);
+  const therapyLanguageNode = document.getElementById("therapyLanguage");
+  if (therapyLanguageNode) therapyLanguageNode.value = language;
   await loadBengaliListeningSet();
   pickListeningParagraph(language);
   renderRandomSpellingWords(language);
@@ -4861,7 +5464,7 @@ async function initializeDashboard() {
   renderTherapyTargetOptions(therapyLanguage, therapySessionType);
   applyVisualFocusPreset(eyePreset);
   updateTherapyPromptUI();
-  setTherapyRoundStatus("The system will listen to each spoken response and auto-fill the therapy metrics below.");
+  setTherapyRoundStatus(isBengaliUi(language) ? "সিস্টেম প্রতিটি উচ্চারিত উত্তর শুনবে এবং নীচের থেরাপি মেট্রিক স্বয়ংক্রিয়ভাবে পূরণ করবে।" : "The system will listen to each spoken response and auto-fill the therapy metrics below.");
   const initTherapy = (id, value) => {
     const node = document.getElementById(id);
     if (node) node.value = value;
@@ -4872,8 +5475,8 @@ async function initializeDashboard() {
   setNodeText("readingPassThreshold", `${READING_PASS_THRESHOLD}%`);
   setNodeText("audioPassThreshold", `${AUDIO_PASS_THRESHOLD}%`);
   setNodeText("spellingPassThreshold", `${SPELLING_PASS_THRESHOLD}%`);
-  resetVisualFocusOutputs("Start the visual focus test to generate a result.");
-  setVisualFocusSessionStatus("No test completed yet.");
+  resetVisualFocusOutputs(isBengaliUi(language) ? "ফল তৈরি করতে ভিজ্যুয়াল ফোকাস টেস্ট শুরু করুন।" : "Start the visual focus test to generate a result.");
+  setVisualFocusSessionStatus(isBengaliUi(language) ? "এখনও কোনো পরীক্ষা সম্পন্ন হয়নি।" : "No test completed yet.");
   renderVisualFocusQuickStats(null);
   updateVisualFocusButtons();
   renderVisualFocusGrid();

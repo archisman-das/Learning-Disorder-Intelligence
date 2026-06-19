@@ -12,7 +12,6 @@
   <nav class="navbar navbar-dark bg-primary shadow-sm">
     <div class="container-fluid px-3">
       <span class="navbar-brand mb-0 h1">Learning Disorder Intelligence</span>
-      <span class="text-white-50 d-none d-md-inline">Standalone local dashboard (Live Server ready)</span>
     </div>
   </nav>
 
@@ -65,9 +64,9 @@
                       </span>
                     </div>
                     <p id="readingTestStatus" class="mt-2 mb-0">Not started.</p>
-                    <p class="mt-2 mb-1 small"><strong>Auto Score:</strong> <span id="readingAutoScore">-</span></p>
-                    <p class="mb-1 small"><strong>Passing Threshold:</strong> <span id="readingPassThreshold">60%</span></p>
-                    <p class="mb-0 small"><strong>Result:</strong> <span id="readingPassResult">-</span></p>
+                    <p class="mt-2 mb-1 small"><strong id="readingAutoScoreLabel">Auto Score:</strong> <span id="readingAutoScore">-</span></p>
+                    <p class="mb-1 small"><strong id="readingPassThresholdLabel">Passing Threshold:</strong> <span id="readingPassThreshold">60%</span></p>
+                    <p class="mb-0 small"><strong id="readingPassResultLabel">Result:</strong> <span id="readingPassResult">-</span></p>
                   </div>
                 </div>
                 <div class="col-md-6">
@@ -85,9 +84,9 @@
                       <button id="reloadAudioParagraph" class="btn btn-outline-secondary btn-sm">Skip</button>
                     </div>
                     <p id="audioTestStatus" class="mt-2 mb-0">Load a sample and listen carefully.</p>
-                    <p class="mt-2 mb-1 small"><strong>Listening Score:</strong> <span id="audioAutoScore">-</span></p>
-                    <p class="mb-1 small"><strong>Passing Threshold:</strong> <span id="audioPassThreshold">70%</span></p>
-                    <p class="mb-0 small"><strong>Result:</strong> <span id="audioPassResult">-</span></p>
+                    <p class="mt-2 mb-1 small"><strong id="audioAutoScoreLabel">Listening Score:</strong> <span id="audioAutoScore">-</span></p>
+                    <p class="mb-1 small"><strong id="audioPassThresholdLabel">Passing Threshold:</strong> <span id="audioPassThreshold">70%</span></p>
+                    <p class="mb-0 small"><strong id="audioPassResultLabel">Result:</strong> <span id="audioPassResult">-</span></p>
                   </div>
                 </div>
               </div>
@@ -102,9 +101,9 @@
                     </div>
                     <button id="scoreSpellingTest" class="btn btn-outline-primary btn-sm mt-2">Manual Score</button>
                     <p id="spellingTestStatus" class="mt-2 mb-0">Not scored.</p>
-                    <p class="mt-2 mb-1 small"><strong>Spelling Score:</strong> <span id="spellingAutoScore">-</span></p>
-                    <p class="mb-1 small"><strong>Passing Threshold:</strong> <span id="spellingPassThreshold">67%</span></p>
-                    <p class="mb-0 small"><strong>Result:</strong> <span id="spellingPassResult">-</span></p>
+                    <p class="mt-2 mb-1 small"><strong id="spellingAutoScoreLabel">Spelling Score:</strong> <span id="spellingAutoScore">-</span></p>
+                    <p class="mb-1 small"><strong id="spellingPassThresholdLabel">Passing Threshold:</strong> <span id="spellingPassThreshold">67%</span></p>
+                    <p class="mb-0 small"><strong id="spellingPassResultLabel">Result:</strong> <span id="spellingPassResult">-</span></p>
                   </div>
                 </div>
               </div>
@@ -116,15 +115,15 @@
                       <tr><th>Segment</th><th>Score</th><th>Threshold</th><th>Status</th></tr>
                     </thead>
                     <tbody>
-                      <tr><td>Reading</td><td id="matrixReadingScore">-</td><td id="matrixReadingThreshold">60%</td><td id="matrixReadingStatus">Pending</td></tr>
-                      <tr><td>Audio</td><td id="matrixAudioScore">-</td><td id="matrixAudioThreshold">70%</td><td id="matrixAudioStatus">Pending</td></tr>
-                      <tr><td>Spelling</td><td id="matrixSpellingScore">-</td><td id="matrixSpellingThreshold">67%</td><td id="matrixSpellingStatus">Pending</td></tr>
+                      <tr><td id="matrixReadingLabel">Reading</td><td id="matrixReadingScore">-</td><td id="matrixReadingThreshold">60%</td><td id="matrixReadingStatus">Pending</td></tr>
+                      <tr><td id="matrixAudioLabel">Audio</td><td id="matrixAudioScore">-</td><td id="matrixAudioThreshold">70%</td><td id="matrixAudioStatus">Pending</td></tr>
+                      <tr><td id="matrixSpellingLabel">Spelling</td><td id="matrixSpellingScore">-</td><td id="matrixSpellingThreshold">67%</td><td id="matrixSpellingStatus">Pending</td></tr>
                     </tbody>
                   </table>
                 </div>
                 <div class="score-overall">
-                  <p class="mb-1"><strong>Overall Score:</strong> <span id="overallSegmentScore">-</span></p>
-                  <p class="mb-0"><strong>Overall Status:</strong> <span id="overallSegmentStatus">Pending</span></p>
+                  <p class="mb-1"><strong id="overallSegmentScoreLabel">Overall Score:</strong> <span id="overallSegmentScore">-</span></p>
+                  <p class="mb-0"><strong id="overallSegmentStatusLabel">Overall Status:</strong> <span id="overallSegmentStatus">Pending</span></p>
                 </div>
               </div>
               <button id="runScreening" class="btn btn-primary mt-3">Manual Refresh Screening</button>
@@ -168,22 +167,22 @@
                   </span>
                 </div>
                 <div class="guide-box mt-2">
-                  <h6 class="mb-2">Easy Steps</h6>
+                  <h6 class="mb-2" id="therapyEasyStepsTitle">Easy Steps</h6>
                   <ol class="mb-2 small ps-3">
-                    <li>Click <strong>Start Round</strong> once.</li>
-                    <li>Read the shown prompt aloud when the mic starts listening.</li>
-                    <li>After each response, the prompt changes automatically.</li>
-                    <li>The system then listens for the next prompt automatically.</li>
+                    <li id="therapyEasyStep1">Click <strong>Start Round</strong> once.</li>
+                    <li id="therapyEasyStep2">Read the shown prompt aloud when the mic starts listening.</li>
+                    <li id="therapyEasyStep3">After each response, the prompt changes automatically.</li>
+                    <li id="therapyEasyStep4">The system then listens for the next prompt automatically.</li>
                   </ol>
                 </div>
                 <div class="guide-box mt-2">
-                  <h6 class="mb-2">Current Prompt</h6>
+                  <h6 class="mb-2" id="therapyCurrentPromptTitle">Current Prompt</h6>
                   <p id="therapyPromptText" class="mb-1">Press Start Round to generate the first therapy prompt.</p>
                   <p id="therapyRoundProgress" class="mb-1 small text-muted">Round not started.</p>
                   <p id="therapyRoundStatus" class="mb-0 small text-muted">The system will listen to each spoken response and fill the session values automatically.</p>
                 </div>
                 <div class="guide-box mt-2">
-                  <h6 class="mb-2">Recognized Response</h6>
+                  <h6 class="mb-2" id="therapyRecognizedResponseTitle">Recognized Response</h6>
                   <p id="therapyTranscriptText" class="mb-0 small text-muted">No response captured yet.</p>
                 </div>
               </div>
@@ -217,12 +216,12 @@
               </div>
               <div class="alert alert-primary py-2">Run a simple on-screen symbol test here. The result is scored automatically and saved in the background for the final report.</div>
               <div class="guide-box mb-2">
-                <h6 class="mb-2">How To Use</h6>
+                <h6 class="mb-2" id="eyeHowToUseTitle">How To Use</h6>
                 <ol class="mb-0 small ps-3">
-                  <li>Choose a test mode like letters, digits, or mixed symbols.</li>
-                  <li>Press <strong>Start Test</strong>.</li>
-                  <li>Tap the matching symbol in each round as quickly and accurately as you can. Each test now runs for 20 to 24 rounds to give a more reliable consistency score.</li>
-                  <li>When the last round finishes, the result is analyzed and saved automatically.</li>
+                  <li id="eyeHowToUseStep1">Choose a test mode like letters, digits, or mixed symbols.</li>
+                  <li id="eyeHowToUseStep2">Press <strong>Start Test</strong>.</li>
+                  <li id="eyeHowToUseStep3">Tap the matching symbol in each round as quickly and accurately as you can. Each test now runs for 20 to 24 rounds to give a more reliable consistency score.</li>
+                  <li id="eyeHowToUseStep4">When the last round finishes, the result is analyzed and saved automatically.</li>
                 </ol>
               </div>
               <div class="row g-2">
@@ -233,8 +232,8 @@
                 <div class="row g-3 align-items-stretch">
                   <div class="col-xl-4">
                     <div class="eye-target-card h-100">
-                      <span class="eye-live-badge">Round Target</span>
-                      <p class="small text-muted mb-2">Tap the same symbol from the answer grid.</p>
+                      <span class="eye-live-badge" id="eyeRoundTargetLabel">Round Target</span>
+                      <p class="small text-muted mb-2" id="eyeRoundTargetHelp">Tap the same symbol from the answer grid.</p>
                       <div id="eyeTargetSymbol" class="eye-target-symbol"></div>
                       <p id="eyeTestProgress" class="small text-muted mb-0">Press Start Test to begin.</p>
                     </div>
@@ -242,7 +241,7 @@
                   <div class="col-xl-8">
                     <div class="eye-test-board h-100">
                       <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                        <h6 class="mb-0">Interactive Test Board</h6>
+                        <h6 class="mb-0" id="eyeInteractiveBoardLabel">Interactive Test Board</h6>
                         <div class="d-flex gap-2 flex-wrap">
                           <button id="startEyeVisualTest" class="btn btn-primary btn-sm">Start Test</button>
                           <button id="resetEyeVisualTest" class="btn btn-outline-secondary btn-sm">Reset</button>
@@ -262,8 +261,8 @@
                 <p class="mb-0 text-muted small">After analysis, this area will show simple checks for speed, accuracy, control, and consistency.</p>
               </div>
               <div id="eyeSummaryBand" class="score-overall mt-3">
-                <p class="mb-1"><strong>Visual Focus Score:</strong> <span id="eyeOverallScore">-</span></p>
-                <p class="mb-0"><strong>Overall Visual Status:</strong> <span id="eyeOverallStatus">Pending</span></p>
+                <p class="mb-1"><strong id="eyeOverallScoreLabel">Visual Focus Score:</strong> <span id="eyeOverallScore">-</span></p>
+                <p class="mb-0"><strong id="eyeOverallStatusLabel">Overall Visual Status:</strong> <span id="eyeOverallStatus">Pending</span></p>
               </div>
               <div class="row g-3 mt-2">
                 <div class="col-xl-6"><div id="eyeResult" class="result-card"></div></div>
@@ -289,15 +288,15 @@
               </div>
               <div id="testStatus" class="result-card mb-3"></div>
               <div class="guide-box mb-3" id="reportStudentCard">
-                <h6 class="mb-2">Student Report Details</h6>
-                <p class="small text-muted mb-2">The teacher, parent, or test correspondent should fill these details before generating the report. These details will be included automatically in the PDF.</p>
+                <h6 class="mb-2" id="reportStudentCardTitle">Student Report Details</h6>
+                <p class="small text-muted mb-2" id="reportStudentCardHelp">The teacher, parent, or test correspondent should fill these details before generating the report. These details will be included automatically in the PDF.</p>
                 <div class="row g-2">
-                  <div class="col-md-6"><label class="form-label">Student Name</label><input id="reportStudentName" class="form-control" type="text" placeholder="Enter student name"></div>
-                  <div class="col-md-2"><label class="form-label">Age</label><input id="reportStudentAge" class="form-control" type="text" placeholder="Age"></div>
-                  <div class="col-md-2"><label class="form-label">Class</label><input id="reportStudentClass" class="form-control" type="text" placeholder="Class"></div>
-                  <div class="col-md-2"><label class="form-label">Roll No</label><input id="reportStudentRoll" class="form-control" type="text" placeholder="Roll"></div>
-                  <div class="col-md-4"><label class="form-label">Section</label><input id="reportStudentSection" class="form-control" type="text" placeholder="Section"></div>
-                  <div class="col-md-8"><label class="form-label">School Name</label><input id="reportSchoolName" class="form-control" type="text" placeholder="Enter school name"></div>
+                  <div class="col-md-6"><label class="form-label" id="reportStudentNameLabel">Student Name</label><input id="reportStudentName" class="form-control" type="text" placeholder="Enter student name"></div>
+                  <div class="col-md-2"><label class="form-label" id="reportStudentAgeLabel">Age</label><input id="reportStudentAge" class="form-control" type="text" placeholder="Age"></div>
+                  <div class="col-md-2"><label class="form-label" id="reportStudentClassLabel">Class</label><input id="reportStudentClass" class="form-control" type="text" placeholder="Class"></div>
+                  <div class="col-md-2"><label class="form-label" id="reportStudentRollLabel">Roll No</label><input id="reportStudentRoll" class="form-control" type="text" placeholder="Roll"></div>
+                  <div class="col-md-4"><label class="form-label" id="reportStudentSectionLabel">Section</label><input id="reportStudentSection" class="form-control" type="text" placeholder="Section"></div>
+                  <div class="col-md-8"><label class="form-label" id="reportSchoolNameLabel">School Name</label><input id="reportSchoolName" class="form-control" type="text" placeholder="Enter school name"></div>
                 </div>
               </div>
               <div class="d-flex gap-2 flex-wrap">
@@ -306,9 +305,9 @@
                 <button id="downloadFinalPdf" class="btn btn-outline-secondary" disabled>Download Report PDF</button>
               </div>
               <div class="row g-2 mt-2">
-                <div class="col-md-4"><div class="score-overall"><p class="mb-1"><strong>Consensus Level:</strong> <span id="labConsensusLevel">-</span></p><p class="mb-0"><strong>Average Risk:</strong> <span id="labAverageRisk">-</span></p></div></div>
-                <div class="col-md-4"><div class="score-overall"><p class="mb-1"><strong>Most Cautious Model:</strong> <span id="labMostCautious">-</span></p><p class="mb-0"><strong>Most Confident Model:</strong> <span id="labMostConfident">-</span></p></div></div>
-                <div class="col-md-4"><div class="score-overall"><p class="mb-1"><strong>Decision Stability:</strong> <span id="labDecisionStability">-</span></p><p class="mb-0"><strong>Readiness:</strong> <span id="labReadinessStatus">Pending</span></p></div></div>
+                <div class="col-md-4"><div class="score-overall"><p class="mb-1"><strong id="labConsensusLevelLabel">Consensus Level:</strong> <span id="labConsensusLevel">-</span></p><p class="mb-0"><strong id="labAverageRiskLabel">Average Risk:</strong> <span id="labAverageRisk">-</span></p></div></div>
+                <div class="col-md-4"><div class="score-overall"><p class="mb-1"><strong id="labMostCautiousLabel">Most Cautious Model:</strong> <span id="labMostCautious">-</span></p><p class="mb-0"><strong id="labMostConfidentLabel">Most Confident Model:</strong> <span id="labMostConfident">-</span></p></div></div>
+                <div class="col-md-4"><div class="score-overall"><p class="mb-1"><strong id="labDecisionStabilityLabel">Decision Stability:</strong> <span id="labDecisionStability">-</span></p><p class="mb-0"><strong id="labReadinessStatusLabel">Readiness:</strong> <span id="labReadinessStatus">Pending</span></p></div></div>
               </div>
               <div class="row g-3 mt-2">
                 <div class="col-xl-7">
@@ -343,46 +342,46 @@
                   <div class="col-xl-7">
                     <div class="biomarker-upload-card h-100">
                       <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                        <h6 class="mb-0">Step 1: Upload Dataset</h6>
-                        <span class="eye-live-badge">CSV only</span>
+                        <h6 class="mb-0" id="biomarkerStep1Title">Step 1: Upload Dataset</h6>
+                        <span class="eye-live-badge" id="biomarkerFileTypeBadge">CSV only</span>
                       </div>
-                      <label class="form-label">Dataset CSV</label>
+                      <label class="form-label" id="biomarkerDatasetLabel">Dataset CSV</label>
                       <input type="file" id="manifestFile" class="form-control" accept=".csv,text/csv">
                       <p id="biomarkerFileStatus" class="small text-muted mt-2 mb-0">No dataset selected yet.</p>
                       <div id="biomarkerDetectedInfo" class="guide-box mt-3">
-                        <h6 class="mb-2">Mandatory file requirements</h6>
-                        <p class="small mb-2">For reliable biomarker analysis, your file must include:</p>
+                        <h6 class="mb-2" id="biomarkerRequirementsTitle">Mandatory file requirements</h6>
+                        <p class="small mb-2" id="biomarkerRequirementsIntro">For reliable biomarker analysis, your file must include:</p>
                         <ul class="small mb-0 ps-3">
-                          <li>one structured table with a clear header row</li>
-                          <li>one label column such as `label`, `risk_label`, `class`, or `target`</li>
-                          <li>numeric feature columns such as reading speed, error count, hesitation count, gaze values, or timing values</li>
-                          <li>one sample per row</li>
+                          <li id="biomarkerReq1">one structured table with a clear header row</li>
+                          <li id="biomarkerReq2">one label column such as `label`, `risk_label`, `class`, or `target`</li>
+                          <li id="biomarkerReq3">numeric feature columns such as reading speed, error count, hesitation count, gaze values, or timing values</li>
+                          <li id="biomarkerReq4">one sample per row</li>
                         </ul>
                       </div>
                     </div>
                   </div>
                   <div class="col-xl-5">
                     <div class="biomarker-settings-card h-100">
-                      <h6 class="mb-2">Step 2: Choose Analysis Settings</h6>
+                      <h6 class="mb-2" id="biomarkerStep2Title">Step 2: Choose Analysis Settings</h6>
                       <div class="row g-2">
                         <div class="col-12">
-                          <label class="form-label">Risk Label Column</label>
+                          <label class="form-label" id="biomarkerRiskLabel">Risk Label Column</label>
                           <input type="text" id="labelColumn" class="form-control" value="label" list="labelColumnSuggestions">
                           <datalist id="labelColumnSuggestions"></datalist>
-                          <p class="small text-muted mt-1 mb-0">If the system detects a likely label column, it will suggest it automatically.</p>
+                          <p class="small text-muted mt-1 mb-0" id="biomarkerLabelHint">If the system detects a likely label column, it will suggest it automatically.</p>
                         </div>
                         <div class="col-md-6">
-                          <label class="form-label">Show Top Results</label>
+                          <label class="form-label" id="biomarkerTopResultsLabel">Show Top Results</label>
                           <input type="number" id="biomarkerTopN" class="form-control" min="3" max="20" value="10">
                         </div>
                         <div class="col-md-6">
-                          <label class="form-label">Feature Family</label>
+                          <label class="form-label" id="biomarkerFamilyLabel">Feature Family</label>
                           <select id="biomarkerFamily" class="form-select"><option value="all">All families</option><option value="reading">Reading</option><option value="speech">Speech</option><option value="handwriting">Handwriting</option><option value="eye_tracking">Eye Tracking</option><option value="timing">Timing</option></select>
                         </div>
                         <div class="col-12">
-                          <label class="form-label">Minimum Importance</label>
+                          <label class="form-label" id="biomarkerMinImportanceLabel">Minimum Importance</label>
                           <input type="number" id="biomarkerMinImportance" class="form-control" min="0" max="1" step="0.01" value="0.10">
-                          <p class="small text-muted mt-1 mb-0">Lower values show more markers. Higher values keep only stronger signals.</p>
+                          <p class="small text-muted mt-1 mb-0" id="biomarkerImportanceHint">Lower values show more markers. Higher values keep only stronger signals.</p>
                         </div>
                       </div>
                       <div class="d-flex gap-2 flex-wrap mt-3">
@@ -394,13 +393,13 @@
                 </div>
               </div>
               <div class="row g-2 mt-3">
-                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong>Samples</strong></p><p class="mb-0" id="biomarkerSamplesMetric">-</p></div></div>
-                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong>Markers Checked</strong></p><p class="mb-0" id="biomarkerEvaluatedMetric">-</p></div></div>
-                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong>Markers Shown</strong></p><p class="mb-0" id="biomarkerShownMetric">-</p></div></div>
-                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong>Strongest Signal</strong></p><p class="mb-0" id="biomarkerStrongestMetric">-</p></div></div>
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong id="biomarkerSamplesLabel">Samples</strong></p><p class="mb-0" id="biomarkerSamplesMetric">-</p></div></div>
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong id="biomarkerEvaluatedLabel">Markers Checked</strong></p><p class="mb-0" id="biomarkerEvaluatedMetric">-</p></div></div>
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong id="biomarkerShownLabel">Markers Shown</strong></p><p class="mb-0" id="biomarkerShownMetric">-</p></div></div>
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong id="biomarkerStrongestLabel">Strongest Signal</strong></p><p class="mb-0" id="biomarkerStrongestMetric">-</p></div></div>
               </div>
               <div id="biomarkerSummary" class="result-card mt-3">
-                <p class="mb-0 text-muted">Upload a dataset and run the analysis to see a plain-language biomarker summary here.</p>
+                <p class="mb-0 text-muted" id="biomarkerSummaryText">Upload a dataset and run the analysis to see a plain-language biomarker summary here.</p>
               </div>
               <div class="chart-wrap mt-3"><canvas id="biomarkerChart"></canvas></div>
               <div class="table-responsive mt-3">
@@ -422,10 +421,10 @@
               </div>
               <div class="alert alert-primary py-2">Review saved screening, therapy, eye-tracking, biomarker, and final report sessions in one place. Select any record to see a cleaner breakdown.</div>
               <div class="row g-2 mb-2">
-                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong>Total Records</strong></p><p class="mb-0" id="recordTotalCount">0</p></div></div>
-                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong>Filtered Results</strong></p><p class="mb-0" id="recordFilteredCount">0</p></div></div>
-                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong>Latest Entry</strong></p><p class="mb-0" id="recordLatestType">-</p></div></div>
-                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong>Last Saved</strong></p><p class="mb-0" id="recordLatestTime">-</p></div></div>
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong id="recordTotalLabel">Total Records</strong></p><p class="mb-0" id="recordTotalCount">0</p></div></div>
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong id="recordFilteredLabel">Filtered Results</strong></p><p class="mb-0" id="recordFilteredCount">0</p></div></div>
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong id="recordLatestLabel">Latest Entry</strong></p><p class="mb-0" id="recordLatestType">-</p></div></div>
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong id="recordSavedLabel">Last Saved</strong></p><p class="mb-0" id="recordLatestTime">-</p></div></div>
               </div>
               <div class="d-flex gap-2 flex-wrap">
                 <select id="recordTypeFilter" class="form-select form-select-sm" style="max-width: 220px;">
@@ -443,7 +442,7 @@
               <div class="row g-3 mt-2">
                 <div class="col-xl-7">
                   <div id="recordsEmptyState" class="result-card mb-2">
-                    <p class="mb-0 text-muted">No saved sessions yet. Run a test to start building your local history.</p>
+                    <p class="mb-0 text-muted" id="recordsEmptyStateText">No saved sessions yet. Run a test to start building your local history.</p>
                   </div>
                   <div class="table-responsive">
                     <table class="table table-sm table-hover align-middle">

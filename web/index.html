@@ -6,9 +6,7 @@
   <title>Learning Disorder Intelligence Dashboard</title>
   <script>
     (function () {
-      const host = window.location.hostname || "";
-      const isLocalHost = host === "localhost" || host === "127.0.0.1";
-      if (!isLocalHost && window.location.protocol !== "https:") {
+      if (window.location.protocol === "file:" || window.location.protocol === "about:") {
         window.location.replace("http://localhost:8080");
       }
     })();

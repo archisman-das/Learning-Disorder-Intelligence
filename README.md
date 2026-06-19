@@ -10,6 +10,8 @@ For a 28-slide presentation deck for demonstrations, see [docs/Dyslexia_Detectio
 
 The codebase supports handwriting images, reading audio features, multilingual text samples, reading-behavior indicators, explainability hooks, and lightweight deployment through a local Streamlit dashboard.
 
+For full web deployment, see [docs/DEPLOYMENT.md](/d:/Project/Dyslexia_Detection_System/docs/DEPLOYMENT.md).
+
 ## At A Glance
 
 | Area | Summary |

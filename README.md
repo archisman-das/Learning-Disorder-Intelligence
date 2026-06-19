@@ -16,6 +16,8 @@ For ready-to-upload biomarker test CSVs, see [docs/BIOMARKER_TEST_DATA.md](/d:/P
 
 Live demo: [https://learning-disorder-intelligence.onrender.com/](https://learning-disorder-intelligence.onrender.com/)
 
+Release notes: [RELEASE_NOTES.md](/d:/Project/Dyslexia_Detection_System/RELEASE_NOTES.md)
+
 ### Web Deployment Checklist
 
 1. Push the latest `main` branch to GitHub.

@@ -38,6 +38,18 @@ Steps:
 4. Open the public URL and verify `/healthz` returns `ok`.
 5. Test the dashboard microphone workflow from the HTTPS URL.
 
+#### Render auto-deploy troubleshooting
+
+If the site does not update after a GitHub push, check these items in the Render dashboard:
+
+1. The service is connected to `archisman-das/Learning-Disorder-Intelligence`.
+2. The deploy branch is `main`.
+3. Auto-deploy is enabled for the service.
+4. The latest build completed successfully.
+5. The health check path is still `/healthz`.
+
+This repository is already configured for automatic deploys through [`render.yaml`](/d:/Project/Dyslexia_Detection_System/render.yaml), which sets `autoDeploy: true` and points Render at the Dockerized Flask backend.
+
 ### Railway
 
 Railway works well if you want a quick Git-based deploy with a Dockerfile.

@@ -47,13 +47,10 @@ class TherapyResult:
 
 
 SPEECH_THERAPY_TASKS = [
-    SpeechTherapyTask("bn_letter_ka", "Bengali", "Letter", "\u0995", "\u0995 \u0995 \u0995, \u0995\u09be \u0995\u09bf \u0995\u09c1", "Clear articulation of Bengali ক sound"),
-    SpeechTherapyTask("bn_letter_ba", "Bengali", "Letter", "\u09ac", "\u09ac \u09ac \u09ac, \u09ac\u09be \u09ac\u09bf \u09ac\u09c1", "Clear articulation of Bengali ব sound"),
+    SpeechTherapyTask("bn_letter_ka", "Bengali", "Letter", "\u0995", "\u0995 \u0995 \u0995, \u0995\u09be \u0995\u09bf \u0995\u09c1", "Clear articulation of Bengali à¦• sound"),
+    SpeechTherapyTask("bn_letter_ba", "Bengali", "Letter", "\u09ac", "\u09ac \u09ac \u09ac, \u09ac\u09be \u09ac\u09bf \u09ac\u09c1", "Clear articulation of Bengali à¦¬ sound"),
     SpeechTherapyTask("bn_word_short", "Bengali", "Word", "\u09ab/\u09a8", "\u09ab\u09c1\u09b2, \u09a8\u09a6\u09c0, \u09ac\u0987", "Slow accurate Bengali short-word reading"),
     SpeechTherapyTask("bn_sentence_easy", "Bengali", "Sentence", "sentence fluency", "\u0986\u09ae\u09bf \u09ac\u09be\u0982\u09b2\u09be \u09aa\u09dc\u09bf", "Smooth Bengali sentence reading"),
-    SpeechTherapyTask("hi_letter_ka", "Hindi", "Letter", "\u0915", "\u0915 \u0915 \u0915, \u0915\u093e \u0915\u093f \u0915\u0941", "Clear articulation of Hindi क sound"),
-    SpeechTherapyTask("hi_word_short", "Hindi", "Word", "\u092b/\u0928", "\u092b\u0942\u0932, \u0928\u0926\u0940, \u0915\u093f\u0924\u093e\u092c", "Slow accurate Hindi short-word reading"),
-    SpeechTherapyTask("hi_sentence_easy", "Hindi", "Sentence", "sentence fluency", "\u092e\u0948\u0902 \u0939\u093f\u0902\u0926\u0940 \u092a\u0922\u0924\u093e \u0939\u0942\u0901", "Smooth Hindi sentence reading"),
     SpeechTherapyTask("en_letter_b", "English", "Letter", "b/d", "bat, dad, bad, dab", "Differentiate common letter-sound confusions"),
     SpeechTherapyTask("en_sentence_easy", "English", "Sentence", "sentence fluency", "I read a short book", "Smooth English sentence reading"),
 ]

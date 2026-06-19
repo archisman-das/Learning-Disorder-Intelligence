@@ -47,7 +47,6 @@ SEVERITY_LABELS = {
 DEFAULT_TEXT = "\u0986\u09ae\u09bf \u09ac\u09be\u0982\u09b2\u09be \u09aa\u09dc\u09bf"
 DEFAULT_TEXT_BY_LANGUAGE = {
     "Bengali": "\u0986\u09ae\u09bf \u09ac\u09be\u0982\u09b2\u09be \u09aa\u09dc\u09bf",
-    "Hindi": "\u092e\u0948\u0902 \u0939\u093f\u0902\u0926\u0940 \u092a\u0922\u0924\u093e \u0939\u0942\u0901",
     "English": "I read a short book",
     "Multilingual": "\u0986\u09ae\u09bf \u09ac\u09be\u0982\u09b2\u09be \u09aa\u09dc\u09bf",
 }
@@ -538,7 +537,6 @@ def render_practice() -> None:
     language = st.selectbox("Practice language", list(DEFAULT_TEXT_BY_LANGUAGE), key="practice_language")
     tasks = {
         "Bengali": ["\u0995 \u0996 \u0997 \u0998", "\u09ac\u0987 \u09ab\u09c1\u09b2 \u09a8\u09a6\u09c0", "\u0986\u09ae\u09bf \u09ac\u09be\u0982\u09b2\u09be \u09aa\u09dc\u09bf"],
-        "Hindi": ["\u0915 \u0916 \u0917 \u0918", "\u092b\u0942\u0932 \u0928\u0926\u0940 \u0915\u093f\u0924\u093e\u092c", "\u092e\u0948\u0902 \u0939\u093f\u0902\u0926\u0940 \u092a\u0922\u0924\u093e \u0939\u0942\u0901"],
         "English": ["b d p q", "book flower river", "I read a short book"],
         "Multilingual": ["\u0995 \u0915 b d", "\u09ac\u0987 \u0915\u093f\u0924\u093e\u092c book", "\u0986\u09ae\u09bf \u092a\u0922\u0924\u093e read"],
     }[language]

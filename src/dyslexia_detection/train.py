@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--text-language",
         default="bengali",
-        choices=["bengali", "hindi", "english", "multilingual"],
+        choices=["bengali", "english", "multilingual"],
         help="Text vocabulary used by the model. Use multilingual for mixed-language manifests.",
     )
     parser.add_argument(

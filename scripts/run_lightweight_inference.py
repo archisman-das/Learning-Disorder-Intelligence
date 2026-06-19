@@ -19,7 +19,7 @@ def main() -> None:
     parser.add_argument("--audio", default="")
     parser.add_argument("--text", default="")
     parser.add_argument("--sample-language", default="Bengali")
-    parser.add_argument("--model-text-language", default="bengali", choices=["bengali", "hindi", "english", "multilingual"])
+    parser.add_argument("--model-text-language", default="bengali", choices=["bengali", "english", "multilingual"])
     parser.add_argument("--spelling-errors", type=int, default=0)
     parser.add_argument("--pronunciation-errors", type=int, default=0)
     parser.add_argument("--reading-time-seconds", type=float, default=0.0)

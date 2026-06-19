@@ -58,7 +58,7 @@ def main() -> None:
     parser.add_argument("--interval", type=float, default=1.0, help="Seconds between model predictions.")
     parser.add_argument("--text", default="ami bangla pori")
     parser.add_argument("--sample-language", default="Bengali")
-    parser.add_argument("--model-text-language", default="bengali", choices=["bengali", "hindi", "english", "multilingual"])
+    parser.add_argument("--model-text-language", default="bengali", choices=["bengali", "english", "multilingual"])
     parser.add_argument("--spelling-errors", type=int, default=0)
     parser.add_argument("--pronunciation-errors", type=int, default=0)
     parser.add_argument("--reading-time-seconds", type=float, default=0.0)

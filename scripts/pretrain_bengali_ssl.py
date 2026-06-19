@@ -23,7 +23,7 @@ def main() -> None:
         default="facebook/wav2vec2-base-960h",
         help="Hugging Face model name used for wav2vec2/hubert distillation objectives.",
     )
-    parser.add_argument("--text-language", default="bengali", choices=["bengali", "hindi", "english", "multilingual"])
+    parser.add_argument("--text-language", default="bengali", choices=["bengali", "english", "multilingual"])
     args = parser.parse_args()
 
     result = pretrain_audio_ssl(

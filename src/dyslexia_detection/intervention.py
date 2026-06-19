@@ -43,12 +43,6 @@ def _reading_bank(language: str) -> list[str]:
             "Short sentence repeated reading",
             "Timed paragraph fluency with teacher echo",
         ],
-        "hindi": [
-            "Letter tracking with matra focus",
-            "Two-word chunk reading with pacing",
-            "Short sentence repeated reading",
-            "Timed paragraph fluency with teacher echo",
-        ],
         "english": [
             "Phonics blending with finger tracking",
             "Two-word chunk reading with pacing",
@@ -73,12 +67,6 @@ def _pronunciation_bank(language: str) -> list[str]:
             "Phrase imitation with slowed playback",
             "Recorded self-monitoring and correction loop",
         ],
-        "hindi": [
-            "Minimal-pair Hindi articulation drills",
-            "Syllable elongation and stress control",
-            "Phrase imitation with slowed playback",
-            "Recorded self-monitoring and correction loop",
-        ],
         "english": [
             "Minimal-pair phoneme contrast drills",
             "Syllable elongation and stress control",
@@ -99,12 +87,6 @@ def _spelling_bank(language: str) -> list[str]:
     base = {
         "bengali": [
             "Grapheme-phoneme mapping dictation",
-            "Error-word copy and cover spelling cycle",
-            "Syllable segmentation and reconstruction",
-            "Sentence dictation with immediate correction",
-        ],
-        "hindi": [
-            "Akshara-sound mapping dictation",
             "Error-word copy and cover spelling cycle",
             "Syllable segmentation and reconstruction",
             "Sentence dictation with immediate correction",

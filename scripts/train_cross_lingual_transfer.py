@@ -18,7 +18,7 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
-    parser.add_argument("--text-language", default="bengali", choices=["bengali", "hindi", "english", "multilingual"])
+    parser.add_argument("--text-language", default="bengali", choices=["bengali", "english", "multilingual"])
     parser.add_argument("--checkpoint-dir", default="checkpoints/cross_lingual_transfer")
     parser.add_argument(
         "--transfer-prefixes",

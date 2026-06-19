@@ -13,7 +13,7 @@ from tempfile import NamedTemporaryFile
 from urllib.parse import urlparse
 
 
-HOST = "127.0.0.1"
+HOST = "localhost"
 PORT = 8080
 WEB_ROOT = Path(__file__).resolve().parent / "web"
 WHISPER_MODEL_NAME = os.environ.get("WHISPER_MODEL", "base")
@@ -108,7 +108,6 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
 
         language_map = {
             "bengali": "bn",
-            "hindi": "hi",
             "english": "en",
             "multilingual": None,
         }

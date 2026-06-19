@@ -17,7 +17,7 @@ def main() -> None:
     parser.add_argument("--task", default="binary", choices=["binary", "severity", "regression"])
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=8)
-    parser.add_argument("--text-language", default="bengali", choices=["bengali", "hindi", "english", "multilingual"])
+    parser.add_argument("--text-language", default="bengali", choices=["bengali", "english", "multilingual"])
     parser.add_argument("--checkpoint-dir", default="checkpoints/finetuned_from_ssl")
     args = parser.parse_args()
 

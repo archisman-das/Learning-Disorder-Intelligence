@@ -40,7 +40,7 @@ def main() -> None:
     parser.add_argument("--task", default="severity", choices=["severity", "regression"])
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=8)
-    parser.add_argument("--text-language", default="multilingual", choices=["bengali", "hindi", "english", "multilingual"])
+    parser.add_argument("--text-language", default="multilingual", choices=["bengali", "english", "multilingual"])
     args = parser.parse_args()
 
     raise SystemExit(

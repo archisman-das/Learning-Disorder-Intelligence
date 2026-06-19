@@ -407,7 +407,6 @@ export function App() {
                         onChange={(e) => setScreenForm({ ...screenForm, sample_language: e.target.value })}
                       >
                         <option>Bengali</option>
-                        <option>Hindi</option>
                         <option>English</option>
                         <option>Multilingual</option>
                       </select>
@@ -422,7 +421,6 @@ export function App() {
                         }
                       >
                         <option value="bengali">Bengali</option>
-                        <option value="hindi">Hindi</option>
                         <option value="english">English</option>
                         <option value="multilingual">Multilingual</option>
                       </select>

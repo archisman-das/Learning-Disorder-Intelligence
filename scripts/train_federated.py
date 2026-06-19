@@ -30,7 +30,7 @@ def main() -> None:
     parser.add_argument("--local-epochs", type=int, default=1)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
-    parser.add_argument("--text-language", default="multilingual", choices=["bengali", "hindi", "english", "multilingual"])
+    parser.add_argument("--text-language", default="multilingual", choices=["bengali", "english", "multilingual"])
     args = parser.parse_args()
 
     client_manifests = _resolve_client_manifests(args.client_manifests, args.client_manifests_dir)

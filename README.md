@@ -2,13 +2,61 @@
 
 An early-stage, multimodal deep learning system for dyslexia screening and end-user assistance, with emphasis on Bengali, multilingual, and low-resource settings.
 
-For a fuller project walkthrough, see [docs/PROJECT_DOCUMENTATION.md](/abs/path/c:/Dyslexia_Detection_System/docs/PROJECT_DOCUMENTATION.md).
+For a fuller project walkthrough, see [docs/PROJECT_DOCUMENTATION.md](/d:/Project/Dyslexia_Detection_System/docs/PROJECT_DOCUMENTATION.md).
+
+For a paper-style draft based on the current implementation, see [docs/RESEARCH_PAPER_DRAFT.md](/d:/Project/Dyslexia_Detection_System/docs/RESEARCH_PAPER_DRAFT.md).
+
+For a 28-slide presentation deck for demonstrations, see [docs/Dyslexia_Detection_System_Demo_Deck.pptx](/d:/Project/Dyslexia_Detection_System/docs/Dyslexia_Detection_System_Demo_Deck.pptx).
 
 The codebase supports handwriting images, reading audio features, multilingual text samples, reading-behavior indicators, explainability hooks, and lightweight deployment through a local Streamlit dashboard.
 
+## At A Glance
+
+| Area | Summary |
+|---|---|
+| Core goal | Multimodal dyslexia screening and educational support |
+| Main languages | Bengali, English, multilingual |
+| Primary inputs | Handwriting, audio, text, behavior, eye-tracking, biomarker CSVs |
+| Main outputs | Screening labels, therapy scores, reports, local records, biomarker rankings |
+| Main UIs | Streamlit dashboard, local web dashboard, React frontend |
+| Deployment style | Local-first, offline-friendly, research-friendly |
+
+## Dashboard Surfaces
+
+| Surface | Entry point | Best for | Notes |
+|---|---|---|---|
+| Streamlit dashboard | [`app.py`](/d:/Project/Dyslexia_Detection_System/app.py) | Dataset review, model experimentation, live screening, reports | Broadest feature coverage |
+| Standalone web dashboard | [`run_local_web.py`](/d:/Project/Dyslexia_Detection_System/run_local_web.py) + [`web/`](/d:/Project/Dyslexia_Detection_System/web) | Browser-only local use, records, microphone-based workflows | Runs on `localhost:8080` |
+| React frontend | [`frontend/src/App.jsx`](/d:/Project/Dyslexia_Detection_System/frontend/src/App.jsx) | Vite-based interface work | Separate UI path |
+
+## Model Families
+
+| Model family | Purpose | Strength | Limitation |
+|---|---|---|---|
+| `InitialCNNModel` | Compact image/audio baseline | Very lightweight | Ignores text and behavior |
+| `InitialLSTMModel` | Text-centered baseline | Simple sequence modeling | Ignores image and audio |
+| `InitialCNNLSTMModel` | Early multimodal baseline | Covers more signals | Still shallow |
+| `MultimodalDyslexiaModel` | Default screening model | Balanced and practical | Uses concatenation fusion |
+| `TransformerMultimodalModel` | Transformer text branch | Better context modeling | Heavier than GRU version |
+| `ViTMultimodalModel` | Patch-based handwriting branch | Better image structure modeling | More compute |
+| `AttentionMultimodalModel` | Learned modality weights | Better interpretability | More tuning-sensitive |
+| `BengaliLearningDisorderFoundationModel` | Shared foundation encoder | Reusable across tasks | Needs more data and pretraining |
+
+## Screenshot Slots
+
+This repository does not currently ship captured dashboard screenshots. If you want to add them later, place the image files here and reference them in this README:
+
+| Suggested file | Dashboard view |
+|---|---|
+| [`docs/screenshots/streamlit-dashboard.png`](/d:/Project/Dyslexia_Detection_System/docs/screenshots/streamlit-dashboard.png) | Main Streamlit dashboard |
+| [`docs/screenshots/web-dashboard.png`](/d:/Project/Dyslexia_Detection_System/docs/screenshots/web-dashboard.png) | Local browser dashboard |
+| [`docs/screenshots/react-dashboard.png`](/d:/Project/Dyslexia_Detection_System/docs/screenshots/react-dashboard.png) | React/Vite frontend |
+
+For now, the architecture and feature tables below give a reliable text reference until real captures are added.
+
 ## Features
 
-- Bengali, Hindi, English, and multilingual dataset manifest support
+- Bengali, English, and multilingual dataset manifest support
 - Handwriting image preprocessing and augmentation
 - Reading-audio log-spectrogram extraction
 - Language-aware text normalization and character-level tokenization
@@ -415,7 +463,7 @@ checkpoints/vit_transformer/best_model.pt
 
 5. Design an assistive educational prototype:
 
-The dashboard's `Guided Practice` tab provides Bengali, Hindi, English, and mixed-language reading prompts, handwriting prompts, fluency tracking, speech-therapy prompts, and adaptive support messages.
+The dashboard's `Guided Practice` tab provides Bengali, English, and mixed-language reading prompts, handwriting prompts, fluency tracking, speech-therapy prompts, and adaptive support messages.
 
 6. Recommend personalized intervention plans:
 

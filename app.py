@@ -76,7 +76,6 @@ SEVERITY_LABELS = {
 DEFAULT_TEXT = "\u0986\u09ae\u09bf \u09ac\u09be\u0982\u09b2\u09be \u09aa\u09dc\u09bf"
 DEFAULT_TEXT_BY_LANGUAGE = {
     "Bengali": "\u0986\u09ae\u09bf \u09ac\u09be\u0982\u09b2\u09be \u09aa\u09dc\u09bf",
-    "Hindi": "\u092e\u0948\u0902 \u0939\u093f\u0902\u0926\u0940 \u092a\u0922\u0924\u093e \u0939\u0942\u0901",
     "English": "I read a short book",
     "Multilingual": "\u0986\u09ae\u09bf \u09ac\u09be\u0982\u09b2\u09be \u09aa\u09dc\u09bf",
 }
@@ -1291,11 +1290,6 @@ def render_student_practice() -> None:
             {"level": "Letter", "prompt": "\u0995 \u0996 \u0997 \u0998", "focus": "letter recognition"},
             {"level": "Word", "prompt": "\u09ac\u0987 \u09ab\u09c1\u09b2 \u09a8\u09a6\u09c0", "focus": "short word reading"},
             {"level": "Sentence", "prompt": "\u0986\u09ae\u09bf \u09ac\u09be\u0982\u09b2\u09be \u09aa\u09dc\u09bf", "focus": "sentence fluency"},
-        ],
-        "Hindi": [
-            {"level": "Letter", "prompt": "\u0915 \u0916 \u0917 \u0918", "focus": "letter recognition"},
-            {"level": "Word", "prompt": "\u092b\u0942\u0932 \u0928\u0926\u0940 \u0915\u093f\u0924\u093e\u092c", "focus": "short word reading"},
-            {"level": "Sentence", "prompt": "\u092e\u0948\u0902 \u0939\u093f\u0902\u0926\u0940 \u092a\u0922\u0924\u093e \u0939\u0942\u0901", "focus": "sentence fluency"},
         ],
         "English": [
             {"level": "Letter", "prompt": "b d p q", "focus": "letter-sound contrast"},

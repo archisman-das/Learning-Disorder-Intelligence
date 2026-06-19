@@ -43,7 +43,6 @@ DEFAULT_LATIN_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234
 LANGUAGE_CHARSETS = {
     "bengali": DEFAULT_BENGALI_CHARS,
     "bangla": DEFAULT_BENGALI_CHARS,
-    "hindi": DEFAULT_DEVANAGARI_CHARS,
     "devanagari": DEFAULT_DEVANAGARI_CHARS,
     "english": DEFAULT_LATIN_CHARS,
     "latin": DEFAULT_LATIN_CHARS,
@@ -51,7 +50,6 @@ LANGUAGE_CHARSETS = {
 
 SUPPORTED_LANGUAGES = {
     "bengali": "Bengali",
-    "hindi": "Hindi",
     "english": "English",
     "multilingual": "Multilingual",
 }

@@ -52,7 +52,7 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
-    parser.add_argument("--text-language", default="bengali", choices=["bengali", "hindi", "english", "multilingual"])
+    parser.add_argument("--text-language", default="bengali", choices=["bengali", "english", "multilingual"])
     parser.add_argument("--checkpoint", default="checkpoints/foundation/bengali_foundation.pt")
     args = parser.parse_args()
 

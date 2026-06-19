@@ -36,7 +36,7 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=4)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--learning-rate", type=float, default=5e-4)
-    parser.add_argument("--text-language", default="bengali", choices=["bengali", "hindi", "english", "multilingual"])
+    parser.add_argument("--text-language", default="bengali", choices=["bengali", "english", "multilingual"])
     parser.add_argument("--freeze-foundation", action="store_true")
     parser.add_argument("--checkpoint", default="")
     args = parser.parse_args()

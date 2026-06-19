@@ -32,7 +32,7 @@ def main() -> None:
     parser.add_argument("--manifest", default="data/demo/audio_augmented_manifest.csv")
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--batch-size", type=int, default=8)
-    parser.add_argument("--text-language", default="bengali", choices=["bengali", "hindi", "english", "multilingual"])
+    parser.add_argument("--text-language", default="bengali", choices=["bengali", "english", "multilingual"])
     parser.add_argument(
         "--models",
         nargs="+",

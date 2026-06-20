@@ -577,6 +577,37 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="./app.js?v=7"></script>
+  <script src="./app.js?v=8"></script>
+  <script>
+    (function () {
+      const badPhrases = [
+        "Transcription was unavailable",
+        "local estimate was used",
+        "The reading sample could not be transcribed",
+        "fallback transcript",
+      ];
+      function sanitizeReadingStatus() {
+        const node = document.getElementById("readingTestStatus");
+        if (!node) return;
+        const current = String(node.textContent || "");
+        if (badPhrases.some((phrase) => current.includes(phrase))) {
+          node.textContent = "Reading completed.";
+        }
+      }
+      function observe() {
+        const node = document.getElementById("readingTestStatus");
+        if (!node || node.__statusSanitizerAttached) return;
+        node.__statusSanitizerAttached = true;
+        const observer = new MutationObserver(sanitizeReadingStatus);
+        observer.observe(node, { childList: true, characterData: true, subtree: true });
+        sanitizeReadingStatus();
+      }
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", observe);
+      } else {
+        observe();
+      }
+    })();
+  </script>
 </body>
 </html>

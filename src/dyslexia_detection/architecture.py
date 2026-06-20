@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import torch
 
+from .calibration import calibrated_probabilities
 from .config import DataConfig
 from .models import MultimodalDyslexiaModel
 from .preprocessing import build_char_vocab, encode_text, extract_audio_features, load_handwriting_image
@@ -82,7 +83,8 @@ class ScreeningPipeline:
         with torch.no_grad():
             fused = self.model.fuse_features(features)
             logits = self.model.classifier(fused)
-            probabilities = torch.softmax(logits, dim=1).squeeze(0).numpy()
+            temperature = float(getattr(self.model, "calibration_temperature", 1.0))
+            probabilities = calibrated_probabilities(logits, temperature).squeeze(0).numpy()
         return {
             "fused_feature_shape": tuple(fused.shape),
             "logits": logits.squeeze(0).numpy(),

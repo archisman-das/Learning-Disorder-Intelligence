@@ -39,92 +39,10 @@ function formatPercent(value) {
   return `${(value * 100).toFixed(1)}%`;
 }
 
-function formatNumber(value, digits = 2) {
-  if (!Number.isFinite(value)) return "N/A";
-  return Number(value).toFixed(digits);
-}
-
 function getMissingStudentFields(studentInfo) {
   return Object.entries(studentFieldLabels)
     .filter(([key]) => !String(studentInfo[key] || "").trim())
     .map(([, label]) => label);
-}
-
-function buildFinalReport({ studentInfo, screening, therapy, eye, biomarkers }) {
-  const sections = [];
-  const recommendations = [];
-  const overview = [];
-
-  if (screening) {
-    sections.push({
-      title: "Screening",
-      lines: [
-        `Result: ${screening.label || "Not available"}`,
-        `Confidence: ${formatPercent(screening.confidence)}`,
-        screening.explanation?.summary || "Screening summary is not available.",
-      ],
-    });
-    overview.push(`Screening suggests ${screening.label || "an undetermined pattern"}.`);
-    recommendations.push("Discuss the screening result with the child, parent, and teacher together.");
-  }
-
-  if (therapy) {
-    sections.push({
-      title: "Speech Therapy",
-      lines: [
-        `Session score: ${formatPercent(therapy.therapy_score)}`,
-        therapy.recommendation || "Therapy recommendation is not available.",
-      ],
-    });
-    overview.push(`Speech practice score is ${formatPercent(therapy.therapy_score)}.`);
-    recommendations.push("Continue short and regular speech practice sessions.");
-  }
-
-  if (eye) {
-    sections.push({
-      title: "Eye Tracking",
-      lines: [
-        `Reading speed: ${formatNumber(eye.reading_speed_wpm)} WPM`,
-        `Regressions: ${eye.regressions_count ?? "N/A"}`,
-        `Fixation duration: ${formatNumber(eye.fixation_duration_ms)} ms`,
-        `Gaze dispersion: ${formatNumber(eye.gaze_dispersion)}`,
-      ],
-    });
-    overview.push(`Eye metrics show ${formatNumber(eye.reading_speed_wpm)} WPM reading speed.`);
-    recommendations.push("If eye movement seems irregular, repeat the reading task in a quiet setting.");
-  }
-
-  if (biomarkers) {
-    const strongest = biomarkers.top_biomarkers?.[0];
-    sections.push({
-      title: "Biomarkers",
-      lines: [
-        `Top markers reviewed: ${biomarkers.top_biomarkers?.length || 0}`,
-        strongest
-          ? `Strongest signal: ${strongest.biomarker} (${formatNumber(strongest.importance_score, 4)})`
-          : "Strongest signal is not available.",
-      ],
-    });
-    overview.push(
-      strongest
-        ? `Biomarker review highlights ${strongest.biomarker} as the strongest signal.`
-        : "Biomarker review was completed."
-    );
-    recommendations.push("Use biomarker findings only along with the full screening picture.");
-  }
-
-  if (!sections.length) {
-    overview.push("No test result has been added yet.");
-    recommendations.push("Complete at least one test before generating the report.");
-  }
-
-  return {
-    generatedAt: new Date().toLocaleString(),
-    studentInfo: { ...studentInfo },
-    sections,
-    overview,
-    recommendations: [...new Set(recommendations)],
-  };
 }
 
 function escapePdfText(value) {
@@ -257,6 +175,43 @@ async function postJson(url, payload) {
   return data;
 }
 
+async function postFormData(url, formData) {
+  const res = await fetch(apiUrl(url), { method: "POST", body: formData });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Request failed");
+  return data;
+}
+
+async function getComparisonPayload() {
+  const response = await postJson("/api/comparison", {
+    screening,
+    therapy,
+    eye,
+    language: "English",
+  });
+  return response;
+}
+
+async function getScreeningPayload() {
+  const form = new FormData();
+  Object.entries(screenForm).forEach(([k, v]) => form.append(k, String(v)));
+  if (screenHandwriting) form.append("handwriting_file", screenHandwriting);
+  if (screenAudio) form.append("audio_file", screenAudio);
+  return postFormData("/api/screen", form);
+}
+
+async function getFinalReportPayload({ studentInfo, screening, therapy, eye, biomarkers, comparison }) {
+  return postJson("/api/final-report", {
+    studentInfo,
+    screening,
+    therapy,
+    eye,
+    biomarkers,
+    comparison,
+    language: "English",
+  });
+}
+
 export function App() {
   const [tab, setTab] = useState("screening");
   const [screening, setScreening] = useState(null);
@@ -347,14 +302,10 @@ export function App() {
     };
   }, [biomarkers]);
 
-  const liveReport = useMemo(
-    () => buildFinalReport({ studentInfo, screening, therapy, eye, biomarkers }),
-    [studentInfo, screening, therapy, eye, biomarkers]
-  );
   const missingStudentFields = getMissingStudentFields(studentInfo);
   const hasAnyResult = Boolean(screening || therapy || eye || biomarkers);
 
-  const handleGenerateReport = () => {
+  const handleGenerateReport = async () => {
     if (missingStudentFields.length) {
       setError(`Please fill: ${missingStudentFields.join(", ")}`);
       setTab("report");
@@ -365,8 +316,12 @@ export function App() {
       setTab("report");
       return;
     }
-    setError("");
-    setReportData(liveReport);
+    try {
+      setError("");
+      setReportData(await getFinalReportPayload({ studentInfo, screening, therapy, eye, biomarkers, comparison: null }));
+    } catch (e) {
+      setError(e.message);
+    }
   };
 
   return (
@@ -529,14 +484,7 @@ export function App() {
                     onClick={async () => {
                       try {
                         setError("");
-                        const form = new FormData();
-                        Object.entries(screenForm).forEach(([k, v]) => form.append(k, String(v)));
-                        if (screenHandwriting) form.append("handwriting_file", screenHandwriting);
-                        if (screenAudio) form.append("audio_file", screenAudio);
-                        const res = await fetch(apiUrl("/api/screen"), { method: "POST", body: form });
-                        const data = await res.json();
-                        if (!res.ok) throw new Error(data.error || "Screening failed");
-                        setScreening(data);
+                        setScreening(await getScreeningPayload());
                       } catch (e) {
                         setError(e.message);
                       }

@@ -11,20 +11,27 @@ class HandwritingEncoder(nn.Module):
     def __init__(self):
         super().__init__()
         self.features = nn.Sequential(
-            nn.Conv2d(1, 16, kernel_size=3, padding=1),
-            nn.BatchNorm2d(16),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),
-            nn.Conv2d(16, 32, kernel_size=3, padding=1),
+            nn.Conv2d(1, 32, kernel_size=3, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
+            nn.Dropout2d(0.05),
             nn.MaxPool2d(2),
             nn.Conv2d(32, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
+            nn.Dropout2d(0.08),
+            nn.MaxPool2d(2),
+            nn.Conv2d(64, 96, kernel_size=3, padding=1),
+            nn.BatchNorm2d(96),
+            nn.ReLU(inplace=True),
+            nn.Dropout2d(0.1),
             nn.AdaptiveAvgPool2d((1, 1)),
         )
-        self.projection = nn.Linear(64, 64)
+        self.projection = nn.Sequential(
+            nn.Linear(96, 64),
+            nn.LayerNorm(64),
+            nn.GELU(),
+        )
 
     def forward(self, image: torch.Tensor) -> torch.Tensor:
         x = self.features(image).flatten(1)
@@ -36,50 +43,74 @@ class AudioEncoder(nn.Module):
         super().__init__()
         self.network = nn.Sequential(
             nn.Conv1d(config.n_mfcc, 64, kernel_size=5, padding=2),
-            nn.ReLU(inplace=True),
+            nn.BatchNorm1d(64),
+            nn.GELU(),
+            nn.Dropout(0.05),
             nn.MaxPool1d(2),
-            nn.Conv1d(64, 64, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
+            nn.Conv1d(64, 96, kernel_size=3, padding=1),
+            nn.BatchNorm1d(96),
+            nn.GELU(),
+            nn.Dropout(0.08),
+            nn.Conv1d(96, 96, kernel_size=3, padding=1),
+            nn.BatchNorm1d(96),
+            nn.GELU(),
             nn.AdaptiveAvgPool1d(1),
+        )
+        self.projection = nn.Sequential(
+            nn.Linear(96, 64),
+            nn.LayerNorm(64),
+            nn.GELU(),
         )
 
     def forward(self, audio: torch.Tensor) -> torch.Tensor:
-        return self.network(audio).flatten(1)
+        return self.projection(self.network(audio).flatten(1))
 
 
 class TextEncoder(nn.Module):
-    def __init__(self, vocab_size: int, embedding_dim: int = 64, hidden_dim: int = 64):
+    def __init__(self, vocab_size: int, embedding_dim: int = 96, hidden_dim: int = 96):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx=0)
+        self.embedding_dropout = nn.Dropout(0.08)
         self.sequence = nn.GRU(
             embedding_dim,
             hidden_dim,
             batch_first=True,
             bidirectional=True,
+            dropout=0.05,
         )
-        self.projection = nn.Linear(hidden_dim * 2, 64)
+        self.projection = nn.Sequential(
+            nn.Linear(hidden_dim * 2, 64),
+            nn.LayerNorm(64),
+            nn.GELU(),
+        )
 
     def forward(self, text: torch.Tensor) -> torch.Tensor:
-        embedded = self.embedding(text)
+        embedded = self.embedding_dropout(self.embedding(text))
         _, hidden = self.sequence(embedded)
         combined = torch.cat([hidden[-2], hidden[-1]], dim=1)
         return self.projection(combined)
 
 
 class LSTMTextEncoder(nn.Module):
-    def __init__(self, vocab_size: int, embedding_dim: int = 64, hidden_dim: int = 64):
+    def __init__(self, vocab_size: int, embedding_dim: int = 96, hidden_dim: int = 96):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx=0)
+        self.embedding_dropout = nn.Dropout(0.08)
         self.sequence = nn.LSTM(
             embedding_dim,
             hidden_dim,
             batch_first=True,
             bidirectional=True,
+            dropout=0.05,
         )
-        self.projection = nn.Linear(hidden_dim * 2, 64)
+        self.projection = nn.Sequential(
+            nn.Linear(hidden_dim * 2, 64),
+            nn.LayerNorm(64),
+            nn.GELU(),
+        )
 
     def forward(self, text: torch.Tensor) -> torch.Tensor:
-        embedded = self.embedding(text)
+        embedded = self.embedding_dropout(self.embedding(text))
         _, (hidden, _) = self.sequence(embedded)
         combined = torch.cat([hidden[-2], hidden[-1]], dim=1)
         return self.projection(combined)
@@ -90,7 +121,7 @@ class TransformerTextEncoder(nn.Module):
         self,
         vocab_size: int,
         max_length: int,
-        embedding_dim: int = 64,
+        embedding_dim: int = 96,
         num_heads: int = 4,
         num_layers: int = 2,
     ):
@@ -106,7 +137,11 @@ class TransformerTextEncoder(nn.Module):
             activation="gelu",
         )
         self.encoder = nn.TransformerEncoder(layer, num_layers=num_layers, enable_nested_tensor=False)
-        self.projection = nn.Linear(embedding_dim, 64)
+        self.projection = nn.Sequential(
+            nn.Linear(embedding_dim, 64),
+            nn.LayerNorm(64),
+            nn.GELU(),
+        )
 
     def forward(self, text: torch.Tensor) -> torch.Tensor:
         mask = text.eq(0)
@@ -157,9 +192,12 @@ class BehaviorEncoder(nn.Module):
         super().__init__()
         self.network = nn.Sequential(
             nn.Linear(input_dim, 32),
-            nn.ReLU(inplace=True),
+            nn.LayerNorm(32),
+            nn.GELU(),
+            nn.Dropout(0.05),
             nn.Linear(32, 32),
-            nn.ReLU(inplace=True),
+            nn.LayerNorm(32),
+            nn.GELU(),
         )
 
     def forward(self, behavior: torch.Tensor) -> torch.Tensor:
@@ -174,22 +212,28 @@ class FusionClassifier(nn.Module):
         text: nn.Module,
         behavior: nn.Module,
         num_classes: int = 2,
-        hidden_dim: int = 128,
-        dropout: float = 0.25,
+        hidden_dim: int = 192,
+        dropout: float = 0.3,
+        modality_dropout: float = 0.1,
     ):
         super().__init__()
         self.handwriting = handwriting
         self.audio = audio
         self.text = text
         self.behavior = behavior
+        self.modality_dropout = float(modality_dropout)
         self.fused_feature_dim = 64 + 64 + 64 + 32 + 2
+        self.fusion_norm = nn.LayerNorm(self.fused_feature_dim)
         self.classifier = nn.Sequential(
             nn.Linear(self.fused_feature_dim, hidden_dim),
-            nn.ReLU(inplace=True),
+            nn.LayerNorm(hidden_dim),
+            nn.GELU(),
             nn.Dropout(dropout),
-            nn.Linear(hidden_dim, 64),
-            nn.ReLU(inplace=True),
-            nn.Linear(64, num_classes),
+            nn.Linear(hidden_dim, 96),
+            nn.LayerNorm(96),
+            nn.GELU(),
+            nn.Dropout(dropout * 0.75),
+            nn.Linear(96, num_classes),
         )
 
     def encode_modalities(
@@ -211,7 +255,7 @@ class FusionClassifier(nn.Module):
         }
 
     def fuse_features(self, features: dict[str, torch.Tensor]) -> torch.Tensor:
-        return torch.cat(
+        fused = torch.cat(
             [
                 features["handwriting_features"],
                 features["audio_features"],
@@ -221,6 +265,16 @@ class FusionClassifier(nn.Module):
             ],
             dim=1,
         )
+        return self.fusion_norm(fused)
+
+    def _apply_modality_dropout(self, features: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+        if not self.training or self.modality_dropout <= 0:
+            return features
+        dropped = dict(features)
+        for key in ["handwriting_features", "audio_features", "text_sequence_features", "behavior_features"]:
+            if torch.rand(1, device=features[key].device).item() < self.modality_dropout:
+                dropped[key] = torch.zeros_like(features[key])
+        return dropped
 
     def forward(
         self,
@@ -231,6 +285,7 @@ class FusionClassifier(nn.Module):
         behavior: torch.Tensor | None = None,
     ) -> torch.Tensor:
         features = self.encode_modalities(image, audio, text, errors, behavior)
+        features = self._apply_modality_dropout(features)
         return self.classifier(self.fuse_features(features))
 
 
@@ -244,6 +299,7 @@ class AttentionFusionClassifier(FusionClassifier):
         num_classes: int = 2,
         hidden_dim: int = 128,
         dropout: float = 0.25,
+        modality_dropout: float = 0.1,
     ):
         super().__init__(
             handwriting=handwriting,
@@ -253,6 +309,7 @@ class AttentionFusionClassifier(FusionClassifier):
             num_classes=num_classes,
             hidden_dim=hidden_dim,
             dropout=dropout,
+            modality_dropout=modality_dropout,
         )
         self.modality_project = nn.ModuleDict(
             {
@@ -272,10 +329,12 @@ class AttentionFusionClassifier(FusionClassifier):
         )
         self.classifier = nn.Sequential(
             nn.Linear(64 + 2, hidden_dim),
-            nn.ReLU(inplace=True),
+            nn.LayerNorm(hidden_dim),
+            nn.GELU(),
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, 64),
-            nn.ReLU(inplace=True),
+            nn.LayerNorm(64),
+            nn.GELU(),
             nn.Linear(64, num_classes),
         )
         self.last_modality_attention: dict[str, torch.Tensor] | None = None
@@ -318,6 +377,7 @@ class AttentionFusionClassifier(FusionClassifier):
         behavior: torch.Tensor | None = None,
     ) -> torch.Tensor:
         features = self.encode_modalities(image, audio, text, errors, behavior)
+        features = self._apply_modality_dropout(features)
         fused, attention = self.modality_attention(features)
         self.last_modality_attention = attention
         classifier_input = torch.cat([fused, features["error_features"]], dim=1)
@@ -401,7 +461,8 @@ class InitialCNNLSTMModel(nn.Module):
         self.fused_feature_dim = 64 + 64 + 64 + 32 + 2
         self.classifier = nn.Sequential(
             nn.Linear(self.fused_feature_dim, 128),
-            nn.ReLU(inplace=True),
+            nn.LayerNorm(128),
+            nn.GELU(),
             nn.Dropout(0.2),
             nn.Linear(128, num_classes),
         )
@@ -456,7 +517,8 @@ class InitialCNNModel(nn.Module):
         self.audio = AudioEncoder(self.config)
         self.classifier = nn.Sequential(
             nn.Linear(64 + 64 + 2, 96),
-            nn.ReLU(inplace=True),
+            nn.LayerNorm(96),
+            nn.GELU(),
             nn.Dropout(0.2),
             nn.Linear(96, num_classes),
         )
@@ -483,7 +545,8 @@ class InitialLSTMModel(nn.Module):
         self.behavior = BehaviorEncoder()
         self.classifier = nn.Sequential(
             nn.Linear(64 + 32 + 2, 96),
-            nn.ReLU(inplace=True),
+            nn.LayerNorm(96),
+            nn.GELU(),
             nn.Dropout(0.2),
             nn.Linear(96, num_classes),
         )

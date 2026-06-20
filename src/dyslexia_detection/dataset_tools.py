@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import math
 from pathlib import Path
 import hashlib
 import os
 import shutil
+import re
 import wave
 
 import numpy as np
 import pandas as pd
-from PIL import Image, ImageEnhance, ImageOps
+from PIL import Image, ImageEnhance, ImageFilter, ImageOps
+from sklearn.model_selection import train_test_split
 
 from .config import DataConfig
 from .preprocessing import normalize_text
@@ -349,8 +352,8 @@ def normalize_audio_file(input_path: str | Path, output_path: str | Path, config
 def prepare_dataset(
     manifest_path: str | Path,
     output_root: str | Path,
-    handwriting_variants: int = 2,
-    audio_variants: int = 2,
+    handwriting_variants: int = 3,
+    audio_variants: int = 3,
 ) -> dict[str, Path]:
     output = Path(output_root)
     output.mkdir(parents=True, exist_ok=True)
@@ -394,29 +397,59 @@ def split_manifest(
     if train_ratio + validation_ratio >= 1:
         raise ValueError("train_ratio + validation_ratio must be less than 1.")
 
-    if "label" in frame and frame["label"].nunique() > 1:
-        split_parts = {"train": [], "validation": [], "test": []}
-        for _, group in frame.groupby("label"):
-            shuffled_group = group.sample(frac=1.0, random_state=seed).reset_index(drop=True)
-            total = len(shuffled_group)
-            train_end = int(total * train_ratio)
-            validation_end = train_end + int(total * validation_ratio)
-            split_parts["train"].append(shuffled_group.iloc[:train_end])
-            split_parts["validation"].append(shuffled_group.iloc[train_end:validation_end])
-            split_parts["test"].append(shuffled_group.iloc[validation_end:])
-        splits = {
-            name: pd.concat(parts).sample(frac=1.0, random_state=seed).reset_index(drop=True)
-            for name, parts in split_parts.items()
-        }
-    else:
+    frame = frame.copy()
+    frame["_family_id"] = frame["sample_id"].map(_sample_family_id) if "sample_id" in frame else frame.index.astype(str)
+    family_frame = frame.drop_duplicates("_family_id", keep="first")[["_family_id", "label"]].copy()
+    family_frame["label"] = pd.to_numeric(family_frame["label"], errors="coerce").fillna(0).astype(int)
+
+    if len(family_frame) < 2 or "label" not in frame:
         shuffled = frame.sample(frac=1.0, random_state=seed).reset_index(drop=True)
         total = len(shuffled)
         train_end = int(total * train_ratio)
         validation_end = train_end + int(total * validation_ratio)
         splits = {
-            "train": shuffled.iloc[:train_end],
-            "validation": shuffled.iloc[train_end:validation_end],
-            "test": shuffled.iloc[validation_end:],
+            "train": shuffled.iloc[:train_end].drop(columns=["_family_id"], errors="ignore"),
+            "validation": shuffled.iloc[train_end:validation_end].drop(columns=["_family_id"], errors="ignore"),
+            "test": shuffled.iloc[validation_end:].drop(columns=["_family_id"], errors="ignore"),
+        }
+    else:
+        split_parts = {"train": [], "validation": [], "test": []}
+        can_stratify = family_frame["label"].nunique() > 1 and family_frame["label"].value_counts().min() >= 2
+        if can_stratify:
+            train_families, temp_families = train_test_split(
+                family_frame["_family_id"].tolist(),
+                test_size=1.0 - train_ratio,
+                random_state=seed,
+                stratify=family_frame["label"].tolist(),
+            )
+            temp_frame = family_frame[family_frame["_family_id"].isin(temp_families)].copy()
+            temp_ratio = validation_ratio / max(1e-8, (1.0 - train_ratio))
+            temp_can_stratify = temp_frame["label"].nunique() > 1 and temp_frame["label"].value_counts().min() >= 2
+            if len(temp_frame) >= 2 and temp_ratio > 0 and temp_ratio < 1 and temp_can_stratify:
+                validation_families, test_families = train_test_split(
+                    temp_frame["_family_id"].tolist(),
+                    test_size=max(0.05, min(0.95, 1.0 - temp_ratio)),
+                    random_state=seed,
+                    stratify=temp_frame["label"].tolist(),
+                )
+            else:
+                shuffled_temp = temp_frame.sample(frac=1.0, random_state=seed).reset_index(drop=True)
+                boundary = max(1, int(round(len(shuffled_temp) * temp_ratio)))
+                validation_families = shuffled_temp["_family_id"].iloc[:boundary].tolist()
+                test_families = shuffled_temp["_family_id"].iloc[boundary:].tolist()
+        else:
+            shuffled_families = family_frame.sample(frac=1.0, random_state=seed).reset_index(drop=True)
+            total_families = len(shuffled_families)
+            train_end = int(total_families * train_ratio)
+            validation_end = train_end + int(total_families * validation_ratio)
+            train_families = shuffled_families["_family_id"].iloc[:train_end].tolist()
+            validation_families = shuffled_families["_family_id"].iloc[train_end:validation_end].tolist()
+            test_families = shuffled_families["_family_id"].iloc[validation_end:].tolist()
+
+        splits = {
+            "train": frame[frame["_family_id"].isin(train_families)].drop(columns=["_family_id"], errors="ignore").sample(frac=1.0, random_state=seed).reset_index(drop=True),
+            "validation": frame[frame["_family_id"].isin(validation_families)].drop(columns=["_family_id"], errors="ignore").sample(frac=1.0, random_state=seed).reset_index(drop=True),
+            "test": frame[frame["_family_id"].isin(test_families)].drop(columns=["_family_id"], errors="ignore").sample(frac=1.0, random_state=seed).reset_index(drop=True),
         }
 
     output = Path(output_dir)
@@ -451,10 +484,7 @@ def augment_handwriting_manifest(
             continue
         for variant in range(variants_per_sample):
             image = Image.open(source).convert("L")
-            angle = [-4, 4, -2, 2][variant % 4]
-            brightness = 0.9 + (0.1 * ((variant % 3) + 1))
-            augmented = image.rotate(angle, expand=False, fillcolor=255)
-            augmented = ImageEnhance.Brightness(augmented).enhance(brightness)
+            augmented = _augment_handwriting_image(image, row["sample_id"], variant)
             output_name = f"{row['sample_id']}_aug{variant + 1}.png"
             output_path = image_dir / output_name
             augmented.save(output_path)
@@ -501,7 +531,7 @@ def augment_audio_manifest(
             continue
         waveform_data, sample_rate = _read_wav(source)
         for variant in range(variants_per_sample):
-            augmented = _augment_waveform(waveform_data, variant)
+            augmented = _augment_waveform(waveform_data, row["sample_id"], variant)
             output_name = f"{row['sample_id']}_audio_aug{variant + 1}.wav"
             output_path = audio_dir / output_name
             _write_wav(output_path, augmented, sample_rate)
@@ -576,19 +606,69 @@ def _write_wav(path: Path, waveform_data: np.ndarray, sample_rate: int) -> None:
         handle.writeframes(pcm.tobytes())
 
 
-def _augment_waveform(waveform_data: np.ndarray, variant: int) -> np.ndarray:
+def _augment_handwriting_image(image: Image.Image, sample_id: object, variant: int) -> Image.Image:
+    rng = np.random.default_rng(_stable_seed(sample_id, variant))
+    rotation = float(rng.uniform(-6.0, 6.0))
+    brightness = float(rng.uniform(0.88, 1.15))
+    contrast = float(rng.uniform(0.9, 1.18))
+    shear = float(rng.uniform(-0.08, 0.08))
+    translate_x = int(rng.integers(-4, 5))
+    translate_y = int(rng.integers(-4, 5))
+
+    augmented = image.rotate(rotation, resample=Image.Resampling.BICUBIC, expand=False, fillcolor=255)
+    augmented = augmented.transform(
+        augmented.size,
+        Image.Transform.AFFINE,
+        (1.0, shear, translate_x, shear * 0.35, 1.0, translate_y),
+        resample=Image.Resampling.BICUBIC,
+        fillcolor=255,
+    )
+    augmented = ImageEnhance.Brightness(augmented).enhance(brightness)
+    augmented = ImageEnhance.Contrast(augmented).enhance(contrast)
+    if variant % 3 == 0:
+        augmented = augmented.filter(ImageFilter.GaussianBlur(radius=0.35))
+    return augmented
+
+
+def _augment_waveform(waveform_data: np.ndarray, sample_id: object, variant: int) -> np.ndarray:
     if waveform_data.size == 0:
         return waveform_data
-    rng = np.random.default_rng(variant)
-    gain = [0.85, 1.1, 0.95][variant % 3]
-    noise_level = [0.004, 0.008, 0.002][variant % 3]
-    augmented = waveform_data * gain
-    augmented = augmented + rng.normal(0.0, noise_level, size=augmented.shape)
-    if variant % 2 == 1:
-        shift = min(len(augmented) // 20, 1200)
+    rng = np.random.default_rng(_stable_seed(sample_id, variant))
+    gain = float(rng.uniform(0.82, 1.15))
+    noise_level = float(rng.uniform(0.0015, 0.008))
+    augmented = waveform_data.astype(np.float32) * gain
+    augmented = augmented + rng.normal(0.0, noise_level, size=augmented.shape).astype(np.float32)
+
+    if variant % 3 == 0:
+        stretch = float(rng.uniform(0.92, 1.08))
+        augmented = _resample_waveform(augmented, max(1, int(16_000 * stretch)), 16_000)
+    elif variant % 3 == 1:
+        shift = min(max(1, len(augmented) // 18), 1600)
+        shift = int(rng.integers(1, shift + 1))
         augmented = np.roll(augmented, shift)
         augmented[:shift] = 0.0
+    else:
+        eq = np.tanh(augmented * float(rng.uniform(1.05, 1.25)))
+        augmented = 0.7 * augmented + 0.3 * eq
+
     return np.clip(augmented, -1.0, 1.0).astype(np.float32)
+
+
+def _stable_seed(sample_id: object, variant: int) -> int:
+    digest = hashlib.sha256(f"{sample_id}:{variant}".encode("utf-8")).hexdigest()
+    return int(digest[:8], 16)
+
+
+def _sample_family_id(sample_id: object) -> str:
+    text = str(sample_id).strip()
+    if not text:
+        return ""
+    pattern = re.compile(r"(?:_audio)?_aug\d+$", re.IGNORECASE)
+    while True:
+        cleaned = pattern.sub("", text)
+        if cleaned == text:
+            return text
+        text = cleaned
 
 
 def _rewrite_path_columns(frame: pd.DataFrame, source_root: Path, target_root: Path) -> pd.DataFrame:

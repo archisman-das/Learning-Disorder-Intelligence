@@ -13,8 +13,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Clean, normalize, augment, and split a collected dataset.")
     parser.add_argument("--manifest", default="data/collection/manifest.csv")
     parser.add_argument("--output-root", default="data/collection/processed")
-    parser.add_argument("--handwriting-variants", type=int, default=2)
-    parser.add_argument("--audio-variants", type=int, default=2)
+    parser.add_argument("--handwriting-variants", type=int, default=3)
+    parser.add_argument("--audio-variants", type=int, default=3)
     parser.add_argument("--split", action="store_true", help="Also create train/validation/test splits.")
     args = parser.parse_args()
 

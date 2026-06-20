@@ -1,0 +1,20 @@
+{
+  "inputs":[
+    "data\\demo\\manifest.csv",
+    "data\\collection_test\\processed\\prepared_manifest.csv"
+  ],
+  "output_dir":"data\\benchmarks\\hard_family_split_strict",
+  "train_rows":24,
+  "validation_rows":8,
+  "final_eval_rows":10,
+  "train_families":24,
+  "validation_families":8,
+  "final_eval_families":10,
+  "label_counts":{
+    "1":21,
+    "0":21
+  },
+  "train_path":"data\\benchmarks\\hard_family_split_strict\\train.csv",
+  "validation_path":"data\\benchmarks\\hard_family_split_strict\\validation.csv",
+  "final_eval_path":"data\\benchmarks\\hard_family_split_strict\\final_eval.csv"
+}

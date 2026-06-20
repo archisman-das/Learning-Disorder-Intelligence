@@ -8,6 +8,7 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from src.dyslexia_detection.calibration import calibrated_probabilities
 from src.dyslexia_detection.config import DataConfig
 from src.dyslexia_detection.models import build_model
 from src.dyslexia_detection.preprocessing import build_char_vocab, encode_text, extract_audio_features, load_handwriting_image
@@ -37,6 +38,8 @@ def main() -> None:
     num_classes = int(payload.get("num_classes", 2 if task == "binary" else 3 if task == "severity" else 1))
     model = build_model(payload.get("model_name", "multimodal"), data_config, num_classes=num_classes)
     model.load_state_dict(payload["model_state"])
+    temperature = float(payload.get("temperature", 1.0))
+    decision_threshold = float(payload.get("decision_threshold", 0.5))
     model.eval()
 
     vocab = build_char_vocab(getattr(data_config, "text_language", "bengali"))
@@ -60,7 +63,7 @@ def main() -> None:
         print(f"severity_label={SEVERITY_LABELS[label_id]}")
         return
 
-    probabilities = torch.softmax(logits, dim=1).squeeze(0)
+    probabilities = calibrated_probabilities(logits, temperature).squeeze(0)
     if task == "severity":
         label_id = int(probabilities.argmax().item())
         print("task=severity")
@@ -69,7 +72,7 @@ def main() -> None:
         print(f"moderate_probability={float(probabilities[1]):.4f}")
         print(f"severe_probability={float(probabilities[2]):.4f}")
     else:
-        label_id = int(probabilities.argmax().item())
+        label_id = int(float(probabilities[1].item()) >= decision_threshold) if probabilities.shape[0] == 2 else int(probabilities.argmax().item())
         print("task=binary")
         print(f"predicted_label={label_id}")
         print(f"low_risk_probability={float(probabilities[0]):.4f}")

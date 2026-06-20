@@ -1,0 +1,19 @@
+{
+  "inputs":[
+    "data\\demo\\audio_augmented_manifest.csv"
+  ],
+  "output_dir":"data\\benchmarks\\hard_family_split_realistic",
+  "train_rows":96,
+  "validation_rows":24,
+  "final_eval_rows":40,
+  "train_families":24,
+  "validation_families":6,
+  "final_eval_families":10,
+  "label_counts":{
+    "1":80,
+    "0":80
+  },
+  "train_path":"data\\benchmarks\\hard_family_split_realistic\\train.csv",
+  "validation_path":"data\\benchmarks\\hard_family_split_realistic\\validation.csv",
+  "final_eval_path":"data\\benchmarks\\hard_family_split_realistic\\final_eval.csv"
+}

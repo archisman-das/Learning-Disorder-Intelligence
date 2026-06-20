@@ -1,2 +1,2 @@
 Set-Location (Resolve-Path "$PSScriptRoot\..")
-python -m http.server 8080 --directory web
+python run_local_web.py

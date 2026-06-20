@@ -1,0 +1,25 @@
+sample_id,student_hash,handwriting_path,audio_path,text_sample,spelling_errors,pronunciation_errors,reading_time_seconds,hesitation_count,repetition_count,omission_count,label,__source_root
+S003,anon_003,handwriting\S003.png,audio\S003.wav,আমার স্কুল ভালো,0,0,21.4,2,0,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S004,anon_004,handwriting\S004.png,audio\S004.wav,বাংলা ভাষা মধুর,1,1,23.1,0,1,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S007,anon_007,handwriting\S007.png,audio\S007.wav,শিশু ফুল দেখে,0,1,19.7,0,0,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S008,anon_008,handwriting\S008.png,audio\S008.wav,নদী বয়ে যায়,1,0,21.4,1,1,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S011,anon_011,handwriting\S011.png,audio\S011.wav,আমি বাংলা পড়ি,0,0,18.0,1,0,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S012,anon_012,handwriting\S012.png,audio\S012.wav,সে বই পড়ে,1,0,19.7,2,1,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S015,anon_015,handwriting\S015.png,audio\S015.wav,আজ আমরা লিখি,0,0,24.8,2,0,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S016,anon_016,handwriting\S016.png,audio\S016.wav,তুমি গান করো,1,1,18.0,0,1,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S017,anon_017,handwriting\S017.png,audio\S017.wav,শিশু ফুল দেখে,1,1,31.7,4,2,2,1,D:\Project\Dyslexia_Detection_System\data\demo
+S019,anon_019,handwriting\S019.png,audio\S019.wav,পাখি উড়ে যায়,0,1,23.1,0,0,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S020,anon_020,handwriting\S020.png,audio\S020.wav,আমরা একসাথে পড়ি,1,0,24.8,1,1,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S023,anon_023,handwriting\S023.png,audio\S023.wav,আমার স্কুল ভালো,0,0,21.4,1,0,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S024,anon_024,handwriting\S024.png,audio\S024.wav,বাংলা ভাষা মধুর,1,0,23.1,2,1,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S027,anon_027,handwriting\S027.png,audio\S027.wav,শিশু ফুল দেখে,0,0,19.7,2,0,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S028,anon_028,handwriting\S028.png,audio\S028.wav,নদী বয়ে যায়,1,1,21.4,0,1,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S029,anon_029,handwriting\S029.png,audio\S029.wav,পাখি উড়ে যায়,1,1,35.1,4,2,2,1,D:\Project\Dyslexia_Detection_System\data\demo
+S031,anon_031,handwriting\S031.png,audio\S031.wav,আমি বাংলা পড়ি,0,1,18.0,0,0,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S032,anon_032,handwriting\S032.png,audio\S032.wav,সে বই পড়ে,1,0,19.7,1,1,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S035,anon_035,handwriting\S035.png,audio\S035.wav,আজ আমরা লিখি,0,0,24.8,1,0,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S036,anon_036,handwriting\S036.png,audio\S036.wav,তুমি গান করো,1,0,18.0,2,1,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S039,anon_039,handwriting\S039.png,audio\S039.wav,পাখি উড়ে যায়,0,0,23.1,2,0,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+S040,anon_040,handwriting\S040.png,audio\S040.wav,আমরা একসাথে পড়ি,1,1,24.8,0,1,0,0,D:\Project\Dyslexia_Detection_System\data\demo
+TEST001,temp_student_001,handwriting\TEST001.png,audio\TEST001.wav,আমি বাংলা পড়ি,1,1,28.5,2,1,0,1,D:\Project\Dyslexia_Detection_System\data\collection_test\processed
+TEST002,temp_student_002,handwriting\TEST002.png,audio\TEST002.wav,সে বই পড়ে,0,0,18.0,0,0,0,0,D:\Project\Dyslexia_Detection_System\data\collection_test\processed

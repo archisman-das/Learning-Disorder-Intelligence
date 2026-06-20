@@ -9,19 +9,20 @@ from pathlib import Path
 from web_backend import app
 
 
-HOST = "localhost"
+BIND_HOST = "0.0.0.0"
+DISPLAY_HOST = "127.0.0.1"
 PORT = 8080
 
 
 def _open_browser() -> None:
     time.sleep(1.0)
-    webbrowser.open(f"http://{HOST}:{PORT}")
+    webbrowser.open(f"http://{DISPLAY_HOST}:{PORT}")
 
 
 def _check_port_available() -> None:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.settimeout(0.5)
-        if sock.connect_ex((HOST, PORT)) == 0:
+        if sock.connect_ex((DISPLAY_HOST, PORT)) == 0:
             raise OSError(f"Port {PORT} is already in use. Close the existing dashboard first.")
 
 
@@ -32,9 +33,9 @@ def main() -> None:
 
     _check_port_available()
     print(f"Serving standalone dashboard from {web_root}")
-    print(f"Open http://{HOST}:{PORT}")
+    print(f"Open http://{DISPLAY_HOST}:{PORT}")
     threading.Thread(target=_open_browser, daemon=True).start()
-    app.run(host=HOST, port=PORT, debug=False, use_reloader=False)
+    app.run(host=BIND_HOST, port=PORT, debug=False, use_reloader=False)
 
 
 if __name__ == "__main__":

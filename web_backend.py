@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -15,6 +16,159 @@ _WHISPER_MODEL = None
 _WHISPER_MODEL_KEY = None
 _FFMPEG_READY = False
 _WEB_API = None
+_CHECKPOINTS_DIR = BASE_DIR / "checkpoints"
+
+
+def _load_json_file(path: Path) -> dict[str, object] | None:
+    try:
+        if not path.exists():
+            return None
+        with path.open("r", encoding="utf-8") as handle:
+            loaded = json.load(handle)
+        return loaded if isinstance(loaded, dict) else None
+    except Exception:
+        return None
+
+
+def _first_existing_path(*candidates: Path) -> Path | None:
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _summarize_cv_summary(summary: dict[str, object], model_name: str) -> dict[str, object]:
+    return {
+        "model": str(summary.get("model", model_name) or model_name),
+        "manifest": summary.get("manifest"),
+        "folds": summary.get("folds"),
+        "repeats": summary.get("repeats"),
+        "mean_best_accuracy": summary.get("mean_best_accuracy"),
+        "std_best_accuracy": summary.get("std_best_accuracy"),
+        "mean_best_precision": summary.get("mean_best_precision"),
+        "std_best_precision": summary.get("std_best_precision"),
+        "mean_best_recall": summary.get("mean_best_recall"),
+        "std_best_recall": summary.get("std_best_recall"),
+        "mean_best_f1": summary.get("mean_best_f1"),
+        "std_best_f1": summary.get("std_best_f1"),
+        "mean_best_score": summary.get("mean_best_score"),
+        "std_best_score": summary.get("std_best_score"),
+        "mean_best_balanced_accuracy": summary.get("mean_best_balanced_accuracy"),
+        "std_best_balanced_accuracy": summary.get("std_best_balanced_accuracy"),
+        "mean_best_decision_threshold": summary.get("mean_best_decision_threshold"),
+        "std_best_decision_threshold": summary.get("std_best_decision_threshold"),
+    }
+
+
+def _load_model_statistics_summary() -> dict[str, object]:
+    selection_summary_path = _first_existing_path(
+        _CHECKPOINTS_DIR / "selection_holdout_tough" / "selection_and_holdout_summary.json",
+        _CHECKPOINTS_DIR / "selection_holdout_final" / "selection_and_holdout_summary.json",
+        _CHECKPOINTS_DIR / "selection_holdout_smoke" / "selection_and_holdout_summary.json",
+    )
+    strict_summary_path = _first_existing_path(
+        _CHECKPOINTS_DIR / "hard_split_selection_balanced_harder_run" / "strict_benchmark_summary.json",
+        _CHECKPOINTS_DIR / "hard_split_selection_balanced_harder_run" / "seed_21" / "hard_split_selection_report.json",
+        _CHECKPOINTS_DIR / "hard_split_selection_strict_run" / "hard_split_selection_report.json",
+    )
+
+    selection_summary = _load_json_file(selection_summary_path) if selection_summary_path else None
+    strict_summary = _load_json_file(strict_summary_path) if strict_summary_path else None
+
+    cv_summaries: list[dict[str, object]] = []
+    cv_root = _CHECKPOINTS_DIR / "selection_holdout_tough" / "cv"
+    if not cv_root.exists():
+        cv_root = _CHECKPOINTS_DIR / "selection_holdout_final" / "cv"
+    if cv_root.exists():
+        for summary_path in sorted(cv_root.rglob("cross_validation_summary.json")):
+            summary = _load_json_file(summary_path)
+            if not summary:
+                continue
+            model_name = str(summary.get("model") or summary_path.parent.name)
+            cv_summaries.append(_summarize_cv_summary(summary, model_name))
+
+    holdout_summary: dict[str, object] | None = None
+    if selection_summary:
+        holdout_path = selection_summary.get("holdout_summary_path")
+        if holdout_path:
+            holdout_summary = _load_json_file((BASE_DIR / str(holdout_path)).resolve()) or _load_json_file(Path(str(holdout_path)))
+        if holdout_summary is None:
+            holdout_root = _CHECKPOINTS_DIR / "selection_holdout_final" / "holdout"
+            for candidate in sorted(holdout_root.rglob("holdout_summary.json")) if holdout_root.exists() else []:
+                holdout_summary = _load_json_file(candidate)
+                if holdout_summary:
+                    break
+
+    selection_history: list[dict[str, object]] = []
+    if selection_summary:
+        selection_history.append(
+            {
+                "source": "selection_holdout_final",
+                "selected_model": selection_summary.get("selected_model"),
+                "selection_metric": selection_summary.get("selection_metric"),
+                "selection_value": selection_summary.get("selection_value"),
+                "best_alias_path": selection_summary.get("best_alias_path"),
+                "ranked_models": selection_summary.get("ranked_models") or [],
+                "summary": f"Selected {selection_summary.get('selected_model') or 'unknown'} using {selection_summary.get('selection_metric') or 'selection metric'}",
+            }
+        )
+    if strict_summary:
+        runs = strict_summary.get("runs") or []
+        for run in runs if isinstance(runs, list) else []:
+            if not isinstance(run, dict):
+                continue
+            selection_history.append(
+                {
+                    "source": "strict_benchmark",
+                    "seed": run.get("seed"),
+                    "selected_model": run.get("selected_model"),
+                    "final_threshold_mode": strict_summary.get("final_threshold_mode"),
+                    "final_eval_metrics": run.get("final_eval_metrics"),
+                    "threshold_comparison": run.get("threshold_comparison"),
+                    "report_path": run.get("report_path"),
+                    "summary": f"Seed {run.get('seed')} selected {run.get('selected_model') or 'unknown'} with F1 {float((run.get('final_eval_metrics') or {}).get('f1', 0)):.3f}",
+                }
+            )
+
+    threshold_logs: dict[str, object] | None = None
+    threshold_source: dict[str, object] | None = None
+    if strict_summary:
+        runs = strict_summary.get("runs") or []
+        first_run = next((run for run in runs if isinstance(run, dict)), None) if isinstance(runs, list) else None
+        if first_run and first_run.get("report_path"):
+            threshold_source = _load_json_file((BASE_DIR / str(first_run["report_path"])).resolve()) or _load_json_file(Path(str(first_run["report_path"])))
+        threshold_logs = {
+            "split_dir": strict_summary.get("split_dir"),
+            "final_threshold_mode": strict_summary.get("final_threshold_mode"),
+            "selected_model": strict_summary.get("selected_model"),
+            "aggregate_metrics": strict_summary.get("aggregate_metrics"),
+            "runs": strict_summary.get("runs") or [],
+            "report": threshold_source or {},
+        }
+
+    selection_pipeline = {
+        "manifest": selection_summary.get("manifest") if selection_summary else None,
+        "task": selection_summary.get("task") if selection_summary else None,
+        "text_language": selection_summary.get("text_language") if selection_summary else None,
+        "selection_metric": selection_summary.get("selection_metric") if selection_summary else None,
+        "selected_model": selection_summary.get("selected_model") if selection_summary else None,
+        "selection_value": selection_summary.get("selection_value") if selection_summary else None,
+        "best_alias_path": selection_summary.get("best_alias_path") if selection_summary else None,
+        "ranked_models": selection_summary.get("ranked_models") if selection_summary else [],
+        "holdout_metrics": selection_summary.get("holdout_metrics") if selection_summary else None,
+    }
+
+    return {
+        "generatedAt": datetime.now().isoformat(timespec="seconds"),
+        "benchmarkSource": selection_summary_path.parent.name if selection_summary_path else "unknown",
+        "selectionPipeline": selection_pipeline,
+        "selectionHistory": selection_history,
+        "validationVsHoldout": {
+            "cvSummaries": cv_summaries,
+            "holdoutSummary": holdout_summary,
+        },
+        "thresholdLogs": threshold_logs or {},
+    }
 
 
 def _suffix_from_request(content_type: str, filename: str) -> str:
@@ -211,6 +365,13 @@ def create_app() -> Flask:
             return jsonify(result)
         except Exception as exc:
             return jsonify({"error": f"Final report failed: {exc}"}), 500
+
+    @app.get("/api/model-statistics")
+    def model_statistics():
+        try:
+            return jsonify(_load_model_statistics_summary())
+        except Exception as exc:
+            return jsonify({"error": f"Model statistics failed: {exc}"}), 500
 
     @app.get("/", defaults={"path": "index.html"})
     @app.get("/<path:path>")

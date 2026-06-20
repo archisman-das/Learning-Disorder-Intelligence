@@ -17,6 +17,7 @@ from PIL import Image
 
 from src.dyslexia_detection.architecture import ScreeningPipeline
 from src.dyslexia_detection.adaptive_tutoring import AdaptiveTutorAgent, append_tutoring_event, build_state, compute_reward
+from src.dyslexia_detection.calibration import calibrated_probabilities
 from src.dyslexia_detection.biomarkers import discover_digital_biomarkers
 from src.dyslexia_detection.intervention import (
     InterventionPolicy,
@@ -79,6 +80,7 @@ DEFAULT_TEXT_BY_LANGUAGE = {
     "English": "I read a short book",
     "Multilingual": "\u0986\u09ae\u09bf \u09ac\u09be\u0982\u09b2\u09be \u09aa\u09dc\u09bf",
 }
+ACTIVE_DECISION_THRESHOLD = 0.5
 
 REPORT_FIELD_LABELS = {
     "student_name": "Student Name",
@@ -118,6 +120,7 @@ def load_model(checkpoint_path: str = "checkpoints/best_model.pt") -> torch.nn.M
     checkpoint = Path(checkpoint_path)
     model = build_model("multimodal", DataConfig())
     if checkpoint.exists():
+        global ACTIVE_DECISION_THRESHOLD
         payload = torch.load(checkpoint, map_location="cpu")
         data_config = payload.get("data_config", DataConfig())
         if isinstance(data_config, dict):
@@ -125,8 +128,20 @@ def load_model(checkpoint_path: str = "checkpoints/best_model.pt") -> torch.nn.M
         num_classes = int(payload.get("num_classes", 2))
         model = build_model(payload.get("model_name", "multimodal"), data_config, num_classes=num_classes)
         model.load_state_dict(payload["model_state"])
+        model.calibration_temperature = float(payload.get("temperature", 1.0))
+        model.decision_threshold = float(payload.get("decision_threshold", 0.5))
+        ACTIVE_DECISION_THRESHOLD = model.decision_threshold
+    else:
+        model.calibration_temperature = 1.0
+        model.decision_threshold = 0.5
+        ACTIVE_DECISION_THRESHOLD = 0.5
     model.eval()
     return model
+
+
+def model_probabilities(model: torch.nn.Module, logits: torch.Tensor) -> torch.Tensor:
+    temperature = float(getattr(model, "calibration_temperature", 1.0))
+    return calibrated_probabilities(logits, temperature)
 
 
 @st.cache_data
@@ -428,14 +443,22 @@ def predict(
     )
 
     with torch.no_grad():
-        probabilities = torch.softmax(model(image, audio, text, errors, behavior), dim=1)
-    predicted = int(probabilities.argmax(dim=1).item())
+        probabilities = model_probabilities(model, model(image, audio, text, errors, behavior))
+    if probabilities.shape[1] == 2:
+        threshold = float(getattr(model, "decision_threshold", ACTIVE_DECISION_THRESHOLD))
+        predicted = int(float(probabilities[0, 1].item()) >= threshold)
+    else:
+        predicted = int(probabilities.argmax(dim=1).item())
     confidence = float(probabilities[0, predicted].item())
     return predicted, confidence, probabilities.squeeze(0).numpy()
 
 
-def label_from_probabilities(probabilities: np.ndarray) -> str:
-    label = int(np.argmax(probabilities))
+def label_from_probabilities(probabilities: np.ndarray, decision_threshold: float | None = None) -> str:
+    if probabilities.shape[0] == 2:
+        threshold = ACTIVE_DECISION_THRESHOLD if decision_threshold is None else decision_threshold
+        label = int(float(probabilities[1]) >= float(threshold))
+    else:
+        label = int(np.argmax(probabilities))
     if probabilities.shape[0] == 3:
         return SEVERITY_LABELS.get(label, f"Class {label}")
     return RISK_LABELS.get(label, f"Class {label}")
@@ -529,15 +552,20 @@ def score_manifest(manifest_path: str, checkpoint_modified_time: float) -> pd.Da
                 batch["errors"].unsqueeze(0),
                 batch["behavior"].unsqueeze(0),
             )
-            probabilities = torch.softmax(logits, dim=1).squeeze(0).numpy()
+            probabilities = model_probabilities(model, logits).squeeze(0).numpy()
+            if probabilities.shape[0] == 2:
+                threshold = float(getattr(model, "decision_threshold", ACTIVE_DECISION_THRESHOLD))
+                predicted_label = int(float(probabilities[1]) >= threshold)
+            else:
+                predicted_label = int(probabilities.argmax())
             rows.append(
                 {
                     "sample_id": dataset.frame.iloc[index]["sample_id"],
                     "actual_label": int(dataset.frame.iloc[index]["label"]),
-                    "predicted_label": int(probabilities.argmax()),
+                    "predicted_label": predicted_label,
                     "low_risk_probability": float(probabilities[0]),
                     "elevated_risk_probability": float(probabilities[1]) if probabilities.shape[0] > 1 else float(probabilities[0]),
-                    "confidence": float(probabilities.max()),
+                    "confidence": float(probabilities[predicted_label]),
                 }
             )
     return pd.DataFrame(rows)
@@ -598,7 +626,8 @@ def generate_explanations(manifest_path: Path, sample_id: str, checkpoint_path: 
         )
 
     with torch.no_grad():
-        probabilities = torch.softmax(
+        probabilities = model_probabilities(
+            model,
             model(
                 image,
                 audio,
@@ -606,7 +635,6 @@ def generate_explanations(manifest_path: Path, sample_id: str, checkpoint_path: 
                 errors,
                 behavior,
             ),
-            dim=1,
         ).squeeze(0)
     modality_attention: dict[str, float] = {}
     last_attention = getattr(model, "last_modality_attention", None)
@@ -614,9 +642,15 @@ def generate_explanations(manifest_path: Path, sample_id: str, checkpoint_path: 
         for key, value in last_attention.items():
             if hasattr(value, "mean"):
                 modality_attention[key] = float(value.mean().detach().cpu().item())
+    if probabilities.shape[0] == 2:
+        threshold = float(getattr(model, "decision_threshold", ACTIVE_DECISION_THRESHOLD))
+        predicted_label = int(float(probabilities[1].item()) >= threshold)
+    else:
+        predicted_label = int(probabilities.argmax().item())
+
     explanations["prediction"] = {
-        "label": int(probabilities.argmax().item()),
-        "confidence": float(probabilities.max().item()),
+        "label": predicted_label,
+        "confidence": float(probabilities[predicted_label].item()),
         "probabilities": probabilities.detach().cpu().numpy(),
         "sample_language": str(row.get("sample_language", "Bengali")),
         "spelling_errors": int(row.get("spelling_errors", 0)),

@@ -26,6 +26,10 @@ Current public demo:
 
 - [https://learning-disorder-intelligence.onrender.com/](https://learning-disorder-intelligence.onrender.com/)
 
+Deploy link:
+
+- [https://learning-disorder-intelligence.onrender.com/](https://learning-disorder-intelligence.onrender.com/)
+
 ### Render
 
 Render is the simplest path if you want a quick public URL.

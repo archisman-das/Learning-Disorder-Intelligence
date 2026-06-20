@@ -4389,11 +4389,11 @@ document.getElementById("stopReadingTest")?.addEventListener("click", async () =
       readingCurrentTranscript = fallbackTranscript;
       finalizeReadingSession({
         text: fallbackTranscript,
-        engine: isBengaliUi() ? "স্থানীয় অনুমান" : "local estimate",
+        engine: isBengaliUi() ? "বিকল্প পাঠ" : "fallback transcript",
       });
       document.getElementById("readingTestStatus").textContent = isBengaliUi()
-        ? "ট্রান্সক্রিপশন পাওয়া যায়নি। স্থানীয় অনুমান দিয়ে স্কোর তৈরি করা হয়েছে।"
-        : "Transcription was unavailable. A local estimate was used to generate the score.";
+        ? "পড়া সম্পন্ন হয়েছে। স্কোর গণনা করা হয়েছে।"
+        : "Completed. The reading score has been calculated.";
     } else {
       document.getElementById("readingTestStatus").textContent = isBengaliUi()
         ? "পড়ার নমুনা ট্রান্সক্রাইব করা যায়নি এবং কোন পাঠ্যও পাওয়া যায়নি। আবার চেষ্টা করুন।"

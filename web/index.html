@@ -4,13 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Learning Disorder Intelligence Dashboard</title>
-  <script>
-    (function () {
-      if (window.location.protocol === "file:" || window.location.protocol === "about:") {
-        window.location.replace("http://localhost:8080");
-      }
-    })();
-  </script>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css?v=3" />
@@ -33,6 +26,7 @@
             <button class="btn btn-light text-start tab-btn" data-tab="testlab"><i class="bi bi-bar-chart-steps me-2"></i>Test Lab & Report</button>
             <button class="btn btn-light text-start tab-btn" data-tab="biomarkers"><i class="bi bi-activity me-2"></i>Biomarkers</button>
             <button class="btn btn-light text-start tab-btn" data-tab="records"><i class="bi bi-journal-text me-2"></i>Records</button>
+            <button class="btn btn-light text-start tab-btn" data-tab="modelstats"><i class="bi bi-graph-up-arrow me-2"></i>Model statistics</button>
           </div>
         </div>
       </aside>
@@ -317,8 +311,9 @@
               <div class="d-flex gap-2 flex-wrap">
                 <button id="runComparison" type="button" class="btn btn-primary">Run Model Comparison</button>
                 <button id="generateFinal" type="button" class="btn btn-success">Generate Final Report</button>
-                <button id="downloadFinalPdf" type="button" class="btn btn-outline-secondary" disabled>Download Report PDF</button>
+                <button id="downloadFinalPdf" type="button" class="btn btn-outline-secondary" aria-disabled="true" aria-describedby="downloadFinalPdfHelp">Download Report PDF</button>
               </div>
+              <p id="downloadFinalPdfHelp" class="small text-muted mt-2 mb-0">Generate a final report first, then this button becomes available for PDF download.</p>
               <div class="row g-2 mt-2">
                 <div class="col-md-4"><div class="score-overall"><p class="mb-1"><strong id="labConsensusLevelLabel">Consensus Level:</strong> <span id="labConsensusLevel">-</span></p><p class="mb-0"><strong id="labAverageRiskLabel">Average Risk:</strong> <span id="labAverageRisk">-</span></p></div></div>
                 <div class="col-md-4"><div class="score-overall"><p class="mb-1"><strong id="labMostCautiousLabel">Most Cautious Model:</strong> <span id="labMostCautious">-</span></p><p class="mb-0"><strong id="labMostConfidentLabel">Most Confident Model:</strong> <span id="labMostConfident">-</span></p></div></div>
@@ -328,7 +323,7 @@
                 <div class="col-xl-7">
                   <div class="table-responsive">
                     <table class="table table-sm table-hover align-middle">
-                      <thead><tr><th>Model</th><th>Predicted Level</th><th>Confidence</th><th>Risk Score</th><th>Clinical Note</th></tr></thead>
+                      <thead><tr><th>Model</th><th>Predicted Level</th><th>Estimated Confidence</th><th>Risk Score</th><th>Clinical Note</th></tr></thead>
                       <tbody id="modelCompareTable"></tbody>
                     </table>
                   </div>
@@ -482,6 +477,80 @@
               </div>
               <div class="d-flex justify-content-start gap-2 mt-3">
                 <button type="button" class="btn btn-outline-secondary" data-nav-tab="biomarkers">Previous: Biomarkers</button>
+                <button type="button" class="btn btn-primary" data-nav-tab="modelstats">Next: Model statistics</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="modelstats" class="tab-panel">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0">Model statistics</h5>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong id="modelStatsBestLabel">Best Model</strong></p><p class="mb-0" id="modelStatsBestModel">-</p></div></div>
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong id="modelStatsRiskLabel">Average Risk</strong></p><p class="mb-0" id="modelStatsAverageRisk">-</p></div></div>
+                <div class="col-md-3"><div class="score-overall"><p class="mb-1"><strong id="modelStatsSpreadLabel">Risk Spread</strong></p><p class="mb-0" id="modelStatsSpread">-</p></div></div>
+              </div>
+              <div class="result-card mb-2">
+                <h6 class="mb-2">Risk band legend</h6>
+                <div class="row g-2 small">
+                  <div class="col-md-4"><strong>Low:</strong> risk &lt; 0.33</div>
+                  <div class="col-md-4"><strong>Moderate:</strong> 0.33 to 0.66</div>
+                  <div class="col-md-4"><strong>High:</strong> risk &ge; 0.66</div>
+                </div>
+              </div>
+              <div class="row g-3">
+                <div class="col-xl-7">
+                  <div class="result-card h-100">
+                    <h6 class="mb-2" id="modelStatsComparisonTitle">Comparison Matrix</h6>
+                    <p class="small text-muted mb-2" id="modelStatsComparisonNote"></p>
+                    <div class="table-responsive">
+                      <table class="table table-sm table-hover align-middle mb-0 compact-sortable-table">
+                        <thead>
+                          <tr>
+                            <th class="sortable-th" data-sort-key="model">Model</th>
+                            <th class="sortable-th" data-sort-key="architecture">Architecture</th>
+                            <th class="sortable-th" data-sort-key="modalities">Modalities</th>
+                            <th class="sortable-th" data-sort-key="cv_accuracy">CV Accuracy</th>
+                            <th class="sortable-th" data-sort-key="cv_precision">CV Precision</th>
+                            <th class="sortable-th" data-sort-key="cv_recall">CV Recall</th>
+                            <th class="sortable-th" data-sort-key="cv_f1">CV F1 Score</th>
+                            <th class="sortable-th" data-sort-key="cv_balanced_accuracy">CV Balanced Acc</th>
+                            <th class="sortable-th" data-sort-key="risk">Risk</th>
+                            <th class="sortable-th" data-sort-key="notes">Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody id="modelStatsTable"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-xl-5">
+                  <div class="result-card h-100">
+                    <h6 class="mb-2" id="modelStatsChartTitle">Confidence and Risk Overview</h6>
+                    <div class="chart-wrap"><canvas id="modelStatsChart"></canvas></div>
+                  </div>
+                </div>
+              </div>
+              <div class="row g-3 mt-1">
+                <div class="col-xl-7">
+                  <div class="result-card h-100">
+                        <h6 class="mb-2">Validation Matrix</h6>
+                        <div id="modelStatsValidationHoldout"></div>
+                  </div>
+                </div>
+                <div class="col-xl-5">
+                  <div class="result-card h-100">
+                    <h6 class="mb-2">Pipeline Ranking</h6>
+                    <div id="modelStatsPipelineRanking"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="d-flex justify-content-between gap-2 mt-3">
+                <button type="button" class="btn btn-outline-secondary" data-nav-tab="records">Previous: Records</button>
               </div>
             </div>
           </div>
@@ -507,6 +576,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="./app.js?v=5"></script>
+  <script src="./app.js?v=7"></script>
 </body>
 </html>

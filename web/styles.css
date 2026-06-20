@@ -103,6 +103,53 @@ body {
   padding: 10px 12px;
 }
 
+.compact-sortable-table {
+  font-size: 0.86rem;
+}
+
+.compact-sortable-table th,
+.compact-sortable-table td {
+  padding: 0.45rem 0.55rem;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.compact-sortable-table td:last-child,
+.compact-sortable-table th:last-child {
+  white-space: normal;
+  min-width: 220px;
+}
+
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.sortable-th:hover {
+  background: #dbeafe;
+}
+
+.sortable-th::after {
+  content: "⇅";
+  position: absolute;
+  right: 0.45rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.sortable-th.sort-asc::after {
+  content: "↑";
+  color: #1d4ed8;
+}
+
+.sortable-th.sort-desc::after {
+  content: "↓";
+  color: #1d4ed8;
+}
+
 .guide-box {
   border: 1px solid #bfdbfe;
   border-radius: 10px;
@@ -189,6 +236,16 @@ body {
     radial-gradient(circle at top right, rgba(14, 165, 233, 0.10), transparent 30%),
     linear-gradient(180deg, #f8fbff, #eef6ff);
   padding: 14px;
+}
+
+.sortable-th::after,
+.sortable-th.sort-asc::after,
+.sortable-th.sort-desc::after {
+  content: none !important;
+}
+
+.sortable-th {
+  padding-right: 0.55rem;
 }
 
 .eye-target-card,

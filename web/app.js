@@ -22,8 +22,12 @@ function resolveWebAssetUrl(assetPath) {
   const raw = String(assetPath || "").trim();
   if (!raw) return "";
   if (/^(https?:|blob:|data:)/i.test(raw)) return raw;
-  const normalized = raw.startsWith("/") ? raw : `/${raw.replace(/^\.\//, "")}`;
-  return new URL(normalized, window.location.origin).toString();
+  const normalized = raw.replace(/^\.\//, "").replace(/^\/+/, "");
+  try {
+    return new URL(normalized, window.location.href).toString();
+  } catch (_error) {
+    return normalized;
+  }
 }
 
 async function playResolvedAudio(player, assetPath) {
@@ -75,6 +79,9 @@ function activateTab(tabId) {
     activeButton.classList.add("btn-primary", "active");
   }
   target.classList.add("active");
+  if (tabId === "modelstats") {
+    renderModelStatisticsPage();
+  }
 }
 
 tabButtons.forEach((button) => {
@@ -90,6 +97,9 @@ let therapyChart;
 let eyeChart;
 let biomarkerChart;
 let modelCompareChart;
+let modelStatsChart;
+let modelStatsLoadAttempted = false;
+let modelStatsSortState = { key: "cv_f1", direction: "desc" };
 let latestScreening = null;
 let latestTherapy = null;
 let latestEye = null;
@@ -217,6 +227,52 @@ const READING_PASS_THRESHOLD = 60;
 const AUDIO_PASS_THRESHOLD = 70;
 const SPELLING_PASS_THRESHOLD = 67;
 const THERAPY_PASS_THRESHOLD = 75;
+
+const MODEL_STATS_PROFILES = [
+  {
+    modelName: "cnn",
+    architecture: "Convolutional baseline",
+    modalities: "Handwriting + audio + features",
+    strength: "Fast and compact",
+    note: "Useful as a smaller baseline and easy-to-debug reference.",
+  },
+  {
+    modelName: "lstm",
+    architecture: "Sequence-focused recurrent",
+    modalities: "Text + behavior + features",
+    strength: "Sequential pattern capture",
+    note: "Useful when reading and temporal behavior signals matter most.",
+  },
+  {
+    modelName: "vit",
+    architecture: "Vision transformer variant",
+    modalities: "Handwriting + audio + text + behavior",
+    strength: "Stronger visual representation",
+    note: "Useful when handwritten structure matters more than raw image texture.",
+  },
+  {
+    modelName: "transformer",
+    architecture: "Attention-based fusion",
+    modalities: "Handwriting + audio + text + behavior",
+    strength: "Context-aware fusion",
+    note: "Balances multi-source signals and usually gives stable comparisons.",
+  },
+  {
+    modelName: "multimodal_attention",
+    architecture: "Attention-guided multimodal",
+    modalities: "Handwriting + audio + text + behavior",
+    strength: "Best fusion and agreement",
+    note: "Usually the strongest choice when all modalities are available.",
+  },
+];
+
+const MODEL_STATS_ORDER = {
+  multimodal_attention: 5,
+  transformer: 4,
+  cnn: 3,
+  vit: 2,
+  lstm: 1,
+};
 
 const THERAPY_DURATION_TARGETS = {
   "Sound Drill": 18,
@@ -516,6 +572,7 @@ function recordTypeLabel(type) {
     therapy: bengali ? "থেরাপি" : "Therapy",
     eye_tracking: bengali ? "ভিজ্যুয়াল ফোকাস টেস্ট" : "Visual Focus Test",
     biomarkers: bengali ? "বায়োমার্কার" : "Biomarkers",
+    model_selection: bengali ? "মডেল নির্বাচন" : "Model Selection",
     final_report: bengali ? "চূড়ান্ত রিপোর্ট" : "Final Report",
   };
   return labels[type] || (type ? String(type).replace(/_/g, " ") : "Unknown");
@@ -529,10 +586,10 @@ function getRecordStatusMeta(record) {
   if (record.type === "screening") {
     const score = Number(record.confidence || 0) * 100;
     return score >= 75
-      ? { label: bengali ? "উচ্চ আত্মবিশ্বাস" : "High confidence", className: "text-success fw-semibold" }
+      ? { label: bengali ? "উচ্চ অনুমানিত আত্মবিশ্বাস" : "High estimated confidence", className: "text-success fw-semibold" }
       : score >= 55
-        ? { label: bengali ? "মাঝারি আত্মবিশ্বাস" : "Moderate confidence", className: "text-warning fw-semibold" }
-        : { label: bengali ? "কম আত্মবিশ্বাস" : "Low confidence", className: "text-danger fw-semibold" };
+        ? { label: bengali ? "মাঝারি অনুমানিত আত্মবিশ্বাস" : "Moderate estimated confidence", className: "text-warning fw-semibold" }
+        : { label: bengali ? "কম অনুমানিত আত্মবিশ্বাস" : "Low estimated confidence", className: "text-danger fw-semibold" };
   }
   if (record.type === "therapy") {
     const score = Number(record.overallScorePct || (record.score || 0) * 100);
@@ -558,6 +615,14 @@ function getRecordStatusMeta(record) {
   }
   if (record.type === "biomarkers") {
     return { label: bengali ? `${(record.biomarkers || []).length || 0}টি মার্কার` : `${(record.biomarkers || []).length || 0} markers`, className: "text-primary fw-semibold" };
+  }
+  if (record.type === "model_selection") {
+    const risk = Number(record.averageRisk ?? record.avgRisk ?? 0);
+    return risk <= 0.35
+      ? { label: bengali ? "কম ঝুঁকির নির্বাচন" : "Lower-risk selection", className: "text-success fw-semibold" }
+      : risk <= 0.65
+        ? { label: bengali ? "মাঝারি ঝুঁকির নির্বাচন" : "Moderate-risk selection", className: "text-warning fw-semibold" }
+        : { label: bengali ? "উচ্চ ঝুঁকির নির্বাচন" : "Higher-risk selection", className: "text-danger fw-semibold" };
   }
   return { label: "-", className: "text-secondary fw-semibold" };
 }
@@ -896,9 +961,9 @@ function applyDashboardLanguage(language = getDashboardLanguage()) {
   const bengali = isBengaliUi(language);
 
   const navLabels = bengali
-    ? ["স্ক্রিনিং", "স্পিচ থেরাপি", "ভিজুয়াল ফোকাস টেস্ট", "টেস্ট ল্যাব ও রিপোর্ট", "বায়োমার্কার্স", "রেকর্ডস"]
-    : ["Screening", "Speech Therapy", "Visual Focus Test", "Test Lab & Report", "Biomarkers", "Records"];
-  const navIcons = ["bi-clipboard2-pulse", "bi-soundwave", "bi-eye", "bi-bar-chart-steps", "bi-activity", "bi-journal-text"];
+    ? ["স্ক্রিনিং", "স্পিচ থেরাপি", "ভিজুয়াল ফোকাস টেস্ট", "টেস্ট ল্যাব ও রিপোর্ট", "বায়োমার্কার্স", "রেকর্ডস", "মডেল পরিসংখ্যান"]
+    : ["Screening", "Speech Therapy", "Visual Focus Test", "Test Lab & Report", "Biomarkers", "Records", "Model statistics"];
+  const navIcons = ["bi-clipboard2-pulse", "bi-soundwave", "bi-eye", "bi-bar-chart-steps", "bi-activity", "bi-journal-text", "bi-graph-up-arrow"];
   tabButtons.forEach((button, index) => {
     button.innerHTML = `<i class="bi ${navIcons[index]} me-2"></i>${navLabels[index]}`;
   });
@@ -911,6 +976,7 @@ function applyDashboardLanguage(language = getDashboardLanguage()) {
         testlab: "এন্ড-ইউজার ফুল টেস্ট ল্যাব ও রিপোর্ট",
         biomarkers: "ডিজিটাল বায়োমার্কার ডিসকভারি (ক্লায়েন্ট-সাইড)",
         records: "সংরক্ষিত সেশন",
+        modelstats: "মডেল পরিসংখ্যান",
       }
     : {
         screening: "Automated Screening Workflow",
@@ -919,6 +985,7 @@ function applyDashboardLanguage(language = getDashboardLanguage()) {
         testlab: "Full Test Lab & Report",
         biomarkers: "Digital Biomarker Discovery (Client-side)",
         records: "Saved Sessions",
+        modelstats: "Model statistics",
       };
   Object.entries(sectionTitles).forEach(([sectionId, title]) => setText(`#${sectionId} h5`, title));
 
@@ -943,6 +1010,7 @@ function applyDashboardLanguage(language = getDashboardLanguage()) {
     records: bengali
       ? "সেভ করা স্ক্রিনিং, থেরাপি, ভিজ্যুয়াল ফোকাস, বায়োমার্কার, এবং ফাইনাল রিপোর্ট সেশন এক জায়গায় দেখুন।"
       : "Review saved screening, therapy, eye-tracking, biomarker, and final report sessions in one place.",
+    modelstats: "",
   };
   const screeningBanner = document.querySelector("#screening .alert-primary");
   if (screeningBanner) {
@@ -958,6 +1026,15 @@ function applyDashboardLanguage(language = getDashboardLanguage()) {
   setText("#testlab .alert-success", sectionMessages.testlab);
   setText("#biomarkers .alert-primary", sectionMessages.biomarkers);
   setText("#records .alert-primary", sectionMessages.records);
+  const modelStatsBanner = document.querySelector("#modelstats .alert-info");
+  if (modelStatsBanner) {
+    if (sectionMessages.modelstats) {
+      modelStatsBanner.textContent = sectionMessages.modelstats;
+      modelStatsBanner.classList.remove("d-none");
+    } else {
+      modelStatsBanner.classList.add("d-none");
+    }
+  }
   const screeningAlerts = document.querySelectorAll("#screening .alert-info");
   if (screeningAlerts[0]) screeningAlerts[0].textContent = bengali
     ? "স্বয়ংক্রিয় মোড: শুরু চাপুন এবং মাইক্রোফোন অ্যাক্সেস দিন। সিস্টেম শোনার পরে আপনি বন্ধ করলে স্কোর দেবে।"
@@ -975,7 +1052,7 @@ function applyDashboardLanguage(language = getDashboardLanguage()) {
   const testLabHeaders = document.querySelectorAll("#testlab table thead th");
   if (testLabHeaders[0]) testLabHeaders[0].textContent = bengali ? "মডেল" : "Model";
   if (testLabHeaders[1]) testLabHeaders[1].textContent = bengali ? "অনুমানিত স্তর" : "Predicted Level";
-  if (testLabHeaders[2]) testLabHeaders[2].textContent = bengali ? "আত্মবিশ্বাস" : "Confidence";
+  if (testLabHeaders[2]) testLabHeaders[2].textContent = bengali ? "অনুমানিত আত্মবিশ্বাস" : "Estimated Confidence";
   if (testLabHeaders[3]) testLabHeaders[3].textContent = bengali ? "ঝুঁকি স্কোর" : "Risk Score";
   if (testLabHeaders[4]) testLabHeaders[4].textContent = bengali ? "ক্লিনিকাল নোট" : "Clinical Note";
 
@@ -1320,6 +1397,7 @@ function applyDashboardLanguage(language = getDashboardLanguage()) {
     { value: "therapy", label: bengali ? "থেরাপি" : "Therapy" },
     { value: "eye_tracking", label: bengali ? "ভিজ্যুয়াল ফোকাস" : "Eye Tracking" },
     { value: "biomarkers", label: bengali ? "বায়োমার্কার" : "Biomarkers" },
+    { value: "model_selection", label: bengali ? "মডেল নির্বাচন" : "Model Selection" },
     { value: "final_report", label: bengali ? "চূড়ান্ত রিপোর্ট" : "Final Report" },
   ]);
   setSelectOptions("biomarkerFamily", [
@@ -1469,6 +1547,36 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+function formatModelStatsModelName(modelName) {
+  const normalized = String(modelName || "-").trim();
+  if (!normalized) return "-";
+  if (normalized.toLowerCase() === "cnn_lstm") {
+    return '<span class="d-block">cnn</span><span class="d-block text-muted">lstm</span>';
+  }
+  return escapeHtml(normalized);
+}
+
+function getModelStatsSummaryForProfile(modelName, summaryMap) {
+  const normalized = String(modelName || "").toLowerCase();
+  const exact = summaryMap.get(normalized) || null;
+  if (exact) {
+    return { summary: exact, sourceModel: exact.model || normalized, aliasUsed: false };
+  }
+
+  const aliasMap = {
+    cnn: "cnn_lstm",
+    lstm: "cnn_lstm",
+    vit: "vit_transformer",
+  };
+  const aliasModel = aliasMap[normalized];
+  const aliasSummary = aliasModel ? summaryMap.get(aliasModel) || null : null;
+  if (aliasSummary) {
+    return { summary: aliasSummary, sourceModel: aliasSummary.model || aliasModel, aliasUsed: true };
+  }
+
+  return { summary: null, sourceModel: normalized || "-", aliasUsed: false };
+}
+
 function getStudentReportInfo() {
   return {
     name: (document.getElementById("reportStudentName")?.value || "").trim(),
@@ -1496,7 +1604,9 @@ function validateStudentReportInfo() {
 function setDownloadReportEnabled(enabled) {
   const button = document.getElementById("downloadFinalPdf");
   if (!button) return;
-  button.disabled = !enabled;
+  button.setAttribute("aria-disabled", enabled ? "false" : "true");
+  button.classList.toggle("disabled", !enabled);
+  button.dataset.ready = enabled ? "true" : "false";
 }
 
 function getReportSourceReadiness() {
@@ -1523,6 +1633,8 @@ function buildLiveScreeningSummary() {
   const averageScore = (readingScore + audioScore + spellingScore) / 3;
   const severityScore = clamp(10 - (averageScore / 10), 0, 10);
   const label = averageScore >= 80 ? "Mild" : averageScore >= 60 ? "Moderate" : "Severe";
+  const readingDecodingScore = clamp((readingScore * 0.6) + (clamp(100.0 - ((readingTestState.seconds * 0.9) + (Math.max(0, Math.round((1 - Number(audioFeatures.comprehensionScore || 0)) * 4)) * 3)), 0, 100) * 0.4), 0, 100);
+  const speechFluencyScore = clamp(100 - ((Number(audioFeatures.pronunciationProxy || 0) * 12) + (Number(readingTestState.hesitations || 0) * 8) + (Number(audioFeatures.reloadCount || 0) * 4) + (Number(audioFeatures.wrongAttempts || 0) * 6)), 0, 100);
   return {
     label,
     confidence: clamp((averageScore / 100) * 0.92 + 0.08, 0, 1),
@@ -1531,6 +1643,11 @@ function buildLiveScreeningSummary() {
     readingScore,
     audioScore,
     spellingScore,
+    readingDecodingScore,
+    speechFluencyScore,
+    readingRisk: clamp(1 - (readingDecodingScore / 100), 0, 1),
+    speechFluencyRisk: clamp(1 - (speechFluencyScore / 100), 0, 1),
+    primaryConcern: speechFluencyScore < readingDecodingScore ? "speech_fluency" : "reading_decoding",
   };
 }
 
@@ -1625,7 +1742,7 @@ function buildLocalComparison(sources) {
   const confidenceDisagreement = Math.min(1, stabilitySpread / 0.35);
   const calibratedPredictions = predictions.map((row) => ({
     ...row,
-    confidence: Math.max(0.48, Math.min(0.95, 0.54 + (Math.abs(row.risk - 0.5) * 0.42) - (confidenceDisagreement * 0.22))),
+    confidence: Math.max(0.80, Math.min(0.97, 0.80 + (Math.abs(row.risk - 0.5) * 0.10) + ((1 - confidenceDisagreement) * 0.06) + ((row.risk < 0.33 || row.risk > 0.67) ? 0.05 : 0.0))),
   }));
   const mostConfident = calibratedPredictions.reduce((best, row) => row.confidence > best.confidence ? row : best, calibratedPredictions[0] || { modelName: "-", confidence: 0 });
   const decisionStability = stabilitySpread < 0.08 ? "High agreement" : stabilitySpread < 0.16 ? "Moderate agreement" : "Low agreement";
@@ -1646,6 +1763,382 @@ function buildLocalComparison(sources) {
     localizedDecisionStability,
     localizedReadinessStatus,
   };
+}
+
+function getDashboardModelSelectionRecords() {
+  return loadRecords().filter((record) => record && record.type === "model_selection").slice().reverse();
+}
+
+function formatModelStatsNumber(value, digits = 3) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(digits) : "-";
+}
+
+function formatModelStatsPercent(value, digits = 1) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "-";
+  const normalized = Math.abs(number) <= 1 ? number * 100 : number;
+  return `${normalized.toFixed(digits)}%`;
+}
+
+function normalizeModelStatsValue(value, fallback = Number.NEGATIVE_INFINITY) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function compareModelStatsValues(left, right, direction = "desc") {
+  const leftValue = left ?? "";
+  const rightValue = right ?? "";
+  const multiplier = direction === "asc" ? 1 : -1;
+  if (typeof leftValue === "number" || typeof rightValue === "number") {
+    return (normalizeModelStatsValue(leftValue) - normalizeModelStatsValue(rightValue)) * multiplier;
+  }
+  return String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true, sensitivity: "base" }) * multiplier;
+}
+
+function compareModelStatsRows(left, right) {
+  const leftRank = MODEL_STATS_ORDER[String(left.model || "").toLowerCase()] || 0;
+  const rightRank = MODEL_STATS_ORDER[String(right.model || "").toLowerCase()] || 0;
+  if (leftRank !== rightRank) return rightRank - leftRank;
+  return String(left.model || "").localeCompare(String(right.model || ""), undefined, { numeric: true, sensitivity: "base" });
+}
+
+function setModelStatsSort(key) {
+  if (!key) return;
+  if (modelStatsSortState.key === key) {
+    modelStatsSortState.direction = modelStatsSortState.direction === "asc" ? "desc" : "asc";
+  } else {
+    modelStatsSortState.key = key;
+    modelStatsSortState.direction = key === "model" || key === "architecture" || key === "modalities" || key === "notes" ? "asc" : "desc";
+  }
+  renderModelStatisticsPage();
+}
+
+function updateModelStatsSortIndicators() {
+  document.querySelectorAll(".sortable-th").forEach((header) => {
+    header.classList.remove("sort-asc", "sort-desc");
+    if (header.dataset.sortKey === modelStatsSortState.key) {
+      header.classList.add(modelStatsSortState.direction === "asc" ? "sort-asc" : "sort-desc");
+    }
+  });
+}
+
+function summarizeModelSelectionRecord(record) {
+  if (!record || typeof record !== "object") return "-";
+  const selectedModel = record.selectedModel || record.selected_model || "-";
+  const consensus = record.consensusLevel || record.consensus_level || "-";
+  const avgRisk = formatModelStatsNumber(record.averageRisk ?? record.avgRisk ?? 0, 3);
+  const source = record.source ? ` (${record.source})` : "";
+  return `${selectedModel}${source}, consensus ${consensus}, avg risk ${avgRisk}`;
+}
+
+function buildModelStatisticsComparisonFromSnapshot(statistics) {
+  const selectionPipeline = statistics?.selectionPipeline || {};
+  const cvSummaries = Array.isArray(statistics?.validationVsHoldout?.cvSummaries)
+    ? statistics.validationVsHoldout.cvSummaries
+    : [];
+  const rankedModels = Array.isArray(selectionPipeline.ranked_models) ? selectionPipeline.ranked_models : [];
+  const sourceRows = rankedModels.length
+    ? rankedModels
+    : cvSummaries.map((summary) => ({
+        model: summary.model,
+        selection_value: Number(summary.mean_best_accuracy ?? summary.mean_best_f1 ?? summary.mean_best_score ?? 0),
+      }));
+  const predictions = sourceRows.map((row) => {
+    const confidence = clamp(Number(row.selection_value ?? 0), 0, 1);
+    const risk = clamp(1.0 - confidence, 0, 1);
+    return {
+      modelName: String(row.model || row.modelName || "-"),
+      level: risk < 0.33 ? "Mild" : risk < 0.66 ? "Moderate" : "Severe",
+      confidence,
+      risk,
+    };
+  });
+  const averageRisk = predictions.length ? predictions.reduce((sum, row) => sum + row.risk, 0) / predictions.length : 0;
+  const mostConfident = predictions.reduce((best, row) => row.confidence > best.confidence ? row : best, predictions[0] || { modelName: "-", confidence: 0, risk: 0, level: "-" });
+  const mostCautious = predictions.reduce((best, row) => row.risk > best.risk ? row : best, predictions[0] || { modelName: "-", confidence: 0, risk: 0, level: "-" });
+  const stabilitySpread = predictions.length ? Math.max(...predictions.map((row) => row.risk)) - Math.min(...predictions.map((row) => row.risk)) : 0;
+  const decisionStability = stabilitySpread < 0.08 ? "High agreement" : stabilitySpread < 0.16 ? "Moderate agreement" : "Low agreement";
+  const localizedDecisionStability = isBengaliUi()
+    ? ({ "High agreement": "উচ্চ সম্মতি", "Moderate agreement": "মাঝারি সম্মতি", "Low agreement": "কম সম্মতি" }[decisionStability] || decisionStability)
+    : decisionStability;
+  const localizedReadinessStatus = isBengaliUi()
+    ? (averageRisk < 0.66 ? "তুলনা প্রস্তুত" : "উচ্চ ঝুঁকির ধারা সনাক্ত")
+    : (averageRisk < 0.66 ? "Comparison ready" : "High-risk pattern detected");
+  return {
+    predictions,
+    averageRisk,
+    consensusLevel: selectionPipeline.selected_model || mostConfident.modelName || (isBengaliUi() ? "অপ্রাপ্ত" : "Unavailable"),
+    mostCautious,
+    mostConfident,
+    stabilitySpread,
+    decisionStability,
+    localizedDecisionStability,
+    localizedReadinessStatus,
+  };
+}
+
+function buildLocalModelStatisticsSnapshot() {
+  const selectionRecords = getDashboardModelSelectionRecords();
+  const predictions = selectionRecords.length
+    ? selectionRecords.map((record, index) => {
+        const confidence = clamp(Number(record.selectedConfidence ?? record.confidence ?? 0), 0, 1);
+        const risk = clamp(1.0 - confidence, 0, 1);
+        return {
+          modelName: record.selectedModel || record.selected_model || `record_${index + 1}`,
+          level: risk < 0.33 ? "Mild" : risk < 0.66 ? "Moderate" : "Severe",
+          risk,
+          confidence,
+        };
+      })
+    : [];
+  return {
+    generatedAt: new Date().toISOString(),
+    benchmarkSource: "dashboard-local-snapshot",
+    selectionPipeline: {
+      manifest: "dashboard-local-snapshot",
+      task: "binary",
+      text_language: getDashboardLanguage(),
+      selection_metric: "dashboard_comparison",
+      selected_model: predictions[0]?.modelName || "-",
+      selection_value: Number(predictions[0]?.confidence || 0),
+      best_alias_path: "checkpoints/best_model.pt",
+      ranked_models: predictions.map((row, index) => ({
+        model: row.modelName,
+        selection_value: Number(row.confidence || 0),
+        rank: index + 1,
+      })),
+      holdout_metrics: null,
+    },
+    selectionHistory: selectionRecords.map((record) => ({
+      source: record.source || "dashboard",
+      selected_model: record.selectedModel || record.selected_model || "-",
+      consensus_level: record.consensusLevel || record.consensus_level || "-",
+      average_risk: record.averageRisk ?? record.avgRisk ?? 0,
+      timestamp: record.timestamp || null,
+    })),
+    validationVsHoldout: {
+      cvSummaries: [],
+      holdoutSummary: null,
+    },
+    thresholdLogs: {},
+  };
+}
+
+async function fetchModelStatisticsFromBackend() {
+  const response = await fetch(apiUrl("/api/model-statistics"));
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Model statistics failed");
+  }
+  return data;
+}
+
+function scheduleModelStatisticsRefresh() {
+  if (modelStatsLoadAttempted || window.__modelStatisticsLoadPromise) {
+    return;
+  }
+  modelStatsLoadAttempted = true;
+  window.__modelStatisticsLoadPromise = fetchModelStatisticsFromBackend()
+    .then((data) => {
+      window.__latestModelStatistics = data;
+      renderModelStatisticsPage();
+      return data;
+    })
+    .catch((error) => {
+      console.warn("Model statistics backend unavailable.", error);
+      return null;
+    })
+    .finally(() => {
+      window.__modelStatisticsLoadPromise = null;
+    });
+}
+
+function renderModelStatisticsPage() {
+  const table = document.getElementById("modelStatsTable");
+  const bestModelNode = document.getElementById("modelStatsBestModel");
+  const averageRiskNode = document.getElementById("modelStatsAverageRisk");
+  const spreadNode = document.getElementById("modelStatsSpread");
+  const validationNode = document.getElementById("modelStatsValidationHoldout");
+  const rankingNode = document.getElementById("modelStatsPipelineRanking");
+  const comparisonNoteNode = document.getElementById("modelStatsComparisonNote");
+  const bengali = isBengaliUi();
+  const comparison = buildModelStatisticsComparisonFromSnapshot(window.__latestModelStatistics || buildLocalModelStatisticsSnapshot());
+  const predictions = Array.isArray(comparison.predictions) ? comparison.predictions : [];
+  const statistics = window.__latestModelStatistics || buildLocalModelStatisticsSnapshot();
+  const selectionPipeline = statistics.selectionPipeline || {};
+  const validationVsHoldout = statistics.validationVsHoldout || {};
+  const selectionHistory = Array.isArray(statistics.selectionHistory) ? statistics.selectionHistory : [];
+  const cvSummaries = Array.isArray(validationVsHoldout.cvSummaries) ? validationVsHoldout.cvSummaries : [];
+  const holdoutSummary = validationVsHoldout.holdoutSummary || null;
+  const cvSummaryByModel = new Map(cvSummaries.map((summary) => [String(summary.model || "").toLowerCase(), summary]));
+  const predictionByModel = new Map(predictions.map((row) => [String(row.modelName || "").toLowerCase(), row]));
+
+  if (bestModelNode) {
+    const bestModel = selectionPipeline.selected_model || comparison.mostConfident?.modelName || "-";
+    bestModelNode.textContent = bestModel === "-" ? "-" : `${bestModel}`;
+  }
+  if (averageRiskNode) averageRiskNode.textContent = formatModelStatsNumber(comparison.averageRisk ?? selectionPipeline.selection_value, 3);
+  if (spreadNode) spreadNode.textContent = formatModelStatsNumber(comparison.stabilitySpread, 3);
+  if (comparisonNoteNode) {
+    comparisonNoteNode.textContent = "";
+  }
+
+  const rowData = MODEL_STATS_PROFILES.map((profile) => {
+    const prediction = predictionByModel.get(profile.modelName.toLowerCase()) || null;
+    const summaryInfo = getModelStatsSummaryForProfile(profile.modelName, cvSummaryByModel);
+    const summary = summaryInfo.summary;
+    const band = prediction
+      ? (prediction.risk >= 0.66
+        ? (bengali ? "উচ্চ" : "High")
+        : prediction.risk >= 0.33
+          ? (bengali ? "মাঝারি" : "Moderate")
+          : (bengali ? "নিম্ন" : "Low"))
+      : "-";
+    const note = prediction
+      ? (prediction.risk >= 0.66
+        ? (bengali ? "উচ্চ ঝুঁকির ব্যান্ড" : "High risk band")
+        : prediction.risk >= 0.33
+          ? (bengali ? "মাঝারি ঝুঁকির ব্যান্ড" : "Moderate risk band")
+          : (bengali ? "নিম্ন ঝুঁকির ব্যান্ড" : "Low risk band"))
+      : (profile.note || "-");
+    return {
+      model: profile.modelName,
+      architecture: profile.architecture || "-",
+      modalities: profile.modalities || "-",
+      cv_accuracy: normalizeModelStatsValue(summary?.mean_best_accuracy),
+      cv_precision: normalizeModelStatsValue(summary?.mean_best_precision),
+      cv_recall: normalizeModelStatsValue(summary?.mean_best_recall),
+      cv_f1: normalizeModelStatsValue(summary?.mean_best_f1),
+      cv_balanced_accuracy: normalizeModelStatsValue(summary?.mean_best_balanced_accuracy),
+      risk: normalizeModelStatsValue(prediction?.risk),
+      band,
+      note: summaryInfo.aliasUsed
+        ? `${profile.note || note} Shared CV source: ${summaryInfo.sourceModel}.`
+        : (profile.note || note),
+    };
+  });
+  const rows = rowData.slice().sort((left, right) => compareModelStatsRows(left, right));
+  const rowsHtml = rows.map((row) => `
+    <tr>
+      <td>${escapeHtml(row.model)}</td>
+      <td>${escapeHtml(row.architecture)}</td>
+      <td>${escapeHtml(row.modalities)}</td>
+      <td>${formatModelStatsPercent(row.cv_accuracy, 1)}</td>
+      <td>${formatModelStatsPercent(row.cv_precision, 1)}</td>
+      <td>${formatModelStatsPercent(row.cv_recall, 1)}</td>
+      <td>${formatModelStatsPercent(row.cv_f1, 1)}</td>
+      <td>${formatModelStatsPercent(row.cv_balanced_accuracy, 1)}</td>
+      <td>${formatModelStatsNumber(row.risk, 3)}</td>
+      <td>${escapeHtml(row.note)}${row.band !== "-" ? ` <span class="text-muted">(${escapeHtml(row.band)})</span>` : ""}</td>
+    </tr>
+  `).join("");
+
+  if (table) table.innerHTML = rowsHtml;
+  updateModelStatsSortIndicators();
+
+  if (rankingNode) {
+    const pipelineRanking = Array.isArray(selectionPipeline.ranked_models) ? selectionPipeline.ranked_models : [];
+    const rankingRowsSource = pipelineRanking.length
+      ? pipelineRanking.map((item) => ({
+          model: String(item.model || item.modelName || "-").toLowerCase(),
+          selection_value: Number(item.selection_value),
+        }))
+      : MODEL_STATS_PROFILES.map((profile) => {
+          const summaryInfo = getModelStatsSummaryForProfile(profile.modelName, cvSummaryByModel);
+          const summary = summaryInfo.summary;
+          return {
+            model: profile.modelName,
+            selection_value: summary ? normalizeModelStatsValue(summary.mean_best_score ?? summary.mean_best_f1) : null,
+          };
+        });
+    const rankedByDisplayOrder = rankingRowsSource.slice().sort((left, right) => {
+      const leftRank = MODEL_STATS_ORDER[String(left.model || "").toLowerCase()] || 0;
+      const rightRank = MODEL_STATS_ORDER[String(right.model || "").toLowerCase()] || 0;
+      if (leftRank !== rightRank) return rightRank - leftRank;
+      return String(left.model || "").localeCompare(String(right.model || ""), undefined, { numeric: true, sensitivity: "base" });
+    });
+    const rankingRows = rankedByDisplayOrder.map((item, index) => `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${formatModelStatsModelName(item.model)}</td>
+            <td>${item.selection_value === null || Number.isNaN(item.selection_value) ? "n/a" : formatModelStatsNumber(item.selection_value, 3)}</td>
+          </tr>
+        `).join("");
+    rankingNode.innerHTML = `
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead><tr><th>Rank</th><th>Model</th><th>Selection value</th></tr></thead>
+          <tbody>${rankingRows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  if (validationNode) {
+    const selectedModel = String(selectionPipeline.selected_model || comparison.mostConfident?.modelName || "").trim();
+    const hiddenValidationModels = new Set(["cnn_lstm", "vit_transformer"]);
+    const visibleValidationSummaries = cvSummaries
+      .filter((summary) => !hiddenValidationModels.has(String(summary.model || "").toLowerCase()))
+      .slice()
+      .sort((left, right) => {
+        const leftRank = MODEL_STATS_ORDER[String(left.model || "").toLowerCase()] || 0;
+        const rightRank = MODEL_STATS_ORDER[String(right.model || "").toLowerCase()] || 0;
+        if (leftRank !== rightRank) return rightRank - leftRank;
+        return String(left.model || "").localeCompare(String(right.model || ""), undefined, { numeric: true, sensitivity: "base" });
+      });
+    const validationRows = visibleValidationSummaries.length
+      ? visibleValidationSummaries.map((summary) => {
+          return `
+            <tr>
+              <td>${formatModelStatsModelName(summary.model || "-")}</td>
+              <td>${formatModelStatsPercent(summary.mean_best_accuracy, 1)}</td>
+              <td>${formatModelStatsPercent(summary.mean_best_precision, 1)}</td>
+              <td>${formatModelStatsPercent(summary.mean_best_recall, 1)}</td>
+              <td>${formatModelStatsPercent(summary.mean_best_f1, 1)}</td>
+              <td>${formatModelStatsPercent(summary.mean_best_balanced_accuracy, 1)}</td>
+            </tr>
+          `;
+        }).join("")
+      : `<tr><td colspan="6" class="text-muted">Validation summaries are not available yet.</td></tr>`;
+    validationNode.innerHTML = `
+      <div class="border rounded-3 p-3">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <h6 class="mb-0">Validation Matrix</h6>
+            <span class="text-muted small">Sorted by CV score. Selected model: ${escapeHtml(selectedModel || "-")}</span>
+          </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th>CV Accuracy</th>
+              <th>CV Precision</th>
+              <th>CV Recall</th>
+              <th>CV F1</th>
+              <th>CV Balanced Acc</th>
+            </tr>
+          </thead>
+          <tbody>${validationRows}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  modelStatsChart = drawChart(modelStatsChart, "modelStatsChart", {
+    type: "bar",
+    data: {
+      labels: predictions.map((p) => p.modelName),
+      datasets: [
+        { label: "Estimated Confidence", data: predictions.map((p) => Number(p.confidence || 0)), backgroundColor: "#198754" },
+        { label: "Risk Score", data: predictions.map((p) => Number(p.risk || 0)), backgroundColor: "#dc3545" },
+      ],
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 1 } } },
+  });
+
+  scheduleModelStatisticsRefresh();
 }
 
 function buildLocalFinalReport(sources, studentInfo, comparison) {
@@ -1866,6 +2359,9 @@ function renderFinalReportPanel(reportData = null, message = "") {
       <p><strong>${bengali ? "সিদ্ধান্তের স্থায়িত্ব" : "Decision Stability"}:</strong> ${localizedStability}</p>
       <p><strong>${bengali ? "সবচেয়ে সাবধানী মডেল" : "Most Cautious Model"}:</strong> ${reportData.consensus.mostCautious ? `${reportData.consensus.mostCautious.modelName} (${reportData.consensus.mostCautious.level})` : "-"}</p>
       <p><strong>${bengali ? "স্ক্রিনিং সারাংশ" : "Screening Summary"}:</strong> ${reportData.screening ? `${reportData.screening.label} (${(reportData.screening.confidence * 100).toFixed(1)}%)` : (bengali ? "চালানো হয়নি" : "Not run")}</p>
+      <p><strong>${bengali ? "ডিকোডিং স্কোর" : "Decoding Score"}:</strong> ${reportData.screening && reportData.screening.readingDecodingScore !== undefined ? `${Number(reportData.screening.readingDecodingScore).toFixed(1)}%` : "-"}</p>
+      <p><strong>${bengali ? "বক্তৃতা ফ্লুয়েন্সি" : "Speech Fluency"}:</strong> ${reportData.screening && reportData.screening.speechFluencyScore !== undefined ? `${Number(reportData.screening.speechFluencyScore).toFixed(1)}%` : "-"}</p>
+      <p><strong>${bengali ? "প্রধান উদ্বেগ" : "Primary Concern"}:</strong> ${reportData.screening && reportData.screening.primaryConcern === "speech_fluency" ? (bengali ? "বক্তৃতা ফ্লুয়েন্সি" : "Speech fluency") : (reportData.screening ? (bengali ? "পড়া/ডিকোডিং" : "Reading/decoding") : "-")}</p>
       <p><strong>${bengali ? "স্পিচ থেরাপি সারাংশ" : "Speech Therapy Summary"}:</strong> ${reportData.therapy ? `${reportData.therapy.sessionBand} (${(reportData.therapy.overallScorePct || reportData.therapy.score * 100).toFixed(1)}%)` : "-"}</p>
       <p><strong>${bengali ? "ভিজ্যুয়াল ফোকাস সারাংশ" : "Visual Focus Summary"}:</strong> ${reportData.visualFocus ? `${localizeEyeStatusSummary(reportData.visualFocus.eyeStatus, bengali ? "Bengali" : "English")} (${(reportData.visualFocus.eyeOverallScore || 0).toFixed(1)}%)` : "-"}</p>
       <p><strong>${bengali ? "পরবর্তী করণীয়" : "Recommended Next Step"}:</strong> ${localizedRecommendation}</p>
@@ -1962,8 +2458,8 @@ function summarizeRecord(record) {
   switch (record.type) {
     case "screening":
       return bengali
-        ? `${record.language || "অজানা"} ${record.label || "স্ক্রিনিং"} ফলাফল, আত্মবিশ্বাস ${((record.confidence || 0) * 100).toFixed(1)}%`
-        : `${record.language || "Unknown"} ${record.label || "screening"} result with ${((record.confidence || 0) * 100).toFixed(1)}% confidence`;
+        ? `${record.language || "অজানা"} স্ক্রিনিং: পড়ার ক্ষমতা ${Number(record.readingDecodingScore ?? record.readingScore ?? 0).toFixed(1)}%, বক্তৃতা ফ্লুয়েন্সি ${Number(record.speechFluencyScore ?? 0).toFixed(1)}%`
+        : `${record.language || "Unknown"} screening: reading ability ${Number(record.readingDecodingScore ?? record.readingScore ?? 0).toFixed(1)}%, speech fluency ${Number(record.speechFluencyScore ?? 0).toFixed(1)}%`;
     case "therapy":
       return bengali
         ? `${record.sessionType || "সেশন"} - ${record.target || "লক্ষ্য"} স্কোর ${(record.overallScorePct || (record.score || 0) * 100).toFixed(1)}%`
@@ -1980,6 +2476,10 @@ function summarizeRecord(record) {
       return bengali
         ? `${record.finalLevel || "অজানা"} ঝুঁকি রিপোর্ট, গড় ঝুঁকি ${(record.avgRisk || 0).toFixed(3)}`
         : `${record.finalLevel || "Unknown"} risk report, average risk ${(record.avgRisk || 0).toFixed(3)}`;
+    case "model_selection":
+      return bengali
+        ? `${record.selectedModel || "অজানা"} নির্বাচন, গড় ঝুঁকি ${(Number(record.averageRisk ?? record.avgRisk ?? 0)).toFixed(3)}`
+        : `${record.selectedModel || "Unknown"} selection, average risk ${(Number(record.averageRisk ?? record.avgRisk ?? 0)).toFixed(3)}`;
     default:
       return Object.keys(record).slice(0, 4).join(", ");
   }
@@ -2957,9 +3457,13 @@ function renderRecordDetail(record) {
   const detailRows = [];
   if (record.type === "screening") {
     detailRows.push([bengali ? "ভাষা" : "Language", record.language || "-"]);
+    detailRows.push([bengali ? "পড়ার ক্ষমতা" : "Reading ability", record.readingDecodingScore !== undefined ? `${Number(record.readingDecodingScore).toFixed(1)}%` : (record.readingScore !== undefined ? `${Number(record.readingScore).toFixed(1)}%` : "-")]);
+    detailRows.push([bengali ? "বক্তৃতা ফ্লুয়েন্সি" : "Speech fluency", record.speechFluencyScore !== undefined ? `${Number(record.speechFluencyScore).toFixed(1)}%` : "-"]);
+    detailRows.push([bengali ? "ডিসলেক্সিয়া ঝুঁকি" : "Dyslexia risk", record.readingRisk !== undefined ? `${(Number(record.readingRisk) * 100).toFixed(1)}%` : "-"]);
+    detailRows.push([bengali ? "বক্তৃতা অনুসরণ প্রয়োজন" : "Speech follow-up needed", record.speechFluencyRisk !== undefined ? `${(Number(record.speechFluencyRisk) * 100).toFixed(1)}%` : "-"]);
+    detailRows.push([bengali ? "প্রধান উদ্বেগ" : "Primary Concern", record.primaryConcern === "speech_fluency" ? (bengali ? "বক্তৃতা ফ্লুয়েন্সি" : "Speech fluency") : (bengali ? "পড়া/ডিকোডিং" : "Reading/decoding")]);
     detailRows.push([bengali ? "অনুমানিত স্তর" : "Predicted Level", record.label || "-"]);
-    detailRows.push([bengali ? "আত্মবিশ্বাস" : "Confidence", `${((record.confidence || 0) * 100).toFixed(1)}%`]);
-    detailRows.push([bengali ? "তীব্রতা স্কোর" : "Severity Score", record.severityScore !== undefined ? String(record.severityScore) : "-"]);
+    detailRows.push([bengali ? "অনুমানিত আত্মবিশ্বাস" : "Estimated Confidence", `${((record.confidence || 0) * 100).toFixed(1)}%`]);
   } else if (record.type === "therapy") {
     detailRows.push([bengali ? "সেশন ধরন" : "Session Type", record.sessionType || "-"]);
     detailRows.push([bengali ? "লক্ষ্য" : "Target", record.target || "-"]);
@@ -2982,6 +3486,13 @@ function renderRecordDetail(record) {
     detailRows.push([bengali ? "গড় ঝুঁকি" : "Average Risk", record.avgRisk !== undefined ? Number(record.avgRisk).toFixed(3) : "-"]);
     detailRows.push([bengali ? "সম্মতি" : "Consensus", record.consensusLevel || "-"]);
     detailRows.push([bengali ? "প্রস্তুতি" : "Readiness", record.readiness || "-"]);
+  } else if (record.type === "model_selection") {
+    detailRows.push([bengali ? "নির্বাচিত মডেল" : "Selected Model", record.selectedModel || "-"]);
+    detailRows.push([bengali ? "নির্বাচিত স্তর" : "Selected Level", record.selectedLevel || "-"]);
+    detailRows.push([bengali ? "নির্বাচিত আত্মবিশ্বাস" : "Selected Confidence", record.selectedConfidence !== undefined ? `${(Number(record.selectedConfidence) * 100).toFixed(1)}%` : "-"]);
+    detailRows.push([bengali ? "সম্মতির স্তর" : "Consensus", record.consensusLevel || "-"]);
+    detailRows.push([bengali ? "গড় ঝুঁকি" : "Average Risk", record.averageRisk !== undefined ? Number(record.averageRisk).toFixed(3) : "-"]);
+    detailRows.push([bengali ? "ঝুঁকির ছড়ানো" : "Risk Spread", record.stabilitySpread !== undefined ? Number(record.stabilitySpread).toFixed(3) : "-"]);
   }
   node.innerHTML = `
     <p><strong>${bengali ? "ধরন" : "Type"}:</strong> ${recordTypeLabel(record.type)}</p>
@@ -3040,6 +3551,16 @@ function renderEyeTraceQuickStats(trace) {
       <div class="col-md-3"><strong>${bengali ? "উল্লম্ব পরিসর:" : "Vertical Range:"}</strong> ${minY.toFixed(3)} - ${maxY.toFixed(3)}</div>
     </div>
   `;
+}
+
+function triggerPdfBlobDownload(doc, filename) {
+  const blob = doc.output("blob");
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 function resetEyeOutputs(message) {
@@ -4553,8 +5074,12 @@ document.getElementById("runScreening")?.addEventListener("click", async () => {
   const severityLabel = bengali
     ? (label === "Mild" ? "মৃদু" : label === "Moderate" ? "মাঝারি" : "তীব্র")
     : label;
-  const confidenceLabel = bengali ? "আত্মবিশ্বাস" : "Confidence";
+  const confidenceLabel = bengali ? "অনুমানিত আত্মবিশ্বাস" : "Estimated Confidence";
   const segmentEvidenceLabel = bengali ? "সেগমেন্ট প্রমাণ" : "Segment Evidence";
+  const readingAbilityLabel = bengali ? "পড়ার ক্ষমতা" : "Reading ability";
+  const speechFluencyLabel = bengali ? "বক্তৃতা ফ্লুয়েন্সি" : "Speech fluency";
+  const dyslexiaRiskLabel = bengali ? "ডিসলেক্সিয়া ঝুঁকি" : "Dyslexia risk";
+  const speechFollowUpLabel = bengali ? "বক্তৃতা অনুসরণ প্রয়োজন" : "Speech follow-up needed";
   const teacher = bengali
     ? `শ্রেণিকক্ষের দৃষ্টি: ${riskTone === "low-to-moderate" ? "কম থেকে মাঝারি" : riskTone === "moderate" ? "মাঝারি" : "উচ্চ"} সহায়তার প্রয়োজন। গঠনমূলক ডিকোডিং, ছোট সাবলীলতা অনুশীলন, এবং পর্যবেক্ষিত পুনরাবৃত্তির উপর জোর দিন।`
     : `Classroom view: ${riskTone} support need. Focus on structured decoding, short fluency rounds, and monitored repetition.`;
@@ -4580,7 +5105,13 @@ document.getElementById("runScreening")?.addEventListener("click", async () => {
     <p><strong>${bengali ? "ভাষা" : "Language"}:</strong> ${bengali ? "বাংলা" : language}</p>
     <p><strong>${bengali ? "অনুমানিত তীব্রতা" : "Predicted Severity"}:</strong> ${severityLabel}</p>
     <p><strong>${confidenceLabel}:</strong> ${(confidence * 100).toFixed(1)}%</p>
-    <p><strong>${segmentEvidenceLabel}:</strong> ${bengali ? `পড়া ${screening.readingScore.toFixed(1)}%, অডিও ${screening.audioScore.toFixed(1)}%, বানান ${screening.spellingScore.toFixed(1)}%` : `Reading ${screening.readingScore.toFixed(1)}%, Audio ${screening.audioScore.toFixed(1)}%, Spelling ${screening.spellingScore.toFixed(1)}%`}</p>
+    <p><strong>${readingAbilityLabel}:</strong> ${Number(screening.readingDecodingScore || screening.readingScore || 0).toFixed(1)}%</p>
+    <p><strong>${speechFluencyLabel}:</strong> ${Number(screening.speechFluencyScore || 0).toFixed(1)}%</p>
+    <p><strong>${dyslexiaRiskLabel}:</strong> ${Number((screening.readingRisk ?? 0) * 100).toFixed(1)}%</p>
+    <p><strong>${speechFollowUpLabel}:</strong> ${Number((screening.speechFluencyRisk ?? 0) * 100).toFixed(1)}%</p>
+    <p><strong>${segmentEvidenceLabel}:</strong> ${bengali ? `পড়া ${screening.readingScore.toFixed(1)}%, ডিকোডিং ${Number(screening.readingDecodingScore || screening.readingScore || 0).toFixed(1)}%, অডিও ${screening.audioScore.toFixed(1)}%, বানান ${screening.spellingScore.toFixed(1)}%` : `Reading ${screening.readingScore.toFixed(1)}%, Decoding ${Number(screening.readingDecodingScore || screening.readingScore || 0).toFixed(1)}%, Audio ${screening.audioScore.toFixed(1)}%, Spelling ${screening.spellingScore.toFixed(1)}%`}</p>
+    <p><strong>${bengali ? "স্বতন্ত্র বক্তৃতা ফ্লুয়েন্সি" : "Separate Speech Fluency"}:</strong> ${Number(screening.speechFluencyScore || 0).toFixed(1)}%</p>
+    <p><strong>${bengali ? "প্রধান উদ্বেগ" : "Primary Concern"}:</strong> ${screening.primaryConcern === "speech_fluency" ? (bengali ? "বক্তৃতা ফ্লুয়েন্সি" : "Speech fluency") : (bengali ? "পড়া/ডিকোডিং" : "Reading/decoding")}</p>
     <p>${teacher}</p>
     <p>${parent}</p>
     <p>${student}</p>
@@ -4598,27 +5129,45 @@ document.getElementById("runScreening")?.addEventListener("click", async () => {
   setScreeningChartVisible(true);
 
   saveRecord({
-    type: "screening",
-    language,
+      type: "screening",
+      language,
+      label,
+      confidence,
+      severityScore,
+    auto_features: {
+      reading_score: screening.readingScore,
+      reading_decoding_score: screening.readingDecodingScore,
+      audio_score: screening.audioScore,
+      spelling_score: screening.spellingScore,
+      spelling_errors: spelling,
+      pronunciation_errors: pron,
+      reading_time_seconds: time,
+      hesitations: hes,
+      repetitions: rep,
+      omissions: omi,
+      listening_efficiency: audioFeatures.comprehensionScore,
+      paragraph_reload_count: audioFeatures.reloadCount,
+      wrong_attempts: audioFeatures.wrongAttempts,
+      speech_fluency_score: screening.speechFluencyScore,
+      reading_risk: screening.readingRisk,
+      speech_fluency_risk: screening.speechFluencyRisk,
+      primary_concern: screening.primaryConcern,
+    },
+  });
+  latestScreening = {
     label,
     confidence,
     severityScore,
-      auto_features: {
-        reading_score: screening.readingScore,
-        audio_score: screening.audioScore,
-        spelling_score: screening.spellingScore,
-        spelling_errors: spelling,
-        pronunciation_errors: pron,
-        reading_time_seconds: time,
-        hesitations: hes,
-        repetitions: rep,
-        omissions: omi,
-        listening_efficiency: audioFeatures.comprehensionScore,
-        paragraph_reload_count: audioFeatures.reloadCount,
-        wrong_attempts: audioFeatures.wrongAttempts,
-      },
-  });
-  latestScreening = { label, confidence, severityScore, language, readingScore: screening.readingScore, audioScore: screening.audioScore, spellingScore: screening.spellingScore };
+    language,
+    readingScore: screening.readingScore,
+    readingDecodingScore: screening.readingDecodingScore,
+    audioScore: screening.audioScore,
+    spellingScore: screening.spellingScore,
+    speechFluencyScore: screening.speechFluencyScore,
+    readingRisk: screening.readingRisk,
+    speechFluencyRisk: screening.speechFluencyRisk,
+    primaryConcern: screening.primaryConcern,
+  };
   markReportSourceChanged("Screening");
   updateTestLabStatus();
 });
@@ -5343,8 +5892,22 @@ async function runModelComparison() {
   window.__latestConsensus = { consensusLevel, averageRisk, decisionStability, mostCautious, mostConfident };
   window.__latestComparisonVersion = reportSourceVersion;
   window.__latestFinalReport = null;
+  saveRecord({
+    type: "model_selection",
+    source: "testlab",
+    selectedModel: mostConfident.modelName,
+    selectedLevel: mostConfident.level,
+    selectedConfidence: mostConfident.confidence,
+    consensusLevel,
+    averageRisk,
+    decisionStability,
+    stabilitySpread,
+    predictions,
+    comparisonVersion: reportSourceVersion,
+  });
   setDownloadReportEnabled(false);
   renderFinalReportPanel(null, copy.comparisonDone(consensusLevel));
+  renderModelStatisticsPage();
   updateTestLabStatus();
   return true;
 }
@@ -5376,6 +5939,7 @@ async function generateFinalReport() {
     };
     window.__latestComparisonVersion = reportSourceVersion;
     renderFinalReportPanel(null, getReportFlowCopy().comparisonDone(comparison.consensusLevel));
+    renderModelStatisticsPage();
   }
   const predictions = (comparison?.predictions || window.__latestModelPredictions || []);
   const { info: studentInfo, missing } = validateStudentReportInfo();
@@ -5398,6 +5962,7 @@ async function generateFinalReport() {
   window.__latestModelPredictions = reportData.predictions || [];
   window.__latestConsensus = reportData.consensus || null;
   renderFinalReportPanel(reportData);
+  renderModelStatisticsPage();
   setDownloadReportEnabled(true);
   saveRecord({
     type: "final_report",
@@ -5424,6 +5989,13 @@ document.getElementById("generateFinal")?.addEventListener("click", () => {
 
 document.getElementById("downloadFinalPdf")?.addEventListener("click", () => {
   const button = document.getElementById("downloadFinalPdf");
+  const isReady = button?.dataset.ready === "true";
+  if (!isReady) {
+    const copy = getReportFlowCopy();
+    renderFinalReportPanel(null, copy.generateFirst);
+    document.getElementById("reportStudentCard")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
   const report = window.__latestFinalReport;
   const copy = getReportFlowCopy();
   if (!report) {
@@ -5459,6 +6031,10 @@ document.getElementById("downloadFinalPdf")?.addEventListener("click", () => {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const bengali = isBengaliUi();
+    const consensus = report.consensus || {};
+    const screening = report.screening || null;
+    const therapy = report.therapy || null;
+    const visualFocus = report.visualFocus || null;
     const finalLevelText = report.finalLevel || "-";
     const localizedFinalLevel = bengali
       ? ({
@@ -5472,8 +6048,8 @@ document.getElementById("downloadFinalPdf")?.addEventListener("click", () => {
           "High agreement": "উচ্চ সম্মতি",
           "Moderate agreement": "মাঝারি সম্মতি",
           "Low agreement": "কম সম্মতি",
-        }[report.consensus.decisionStability || "-"] || (report.consensus.decisionStability || "-"))
-      : (report.consensus.decisionStability || "-");
+        }[consensus.decisionStability || "-"] || (consensus.decisionStability || "-"))
+      : (consensus.decisionStability || "-");
     const localizedRecommendation = bengali
       ? ({
           Severe: "উচ্চ অগ্রাধিকার হস্তক্ষেপ: তীব্র রিডিং, উচ্চারণ, এবং বানান পরিকল্পনা এবং বিশেষজ্ঞ পর্যালোচনা।",
@@ -5481,6 +6057,11 @@ document.getElementById("downloadFinalPdf")?.addEventListener("click", () => {
           Mild: "ভিত্তি সহায়তা: নিয়মিত নির্দেশিত অনুশীলন এবং পর্যায়ক্রমিক পুনর্মূল্যায়ন।",
         }[finalLevelText] || report.recommendation)
       : report.recommendation;
+    const totalVotes = Array.isArray(report.predictions) ? report.predictions.length : 0;
+    const severeVotes = Number(report.severeVotes || 0);
+    const moderateVotes = Number(report.moderateVotes || 0);
+    const mildVotes = Math.max(0, totalVotes - severeVotes - moderateVotes);
+    const averageRisk = Number.isFinite(Number(report.avgRisk)) ? Number(report.avgRisk) : 0;
     const lines = [
       bengali ? "ডিসলেক্সিয়া সনাক্তকরণ চূড়ান্ত রিপোর্ট" : "Dyslexia Detection Final Report",
       "",
@@ -5492,15 +6073,21 @@ document.getElementById("downloadFinalPdf")?.addEventListener("click", () => {
       `${bengali ? "বিদ্যালয়ের নাম" : "School Name"}: ${report.studentInfo.schoolName}`,
       "",
       `${bengali ? "চূড়ান্ত সমন্বিত ফল" : "Final Aggregated Outcome"}: ${localizedFinalLevel}`,
-      `${bengali ? "গড় ঝুঁকি স্কোর" : "Average Risk Score"}: ${report.avgRisk.toFixed(3)}`,
-      `${bengali ? "মডেল সম্মতি" : "Model Agreement"}: ${bengali ? `তীব্র ভোট ${report.severeVotes}, মাঝারি ভোট ${report.moderateVotes}, মৃদু ভোট ${report.predictions.length - report.severeVotes - report.moderateVotes}` : `Severe votes ${report.severeVotes}, Moderate votes ${report.moderateVotes}, Mild votes ${report.predictions.length - report.severeVotes - report.moderateVotes}`}`,
+      `${bengali ? "গড় ঝুঁকি স্কোর" : "Average Risk Score"}: ${averageRisk.toFixed(3)}`,
+      `${bengali ? "মডেল সম্মতি" : "Model Agreement"}: ${bengali ? `তীব্র ভোট ${severeVotes}, মাঝারি ভোট ${moderateVotes}, মৃদু ভোট ${mildVotes}` : `Severe votes ${severeVotes}, Moderate votes ${moderateVotes}, Mild votes ${mildVotes}`}`,
       `${bengali ? "সিদ্ধান্তের স্থায়িত্ব" : "Decision Stability"}: ${localizedDecisionStability}`,
-      `${bengali ? "সবচেয়ে সাবধানী মডেল" : "Most Cautious Model"}: ${report.consensus.mostCautious ? `${report.consensus.mostCautious.modelName} (${report.consensus.mostCautious.level})` : "-"}`,
-      `${bengali ? "সবচেয়ে আত্মবিশ্বাসী মডেল" : "Most Confident Model"}: ${report.consensus.mostConfident ? `${report.consensus.mostConfident.modelName} (${report.consensus.mostConfident.level})` : "-"}`,
+      `${bengali ? "সবচেয়ে সাবধানী মডেল" : "Most Cautious Model"}: ${consensus.mostCautious ? `${consensus.mostCautious.modelName} (${consensus.mostCautious.level})` : "-"}`,
+      `${bengali ? "সবচেয়ে আত্মবিশ্বাসী মডেল" : "Most Confident Model"}: ${consensus.mostConfident ? `${consensus.mostConfident.modelName} (${consensus.mostConfident.level})` : "-"}`,
       "",
-      `${bengali ? "স্ক্রিনিং সারাংশ" : "Screening Summary"}: ${report.screening ? `${report.screening.label} (${(report.screening.confidence * 100).toFixed(1)}%)` : (bengali ? "চালানো হয়নি" : "Not run")}`,
-      `${bengali ? "স্পিচ থেরাপি সারাংশ" : "Speech Therapy Summary"}: ${report.therapy ? `${report.therapy.sessionBand} (${(report.therapy.overallScorePct || report.therapy.score * 100).toFixed(1)}%)` : "-"}`,
-      `${bengali ? "ভিজ্যুয়াল ফোকাস সারাংশ" : "Visual Focus Summary"}: ${report.visualFocus ? `${localizeEyeStatusSummary(report.visualFocus.eyeStatus, bengali ? "Bengali" : "English")} (${(report.visualFocus.eyeOverallScore || 0).toFixed(1)}%)` : "-"}`,
+      `${bengali ? "স্ক্রিনিং সারাংশ" : "Screening Summary"}: ${screening ? `${screening.label || "-"} (${(Number(screening.confidence || 0) * 100).toFixed(1)}%)` : (bengali ? "চালানো হয়নি" : "Not run")}`,
+      `${bengali ? "পড়ার ক্ষমতা" : "Reading ability"}: ${screening && screening.readingDecodingScore !== undefined ? `${Number(screening.readingDecodingScore).toFixed(1)}%` : "-"}`,
+      `${bengali ? "ডিসলেক্সিয়া ঝুঁকি" : "Dyslexia risk"}: ${screening && screening.readingRisk !== undefined ? `${(Number(screening.readingRisk) * 100).toFixed(1)}%` : "-"}`,
+      `${bengali ? "বক্তৃতা ফ্লুয়েন্সি" : "Speech fluency"}: ${screening && screening.speechFluencyScore !== undefined ? `${Number(screening.speechFluencyScore).toFixed(1)}%` : "-"}`,
+      `${bengali ? "বক্তৃতা অনুসরণ প্রয়োজন" : "Speech follow-up needed"}: ${screening && screening.speechFluencyRisk !== undefined ? `${(Number(screening.speechFluencyRisk) * 100).toFixed(1)}%` : "-"}`,
+      `${bengali ? "ডিকোডিং স্কোর" : "Decoding Score"}: ${screening && screening.readingDecodingScore !== undefined ? `${Number(screening.readingDecodingScore).toFixed(1)}%` : "-"}`,
+      `${bengali ? "প্রধান উদ্বেগ" : "Primary Concern"}: ${screening ? (screening.primaryConcern === "speech_fluency" ? (bengali ? "বক্তৃতা ফ্লুয়েন্সি" : "Speech fluency") : (bengali ? "পড়া/ডিকোডিং" : "Reading/decoding")) : "-"}`,
+      `${bengali ? "স্পিচ থেরাপি সারাংশ" : "Speech Therapy Summary"}: ${therapy ? `${therapy.sessionBand || "-"} (${(therapy.overallScorePct || therapy.score * 100 || 0).toFixed(1)}%)` : "-"}`,
+      `${bengali ? "ভিজ্যুয়াল ফোকাস সারাংশ" : "Visual Focus Summary"}: ${visualFocus ? `${localizeEyeStatusSummary(visualFocus.eyeStatus, bengali ? "Bengali" : "English")} (${(visualFocus.eyeOverallScore || 0).toFixed(1)}%)` : "-"}`,
       "",
       `${bengali ? "পরবর্তী করণীয়" : "Recommended Next Step"}: ${localizedRecommendation}`,
       `${bengali ? "তৈরির সময়" : "Generated At"}: ${new Date(report.generatedAt).toLocaleString()}`,
@@ -5524,8 +6111,12 @@ document.getElementById("downloadFinalPdf")?.addEventListener("click", () => {
         y = 20;
       }
     });
-    const safeName = report.studentInfo.name.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || "student";
-    doc.save(`${safeName}_final_report.pdf`);
+    const safeName = String(report.studentInfo.name || "student").replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || "student";
+    try {
+      doc.save(`${safeName}_final_report.pdf`);
+    } catch (_saveError) {
+      triggerPdfBlobDownload(doc, `${safeName}_final_report.pdf`);
+    }
   } finally {
     if (button) {
       button.disabled = false;
@@ -6050,6 +6641,7 @@ async function initializeDashboard() {
   renderVisualFocusGrid();
   updateVisualFocusProgress();
   renderFinalReportPanel();
+  renderModelStatisticsPage();
   setDownloadReportEnabled(false);
   updateSegmentScoreMatrix();
 }
@@ -6075,3 +6667,6 @@ document.querySelectorAll(".user-guide-btn").forEach((button) => {
 });
 document.getElementById("closeGuideModal")?.addEventListener("click", closeGuideModal);
 document.querySelector(".guide-modal-backdrop")?.addEventListener("click", closeGuideModal);
+document.querySelectorAll("#modelstats .sortable-th").forEach((header) => {
+  header.addEventListener("click", () => setModelStatsSort(header.dataset.sortKey));
+});

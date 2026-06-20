@@ -4393,8 +4393,8 @@ document.getElementById("stopReadingTest")?.addEventListener("click", async () =
       });
     } else {
       document.getElementById("readingTestStatus").textContent = isBengaliUi()
-        ? "পড়ার নমুনা ট্রান্সক্রাইব করা যায়নি এবং কোন পাঠ্যও পাওয়া যায়নি। আবার চেষ্টা করুন।"
-        : "The reading sample could not be transcribed and no text estimate was available. Please try again.";
+        ? "পড়া সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।"
+        : "Reading could not be completed. Please try again.";
       readingTestState.done = false;
       readingRecognitionRunning = false;
       setReadingListeningUI(false);

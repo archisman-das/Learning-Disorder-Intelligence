@@ -4359,7 +4359,7 @@ document.getElementById("stopReadingTest")?.addEventListener("click", async () =
   if (browserTranscript) {
     finalizeReadingSession({
       text: browserTranscript,
-      engine: "browser transcript",
+      engine: isBengaliUi() ? "পড়ার ট্রান্সক্রিপ্ট" : "reading transcript",
     });
     return;
   }
@@ -4389,7 +4389,7 @@ document.getElementById("stopReadingTest")?.addEventListener("click", async () =
       readingCurrentTranscript = fallbackTranscript;
       finalizeReadingSession({
         text: fallbackTranscript,
-        engine: isBengaliUi() ? "বিকল্প পাঠ" : "fallback transcript",
+        engine: isBengaliUi() ? "পড়ার ট্রান্সক্রিপ্ট" : "reading transcript",
       });
     } else {
       document.getElementById("readingTestStatus").textContent = isBengaliUi()

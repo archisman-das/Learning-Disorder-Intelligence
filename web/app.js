@@ -4391,9 +4391,6 @@ document.getElementById("stopReadingTest")?.addEventListener("click", async () =
         text: fallbackTranscript,
         engine: isBengaliUi() ? "বিকল্প পাঠ" : "fallback transcript",
       });
-      document.getElementById("readingTestStatus").textContent = isBengaliUi()
-        ? "পড়া সম্পন্ন হয়েছে। স্কোর গণনা করা হয়েছে।"
-        : "Completed. The reading score has been calculated.";
     } else {
       document.getElementById("readingTestStatus").textContent = isBengaliUi()
         ? "পড়ার নমুনা ট্রান্সক্রাইব করা যায়নি এবং কোন পাঠ্যও পাওয়া যায়নি। আবার চেষ্টা করুন।"

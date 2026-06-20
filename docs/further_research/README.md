@@ -11,6 +11,20 @@ This folder groups research-oriented notes for future work on top of the current
 | [`experiment_matrix.md`](/d:/Project/Dyslexia_Detection_System/docs/further_research/experiment_matrix.md) | Experiment-by-experiment comparison matrix |
 | [`publication_directions.md`](/d:/Project/Dyslexia_Detection_System/docs/further_research/publication_directions.md) | Paper and thesis direction ideas |
 
+## Current Experiment Matrix Snapshot
+
+The live dashboard and training pipeline now track a separate model-statistics hub plus the final test-lab comparison flow. For the latest tough benchmark snapshot, the model families are currently ranked as:
+
+| Rank | Model | Notes |
+|---|---|---|
+| 1 | `multimodal_attention` | Best overall selection in the latest run |
+| 2 | `transformer` | Strong sequence-aware multimodal baseline |
+| 3 | `cnn` | Solid compact baseline |
+| 4 | `vit` | Vision-heavy variant with lower selection value |
+| 5 | `lstm` | Text-first sequence baseline |
+
+Use [`experiment_matrix.md`](/d:/Project/Dyslexia_Detection_System/docs/further_research/experiment_matrix.md) for the more detailed experiment-by-experiment notes and to extend this table when you add new benchmark runs.
+
 ## Recommended Reading Order
 
 1. Research roadmap

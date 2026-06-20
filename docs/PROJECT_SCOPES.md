@@ -202,6 +202,8 @@ Example questions:
 - Which architecture performs best on the manifest schema?
 - Does attention fusion improve interpretability without hurting accuracy?
 - Does a ViT handwriting branch help more than a CNN branch?
+- Which model should be selected by cross-validation before the hard holdout sanity-check?
+- How much does threshold calibration change recall on strict evaluation splits?
 
 ### 3.2 Low-resource transfer research
 
@@ -279,4 +281,3 @@ If you want to understand the scope from the code, start with:
 2. [`docs/PROJECT_DOCUMENTATION.md`](/d:/Project/Dyslexia_Detection_System/docs/PROJECT_DOCUMENTATION.md)
 3. [`docs/ARCHITECTURE.md`](/d:/Project/Dyslexia_Detection_System/docs/ARCHITECTURE.md)
 4. [`docs/MODEL_CATALOG.md`](/d:/Project/Dyslexia_Detection_System/docs/MODEL_CATALOG.md)
-

@@ -15,6 +15,8 @@ This project already combines handwriting, speech, text, and behavior inputs, wh
 - test whether attention-based fusion improves interpretability
 - evaluate whether a ViT handwriting branch improves image sensitivity
 - compare binary risk, severity classification, and regression-style scoring
+- select the best model with cross-validation, then sanity-check it on a hard holdout split
+- compare old and new threshold settings side by side when recall needs tuning
 
 ## Hypothesis
 
@@ -45,6 +47,8 @@ Multimodal fusion will outperform single-modality baselines, and attention fusio
 - MAE for regression mode
 - calibration / confidence analysis
 - modality-attention consistency
+- validation matrix reporting
+- holdout test sanity-check
 
 ## Expected Output
 
@@ -58,4 +62,3 @@ Multimodal fusion will outperform single-modality baselines, and attention fusio
 - noisy labels
 - class imbalance
 - modality missingness
-

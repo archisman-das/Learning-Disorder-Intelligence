@@ -9,9 +9,10 @@ This folder is reserved for dashboard captures that can be referenced from the m
 | [`streamlit-dashboard.png`](/d:/Project/Dyslexia_Detection_System/docs/screenshots/streamlit-dashboard.png) | Main Streamlit dashboard overview |
 | [`web-dashboard.png`](/d:/Project/Dyslexia_Detection_System/docs/screenshots/web-dashboard.png) | Standalone local web dashboard |
 | [`react-dashboard.png`](/d:/Project/Dyslexia_Detection_System/docs/screenshots/react-dashboard.png) | React/Vite frontend overview |
+| [`model-statistics.png`](/d:/Project/Dyslexia_Detection_System/docs/screenshots/model-statistics.png) | Model statistics and comparison matrix |
 
 ## Note
 
 The repository currently does not include captured screenshots yet.
 Add the image files here when you have actual dashboard captures, then update the README links if needed.
-
+If you capture the model statistics page, include the validation matrix and ranking snapshot in that image.

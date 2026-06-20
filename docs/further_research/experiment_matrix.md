@@ -4,6 +4,14 @@
 
 This matrix organizes future experiments by research question, input type, and success metric.
 
+The current comparison snapshot used in the project ranks the screening models as:
+
+1. `multimodal_attention`
+2. `transformer`
+3. `cnn`
+4. `vit`
+5. `lstm`
+
 ## 2. Multimodal Screening Experiments
 
 | Experiment | Inputs | Model | Metric | Why It Matters |
@@ -60,4 +68,5 @@ This matrix organizes future experiments by research question, input type, and s
 - modality-attention stability
 - biomarker rank stability
 - intervention improvement across sessions
-
+- cross-validation selection accuracy
+- hard holdout F1 / precision / recall

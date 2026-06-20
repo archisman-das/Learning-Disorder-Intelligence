@@ -15,6 +15,7 @@ Teachers and parents need to know why a learner was flagged and what to do next.
 - compare intervention plans across severity and error profiles
 - evaluate whether biomarker summaries improve actionability
 - study how explanation format affects usability
+- keep the explanation layer separate from the model-selection snapshot used in the statistics hub
 
 ## Hypothesis
 
@@ -54,4 +55,3 @@ Plain-language explanations and structured intervention plans will make the syst
 - explanation quality may depend on model quality
 - intervention policy may be too simple for complex learners
 - human evaluation may be required to judge usefulness
-

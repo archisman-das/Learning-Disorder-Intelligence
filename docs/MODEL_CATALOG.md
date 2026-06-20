@@ -14,6 +14,19 @@ This document lists the models and model-like components currently used in the r
 The repository uses a mix of neural networks, lightweight statistical models, and policy models.
 Not all of them are prediction models in the strict sense, but all of them influence the system's behavior.
 
+## 2.1 Current validation snapshot
+
+The latest comparison snapshot is useful as a quick ordering reference, but it should be read alongside the
+full validation and holdout matrices in the dashboard and docs.
+
+| Rank | Model | CV Accuracy | CV Precision | CV Recall | CV F1 | CV Balanced Acc |
+|---|---|---|---|---|---|---|
+| 1 | `multimodal_attention` | 95.0% | 93.3% | 100.0% | 96.0% | 95.0% |
+| 2 | `transformer` | 91.7% | 87.8% | 93.3% | 89.8% | 91.7% |
+| 3 | `cnn` | 91.7% | 92.2% | 96.7% | 92.9% | 91.7% |
+| 4 | `vit` | 80.0% | 76.7% | 86.7% | 80.2% | 80.0% |
+| 5 | `lstm` | 61.7% | 55.6% | 70.0% | 59.8% | 61.7% |
+
 ## 2. Quick Summary Table
 
 | Model / Component | Type | Purpose | Advantage | Gap / Limitation | Required Details |

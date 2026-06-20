@@ -225,6 +225,16 @@ Most models use the same conceptual pattern:
 
 The encoders are intentionally shallow enough to run locally, but expressive enough to combine multiple educational signals.
 
+### 6.1.1 Evaluation discipline
+
+The evaluation flow is intentionally split into:
+
+1. cross-validation for model selection
+2. a hard holdout split for sanity-checking the selected model
+3. ranking and matrix views for the dashboard and docs
+
+That separation helps keep model comparison more trustworthy than a single accuracy number.
+
 ### 6.2 Handwriting encoder
 
 The handwriting encoder is a small CNN stack:
@@ -750,4 +760,3 @@ If you want to understand the architecture quickly, read these files in order:
 6. [`src/dyslexia_detection/architecture.py`](/d:/Project/Dyslexia_Detection_System/src/dyslexia_detection/architecture.py)
 7. [`web/app.js`](/d:/Project/Dyslexia_Detection_System/web/app.js)
 8. [`app.py`](/d:/Project/Dyslexia_Detection_System/app.py)
-

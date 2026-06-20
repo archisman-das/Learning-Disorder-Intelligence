@@ -86,6 +86,8 @@ The repository is easiest to understand as five layers:
 
 - [`docs/PROJECT_DOCUMENTATION.md`](/d:/Project/Dyslexia_Detection_System/docs/PROJECT_DOCUMENTATION.md)
   Detailed repository documentation.
+- [`docs/DATASETS.md`](/d:/Project/Dyslexia_Detection_System/docs/DATASETS.md)
+  Full dataset guide covering demo, collection, benchmark, and biomarker test assets.
 - [`docs/ARCHITECTURE.md`](/d:/Project/Dyslexia_Detection_System/docs/ARCHITECTURE.md)
   System architecture, component flow, model families, and runtime design.
 - [`docs/MODEL_CATALOG.md`](/d:/Project/Dyslexia_Detection_System/docs/MODEL_CATALOG.md)
@@ -104,6 +106,25 @@ The repository is easiest to understand as five layers:
   Research roadmap, data needs, experiment matrix, and publication directions.
 - [`docs/screenshots/`](/d:/Project/Dyslexia_Detection_System/docs/screenshots)
   Reserved dashboard screenshot folder for future captures.
+
+### 3.1 Model comparison snapshots
+
+The current docs and dashboard flows use a snapshot-driven comparison layer rather than a single live score.
+That keeps validation summaries, model rankings, and holdout checks easier to interpret.
+
+Useful reference files:
+
+- [`README.md`](/d:/Project/Dyslexia_Detection_System/README.md)
+- [`docs/MODEL_CATALOG.md`](/d:/Project/Dyslexia_Detection_System/docs/MODEL_CATALOG.md)
+- [`docs/further_research/experiment_matrix.md`](/d:/Project/Dyslexia_Detection_System/docs/further_research/experiment_matrix.md)
+
+Current ranking order used in the latest comparison snapshot:
+
+1. `multimodal_attention`
+2. `transformer`
+3. `cnn`
+4. `vit`
+5. `lstm`
 
 ## 4. User-Facing Surfaces
 

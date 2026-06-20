@@ -41,6 +41,7 @@ Starting from a source-language checkpoint will improve Bengali performance when
 - transfer gain versus scratch training
 - modality ablation
 - feature similarity comparison
+- cross-validation model selection followed by holdout evaluation on the hardest split
 
 ## Expected Output
 
@@ -53,4 +54,3 @@ Starting from a source-language checkpoint will improve Bengali performance when
 - vocabulary mismatch
 - overfitting on small target data
 - transfer of irrelevant source-language patterns
-

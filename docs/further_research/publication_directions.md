@@ -81,6 +81,8 @@ Core contribution:
 - system architecture diagram
 - data flow diagram
 - model family comparison table
+- validation matrix with cross-validation and holdout columns
+- ranking snapshot for the current best-to-worst model order
 - modality-attention chart
 - biomarker ranking plot
 - intervention workflow diagram
@@ -90,6 +92,8 @@ Core contribution:
 - manifest schema
 - model catalog
 - experiment matrix
+- model comparison matrix
+- validation matrix
 - dataset summary
 - per-language results
 - per-modality ablation results
@@ -111,4 +115,3 @@ The strongest publication angles are:
 - noisy labels
 - unclear annotation protocol
 - limited comparison baselines
-

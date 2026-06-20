@@ -80,6 +80,7 @@ Steps:
 - The transcription endpoint depends on `openai-whisper` and `ffmpeg`.
 - The first audio request may be slower because the Whisper model is loaded on demand.
 - The dashboard itself is mostly client-side, so browser state and records are stored locally in the user session unless you extend the backend further.
+- The local web dashboard also includes a model statistics page that reads from stored comparison snapshots rather than live test labels.
 - For Fly.io, the app is configured to listen on port `10000` and expose `/healthz` as a health check.
 
 ## Local run

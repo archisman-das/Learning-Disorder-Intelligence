@@ -223,6 +223,9 @@ The repository is structured so that evaluation can be performed along multiple 
 - recall for elevated-risk cases
 - MAE for regression mode
 - calibration or confidence analysis
+- cross-validation for model selection
+- hard holdout testing for final sanity-checks
+- validation matrix reporting for side-by-side model comparison
 
 ### 9.2 Interpretability evaluation
 
@@ -267,4 +270,3 @@ The codebase is already organized in a way that can support a formal paper. The 
 ## References
 
 For a curated list of directly relevant papers and links, see [`docs/REFERENCES.md`](/d:/Project/Dyslexia_Detection_System/docs/REFERENCES.md).
-

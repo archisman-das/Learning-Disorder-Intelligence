@@ -4,6 +4,8 @@ An early-stage, multimodal deep learning system for dyslexia screening and end-u
 
 For a fuller project walkthrough, see [docs/PROJECT_DOCUMENTATION.md](/d:/Project/Dyslexia_Detection_System/docs/PROJECT_DOCUMENTATION.md).
 
+For a full dataset guide, see [docs/DATASETS.md](/d:/Project/Dyslexia_Detection_System/docs/DATASETS.md).
+
 For a paper-style draft based on the current implementation, see [docs/RESEARCH_PAPER_DRAFT.md](/d:/Project/Dyslexia_Detection_System/docs/RESEARCH_PAPER_DRAFT.md).
 
 For a 28-slide presentation deck for demonstrations, see [docs/Dyslexia_Detection_System_Demo_Deck.pptx](/d:/Project/Dyslexia_Detection_System/docs/Dyslexia_Detection_System_Demo_Deck.pptx).
@@ -77,6 +79,38 @@ If the site does not refresh after a push, check these Render settings:
 | `ViTMultimodalModel` | Patch-based handwriting branch | Better image structure modeling | More compute |
 | `AttentionMultimodalModel` | Learned modality weights | Better interpretability | More tuning-sensitive |
 | `BengaliLearningDisorderFoundationModel` | Shared foundation encoder | Reusable across tasks | Needs more data and pretraining |
+
+## Model Comparison Matrix
+
+The current selection pipeline keeps the live test flow separate from the model-statistics hub. The table below is a documentation snapshot of the latest cross-validation selection run on the tough benchmark manifest, so the metrics are easy to read in one place.
+
+| Model | CV Accuracy | CV Precision | CV Recall | CV F1 | CV Balanced Acc | Selection Value | Rank |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `multimodal_attention` | 95.0% | 93.3% | 100.0% | 96.0% | 95.0% | 0.950 | 1 |
+| `transformer` | 91.7% | 87.8% | 93.3% | 89.8% | 91.7% | 0.917 | 2 |
+| `cnn` | 91.7% | 92.2% | 96.7% | 92.9% | 91.7% | 0.917 | 3 |
+| `vit` | 80.0% | 76.7% | 86.7% | 80.2% | 80.0% | 0.800 | 4 |
+| `lstm` | 61.7% | 55.6% | 70.0% | 59.8% | 61.7% | 0.617 | 5 |
+
+## Validation Matrix
+
+The validation matrix below summarizes the same model families from the cross-validation view without the holdout column. This is useful when you want to compare the model behavior before final test-set selection.
+
+| Model | CV Accuracy | CV Precision | CV Recall | CV F1 | CV Balanced Acc |
+|---|---:|---:|---:|---:|---:|
+| `multimodal_attention` | 95.0% | 93.3% | 100.0% | 96.0% | 95.0% |
+| `transformer` | 91.7% | 87.8% | 93.3% | 89.8% | 91.7% |
+| `cnn` | 91.7% | 92.2% | 96.7% | 92.9% | 91.7% |
+| `vit` | 80.0% | 76.7% | 86.7% | 80.2% | 80.0% |
+| `lstm` | 61.7% | 55.6% | 70.0% | 59.8% | 61.7% |
+
+Pipeline ranking used in the current selection snapshot:
+
+1. `multimodal_attention`
+2. `transformer`
+3. `cnn`
+4. `vit`
+5. `lstm`
 
 ## Screenshot Slots
 
@@ -293,6 +327,44 @@ python scripts/train_all_models.py --manifest data/demo/audio_augmented_manifest
 ```
 
 For best results, point `--manifest` at your largest cleaned and anonymized labeled dataset. More real samples usually helps accuracy and makes confidence values more reliable.
+
+Run family-safe cross-validation to get a more trustworthy accuracy/F1 estimate:
+
+```powershell
+python scripts/train_cross_validation.py --manifest data/demo/audio_augmented_manifest.csv --model multimodal_attention --task binary --text-language multilingual --folds 5 --repeats 3 --epochs 10 --save-fold-checkpoints
+```
+
+This keeps augmented siblings in the same fold, repeats the k-fold split several times, trains each fold independently, and writes aggregated metrics to `checkpoints/cross_validation/cross_validation_results.csv` plus `cross_validation_summary.json`.
+
+Run a hard holdout test evaluation after model selection:
+
+```powershell
+python scripts/train_holdout_evaluation.py --manifest data/demo/audio_augmented_manifest.csv --model multimodal_attention --task binary --text-language multilingual --epochs 10 --save-splits
+```
+
+This creates a train/validation/test split with a fully untouched test set, trains on train/validation only, and reports final holdout metrics from the test split.
+
+Automatically pick the best model with repeated cross-validation, then run the hard holdout test:
+
+```powershell
+python scripts/select_model_via_cv_and_holdout.py --manifest data/demo/audio_augmented_manifest.csv --task binary --text-language multilingual --models cnn_lstm transformer vit_transformer multimodal_attention --folds 5 --repeats 3 --epochs 10 --save-fold-checkpoints --save-splits --best-alias-path checkpoints/best_model.pt
+```
+
+This ranks model families by repeated cross-validation, selects the top performer, and then evaluates that winner once on an untouched test split.
+
+For the strict family-safe benchmark, the default hard-split runner now targets the tougher balanced split:
+
+```powershell
+python scripts/select_model_on_hard_split.py --train-manifest data/benchmarks/hard_family_split_balanced_harder/train.csv --validation-manifest data/benchmarks/hard_family_split_balanced_harder/validation.csv --final-eval-manifest data/benchmarks/hard_family_split_balanced_harder/final_eval.csv
+```
+
+That split is the preferred sanity-check when you want a more realistic final F1 and confidence report.
+
+You can also run the same strict benchmark in one step:
+
+```powershell
+python scripts/run_strict_benchmark.py
+```
 
 Train attention-based multimodal fusion:
 

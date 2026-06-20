@@ -13,6 +13,7 @@ Goal:
 
 - lock down baseline results for the current multimodal screening stack
 - compare CNN, LSTM, CNN-LSTM, transformer, ViT, and attention-based variants
+- use cross-validation to choose the model, then confirm it on a hard holdout split
 
 Why:
 
@@ -112,4 +113,3 @@ Recommended sequence:
 5. Biomarker ranking studies
 6. Intervention effectiveness studies
 7. Larger benchmark and deployment work
-

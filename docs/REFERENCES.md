@@ -81,7 +81,15 @@ The list is grouped by the part of the system it supports.
 - Use the speech papers when discussing audio pretraining and spoken-response support.
 - Use the assistive reading paper when discussing intervention or user-facing reading support.
 
-## 7. Notes
+## 7. Related Documentation
+
+For the current project-specific evaluation flow, also see:
+
+- [`docs/MODEL_CATALOG.md`](/d:/Project/Dyslexia_Detection_System/docs/MODEL_CATALOG.md)
+- [`docs/further_research/experiment_matrix.md`](/d:/Project/Dyslexia_Detection_System/docs/further_research/experiment_matrix.md)
+- [`docs/PROJECT_DOCUMENTATION.md`](/d:/Project/Dyslexia_Detection_System/docs/PROJECT_DOCUMENTATION.md)
+
+## 8. Notes
 
 - Some papers are direct project matches.
 - Some papers are adjacent references that support the same architectural ideas.

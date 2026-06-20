@@ -19,4 +19,4 @@ COPY . .
 ENV PORT=10000
 EXPOSE 10000
 
-CMD ["gunicorn", "-b", "0.0.0.0:10000", "web_backend:app"]
+CMD ["sh", "-c", "gunicorn --workers 1 --threads 4 --timeout 120 --access-logfile - --error-logfile - -b 0.0.0.0:${PORT:-10000} web_backend:app"]

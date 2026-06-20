@@ -8,20 +8,13 @@ from tempfile import NamedTemporaryFile
 
 from flask import Flask, jsonify, make_response, send_from_directory, request
 
-from src.dyslexia_detection.web_api import (
-    summarize_comparison_payload,
-    summarize_final_report_payload,
-    predict_screening_from_files,
-    summarize_live_screening_payload,
-)
-
-
 BASE_DIR = Path(__file__).resolve().parent
 WEB_ROOT = BASE_DIR / "web"
 WHISPER_MODEL_NAME = os.environ.get("WHISPER_MODEL", "base")
 _WHISPER_MODEL = None
 _WHISPER_MODEL_KEY = None
 _FFMPEG_READY = False
+_WEB_API = None
 
 
 def _suffix_from_request(content_type: str, filename: str) -> str:
@@ -68,6 +61,15 @@ def _load_whisper_model():
     _WHISPER_MODEL = whisper.load_model(WHISPER_MODEL_NAME)
     _WHISPER_MODEL_KEY = WHISPER_MODEL_NAME
     return _WHISPER_MODEL
+
+
+def _load_web_api():
+    global _WEB_API
+    if _WEB_API is None:
+        from src.dyslexia_detection import web_api as _web_api
+
+        _WEB_API = _web_api
+    return _WEB_API
 
 
 def _transcribe_audio(path: Path, language: str | None) -> str:
@@ -150,6 +152,7 @@ def create_app() -> Flask:
 
     @app.post("/api/screen")
     def screen():
+        web_api = _load_web_api()
         file_keys = {"handwriting_file", "audio_file"}
         has_uploaded_media = any(key in request.files and request.files[key].filename for key in file_keys)
 
@@ -162,7 +165,7 @@ def create_app() -> Flask:
                 sample_language = form.get("sample_language", "Bengali") or "Bengali"
                 model_text_language = form.get("model_text_language", "bengali") or "bengali"
                 try:
-                    result = predict_screening_from_files(
+                    result = web_api.predict_screening_from_files(
                         handwriting_bytes=handwriting.read() if handwriting and handwriting.filename else None,
                         handwriting_filename=handwriting.filename if handwriting else None,
                         audio_bytes=audio.read() if audio and audio.filename else None,
@@ -179,30 +182,32 @@ def create_app() -> Flask:
                     )
                     return jsonify(result)
                 except FileNotFoundError:
-                    return jsonify(summarize_live_screening_payload(form.to_dict(flat=True)))
+                    return jsonify(web_api.summarize_live_screening_payload(form.to_dict(flat=True)))
 
             payload = request.get_json(silent=True)
             if payload is None:
                 payload = request.form.to_dict(flat=True)
-            result = summarize_live_screening_payload(payload)
+            result = web_api.summarize_live_screening_payload(payload)
             return jsonify(result)
         except Exception as exc:
             return jsonify({"error": f"Screening failed: {exc}"}), 500
 
     @app.post("/api/comparison")
     def comparison():
+        web_api = _load_web_api()
         payload = request.get_json(silent=True) or request.form.to_dict(flat=True)
         try:
-            result = summarize_comparison_payload(payload)
+            result = web_api.summarize_comparison_payload(payload)
             return jsonify(result)
         except Exception as exc:
             return jsonify({"error": f"Comparison failed: {exc}"}), 500
 
     @app.post("/api/final-report")
     def final_report():
+        web_api = _load_web_api()
         payload = request.get_json(silent=True) or request.form.to_dict(flat=True)
         try:
-            result = summarize_final_report_payload(payload)
+            result = web_api.summarize_final_report_payload(payload)
             return jsonify(result)
         except Exception as exc:
             return jsonify({"error": f"Final report failed: {exc}"}), 500

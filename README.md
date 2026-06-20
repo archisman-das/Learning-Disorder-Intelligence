@@ -12,6 +12,8 @@ The codebase supports handwriting images, reading audio features, multilingual t
 
 For full web deployment, see [docs/DEPLOYMENT.md](/d:/Project/Dyslexia_Detection_System/docs/DEPLOYMENT.md).
 
+Deployment URL: [https://learning-disorder-intelligence.onrender.com/](https://learning-disorder-intelligence.onrender.com/)
+
 For ready-to-upload biomarker test CSVs, see [docs/BIOMARKER_TEST_DATA.md](/d:/Project/Dyslexia_Detection_System/docs/BIOMARKER_TEST_DATA.md).
 
 Live demo: [https://learning-disorder-intelligence.onrender.com/](https://learning-disorder-intelligence.onrender.com/)

@@ -245,7 +245,7 @@ def _train_holdout(
         metrics = evaluate(model, val_loader, device, args.task)
         mean_loss = total_loss / max(1, len(train_loader))
         history.append({"epoch": float(epoch), "loss": mean_loss, **{f"val_{key}": float(value) for key, value in metrics.items() if key != "score"}})
-        selection_score = metrics["accuracy"] if args.task == "binary" else metrics["score"]
+        selection_score = metrics["f1"] if args.task == "binary" else metrics["score"]
         scheduler.step(metrics["mae"] if args.task == "regression" else selection_score)
 
         if selection_score > best_score:

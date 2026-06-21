@@ -1,6 +1,6 @@
 window.__BUNDLED_MODEL_STATISTICS__ = {
   generatedAt: "2026-06-22T00:00:00",
-  benchmarkSource: "hard_split_selection_balanced_harder_run2",
+  benchmarkSource: "hard_split_selection_balanced_harder_run_proper",
   selectionPipeline: {
     manifest: "data\\benchmarks\\hard_family_split_balanced_harder\\train.csv",
     task: "binary",
@@ -8,37 +8,37 @@ window.__BUNDLED_MODEL_STATISTICS__ = {
     selection_metric: "score",
     selected_model: "multimodal_attention",
     selection_value: 1,
-    best_alias_path: "checkpoints\\hard_split_selection_balanced_harder_run2\\seed_21\\best_model.pt",
+    best_alias_path: "checkpoints\\hard_split_selection_balanced_harder_run_proper\\seed_21\\best_model.pt",
     ranked_models: [
       {
         model: "multimodal_attention",
         selection_value: 1,
         rank: 1,
-        summary_path: "checkpoints\\hard_split_selection_balanced_harder_run2\\seed_21\\hard_split_selection_report.json",
+        summary_path: "checkpoints\\hard_split_selection_balanced_harder_run_proper\\seed_21\\hard_split_selection_report.json",
+      },
+      {
+        model: "vit",
+        selection_value: 0.8634920634920634,
+        rank: 2,
+        summary_path: "checkpoints\\hard_split_selection_balanced_harder_run_proper\\seed_21\\hard_split_selection_report.json",
       },
       {
         model: "lstm",
         selection_value: 0.5738095238095238,
-        rank: 2,
-        summary_path: "checkpoints\\hard_split_selection_balanced_harder_run2\\seed_21\\hard_split_selection_report.json",
-      },
-      {
-        model: "vit",
-        selection_value: 0.5221428571428571,
         rank: 3,
-        summary_path: "checkpoints\\hard_split_selection_balanced_harder_run2\\seed_21\\hard_split_selection_report.json",
-      },
-      {
-        model: "transformer",
-        selection_value: 0.2928571428571428,
-        rank: 4,
-        summary_path: "checkpoints\\hard_split_selection_balanced_harder_run2\\seed_21\\hard_split_selection_report.json",
+        summary_path: "checkpoints\\hard_split_selection_balanced_harder_run_proper\\seed_21\\hard_split_selection_report.json",
       },
       {
         model: "cnn",
         selection_value: 0.2928571428571428,
+        rank: 4,
+        summary_path: "checkpoints\\hard_split_selection_balanced_harder_run_proper\\seed_21\\hard_split_selection_report.json",
+      },
+      {
+        model: "transformer",
+        selection_value: 0.0976190476190476,
         rank: 5,
-        summary_path: "checkpoints\\hard_split_selection_balanced_harder_run2\\seed_21\\hard_split_selection_report.json",
+        summary_path: "checkpoints\\hard_split_selection_balanced_harder_run_proper\\seed_21\\hard_split_selection_report.json",
       },
     ],
     holdout_metrics: {
@@ -53,7 +53,7 @@ window.__BUNDLED_MODEL_STATISTICS__ = {
   },
   selectionHistory: [
     {
-      source: "hard_split_selection_balanced_harder_run2",
+      source: "hard_split_selection_balanced_harder_run_proper",
       selected_model: "multimodal_attention",
       consensus_level: "multimodal_attention",
       average_risk: 0.2727272727272727,

@@ -62,8 +62,8 @@ def _summarize_cv_summary(summary: dict[str, object], model_name: str) -> dict[s
 
 def _load_model_statistics_summary() -> dict[str, object]:
     selection_summary_path = _first_existing_path(
-        _CHECKPOINTS_DIR / "hard_split_selection_balanced_harder_run2" / "strict_benchmark_summary.json",
         _CHECKPOINTS_DIR / "hard_split_selection_balanced_harder_run_proper" / "strict_benchmark_summary.json",
+        _CHECKPOINTS_DIR / "hard_split_selection_balanced_harder_run2" / "strict_benchmark_summary.json",
         _CHECKPOINTS_DIR / "selection_holdout_tough" / "selection_and_holdout_summary.json",
         _CHECKPOINTS_DIR / "selection_holdout_final" / "selection_and_holdout_summary.json",
         _CHECKPOINTS_DIR / "selection_holdout_smoke" / "selection_and_holdout_summary.json",
@@ -174,7 +174,7 @@ def _load_model_statistics_summary() -> dict[str, object]:
         final_metrics = strict_report.get("final_eval_metrics") or {}
         selection_history.append(
             {
-                "source": "hard_split_selection_balanced_harder_run2",
+                "source": selection_summary_path.parent.name if selection_summary_path else "hard_split_selection_balanced_harder_run_proper",
                 "selected_model": strict_report.get("selected_model"),
                 "consensus_level": strict_report.get("selected_model"),
                 "average_risk": 1.0 - float(final_metrics.get("score", 0.0) or 0.0),

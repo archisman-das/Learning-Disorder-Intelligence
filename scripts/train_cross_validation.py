@@ -247,7 +247,7 @@ def _train_fold(
         mean_loss = total_loss / max(1, len(train_loader))
         row = {"epoch": float(epoch), "loss": mean_loss, **{f"val_{key}": float(value) for key, value in metrics.items() if key != "score"}}
         history.append(row)
-        selection_score = metrics["accuracy"] if args.task == "binary" else metrics["score"]
+        selection_score = metrics["f1"] if args.task == "binary" else metrics["score"]
         if args.task == "regression":
             scheduler.step(metrics["mae"])
         else:

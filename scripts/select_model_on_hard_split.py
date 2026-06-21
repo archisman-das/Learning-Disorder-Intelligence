@@ -252,8 +252,9 @@ def _train_single_model(
         history.append({"epoch": float(epoch), "loss": total_loss / max(1, len(train_loader)), **{f"val_{k}": float(v) for k, v in metrics.items() if k != "score"}})
         scheduler.step(metrics["mae"] if args.task == "regression" else metrics["score"])
 
-        if metrics["score"] > best_score:
-            best_score = metrics["score"]
+        selection_score = metrics["f1"] if args.task == "binary" else metrics["score"]
+        if selection_score > best_score:
+            best_score = selection_score
             epochs_without_improvement = 0
             best_payload = {
                 "model_name": model_name,

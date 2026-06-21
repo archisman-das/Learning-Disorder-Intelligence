@@ -1796,11 +1796,41 @@ function compareModelStatsValues(left, right, direction = "desc") {
   return String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true, sensitivity: "base" }) * multiplier;
 }
 
+function compareModelStatsByPerformance(left, right, direction = "desc") {
+  const multiplier = direction === "asc" ? 1 : -1;
+  const scores = [
+    ["cv_f1", "cv_f1"],
+    ["cv_accuracy", "cv_accuracy"],
+    ["cv_precision", "cv_precision"],
+    ["cv_balanced_accuracy", "cv_balanced_accuracy"],
+    ["risk", "risk"],
+  ];
+  for (const [key] of scores) {
+    const leftValue = normalizeModelStatsValue(left?.[key], key === "risk" ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY);
+    const rightValue = normalizeModelStatsValue(right?.[key], key === "risk" ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY);
+    if (leftValue !== rightValue) {
+      const reverseMultiplier = key === "risk" ? -1 : 1;
+      return (leftValue - rightValue) * multiplier * reverseMultiplier;
+    }
+  }
+  return String(left?.model || "").localeCompare(String(right?.model || ""), undefined, { numeric: true, sensitivity: "base" }) * multiplier;
+}
+
 function compareModelStatsRows(left, right) {
-  const leftRank = MODEL_STATS_ORDER[String(left.model || "").toLowerCase()] || 0;
-  const rightRank = MODEL_STATS_ORDER[String(right.model || "").toLowerCase()] || 0;
-  if (leftRank !== rightRank) return rightRank - leftRank;
-  return String(left.model || "").localeCompare(String(right.model || ""), undefined, { numeric: true, sensitivity: "base" });
+  const sortKey = modelStatsSortState.key || "cv_f1";
+  const sortDirection = modelStatsSortState.direction || "desc";
+  const performanceKeys = new Set(["cv_accuracy", "cv_precision", "cv_recall", "cv_f1", "cv_balanced_accuracy", "risk"]);
+  if (sortKey === "model" || sortKey === "architecture" || sortKey === "modalities" || sortKey === "notes") {
+    return compareModelStatsValues(left?.[sortKey], right?.[sortKey], sortDirection);
+  }
+  if (performanceKeys.has(sortKey)) {
+    const primary = compareModelStatsValues(left?.[sortKey], right?.[sortKey], sortDirection);
+    if (primary !== 0) return primary;
+    const secondary = compareModelStatsByPerformance(left, right, "desc");
+    if (secondary !== 0) return secondary;
+    return String(left?.model || "").localeCompare(String(right?.model || ""), undefined, { numeric: true, sensitivity: "base" });
+  }
+  return compareModelStatsByPerformance(left, right, "desc");
 }
 
 function setModelStatsSort(key) {
@@ -2089,9 +2119,9 @@ function renderModelStatisticsPage() {
           };
         });
     const rankedByDisplayOrder = rankingRowsSource.slice().sort((left, right) => {
-      const leftRank = MODEL_STATS_ORDER[String(left.model || "").toLowerCase()] || 0;
-      const rightRank = MODEL_STATS_ORDER[String(right.model || "").toLowerCase()] || 0;
-      if (leftRank !== rightRank) return rightRank - leftRank;
+      const leftValue = normalizeModelStatsValue(left.selection_value);
+      const rightValue = normalizeModelStatsValue(right.selection_value);
+      if (leftValue !== rightValue) return rightValue - leftValue;
       return String(left.model || "").localeCompare(String(right.model || ""), undefined, { numeric: true, sensitivity: "base" });
     });
     const rankingRows = rankedByDisplayOrder.map((item, index) => `
@@ -2118,10 +2148,23 @@ function renderModelStatisticsPage() {
       .filter((summary) => !hiddenValidationModels.has(String(summary.model || "").toLowerCase()))
       .slice()
       .sort((left, right) => {
-        const leftRank = MODEL_STATS_ORDER[String(left.model || "").toLowerCase()] || 0;
-        const rightRank = MODEL_STATS_ORDER[String(right.model || "").toLowerCase()] || 0;
-        if (leftRank !== rightRank) return rightRank - leftRank;
-        return String(left.model || "").localeCompare(String(right.model || ""), undefined, { numeric: true, sensitivity: "base" });
+        const leftScore = {
+          model: left.model,
+          cv_f1: normalizeModelStatsValue(left.mean_best_f1),
+          cv_accuracy: normalizeModelStatsValue(left.mean_best_accuracy),
+          cv_precision: normalizeModelStatsValue(left.mean_best_precision),
+          cv_balanced_accuracy: normalizeModelStatsValue(left.mean_best_balanced_accuracy),
+          risk: Number.POSITIVE_INFINITY,
+        };
+        const rightScore = {
+          model: right.model,
+          cv_f1: normalizeModelStatsValue(right.mean_best_f1),
+          cv_accuracy: normalizeModelStatsValue(right.mean_best_accuracy),
+          cv_precision: normalizeModelStatsValue(right.mean_best_precision),
+          cv_balanced_accuracy: normalizeModelStatsValue(right.mean_best_balanced_accuracy),
+          risk: Number.POSITIVE_INFINITY,
+        };
+        return compareModelStatsByPerformance(leftScore, rightScore, "desc");
       });
     const validationRows = visibleValidationSummaries.length
       ? visibleValidationSummaries.map((summary) => {

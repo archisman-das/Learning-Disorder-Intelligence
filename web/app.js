@@ -1832,6 +1832,15 @@ function summarizeModelSelectionRecord(record) {
   return `${selectedModel}${source}, consensus ${consensus}, avg risk ${avgRisk}`;
 }
 
+function cloneModelStatisticsSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== "object") return null;
+  return JSON.parse(JSON.stringify(snapshot));
+}
+
+function getBundledModelStatisticsSnapshot() {
+  return cloneModelStatisticsSnapshot(window.__BUNDLED_MODEL_STATISTICS__);
+}
+
 function buildModelStatisticsComparisonFromSnapshot(statistics) {
   const selectionPipeline = statistics?.selectionPipeline || {};
   const cvSummaries = Array.isArray(statistics?.validationVsHoldout?.cvSummaries)
@@ -1879,7 +1888,34 @@ function buildModelStatisticsComparisonFromSnapshot(statistics) {
 }
 
 function buildLocalModelStatisticsSnapshot() {
+  const bundledSnapshot = getBundledModelStatisticsSnapshot();
   const selectionRecords = getDashboardModelSelectionRecords();
+  if (bundledSnapshot) {
+    if (!selectionRecords.length) {
+      return bundledSnapshot;
+    }
+    const latestSelection = selectionRecords[0] || null;
+    return {
+      ...bundledSnapshot,
+      selectionPipeline: {
+        ...(bundledSnapshot.selectionPipeline || {}),
+        selected_model: latestSelection?.selectedModel || latestSelection?.selected_model || bundledSnapshot.selectionPipeline?.selected_model || "-",
+        selection_value: Number(latestSelection?.selectedConfidence ?? latestSelection?.confidence ?? bundledSnapshot.selectionPipeline?.selection_value ?? 0),
+        ranked_models: selectionRecords.map((record, index) => ({
+          model: record.selectedModel || record.selected_model || `record_${index + 1}`,
+          selection_value: Number(record.selectedConfidence ?? record.confidence ?? 0),
+          rank: index + 1,
+        })),
+      },
+      selectionHistory: selectionRecords.map((record) => ({
+        source: record.source || "dashboard",
+        selected_model: record.selectedModel || record.selected_model || "-",
+        consensus_level: record.consensusLevel || record.consensus_level || "-",
+        average_risk: record.averageRisk ?? record.avgRisk ?? 0,
+        timestamp: record.timestamp || null,
+      })),
+    };
+  }
   const predictions = selectionRecords.length
     ? selectionRecords.map((record, index) => {
         const confidence = clamp(Number(record.selectedConfidence ?? record.confidence ?? 0), 0, 1);

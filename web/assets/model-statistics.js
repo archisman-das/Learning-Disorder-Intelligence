@@ -23,16 +23,16 @@ window.__BUNDLED_MODEL_STATISTICS__ = {
         summary_path: "checkpoints\\selection_holdout_tough\\cv\\transformer\\cross_validation_summary.json",
       },
       {
-        model: "cnn",
-        selection_value: 0.9166666666666666,
-        rank: 3,
-        summary_path: "checkpoints\\selection_holdout_tough\\cv\\cnn\\cross_validation_summary.json",
-      },
-      {
         model: "vit",
         selection_value: 0.8,
-        rank: 4,
+        rank: 3,
         summary_path: "checkpoints\\selection_holdout_tough\\cv\\vit\\cross_validation_summary.json",
+      },
+      {
+        model: "cnn",
+        selection_value: 0.9166666666666666,
+        rank: 4,
+        summary_path: "checkpoints\\selection_holdout_tough\\cv\\cnn\\cross_validation_summary.json",
       },
       {
         model: "lstm",

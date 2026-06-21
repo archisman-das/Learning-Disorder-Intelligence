@@ -230,6 +230,13 @@ const THERAPY_PASS_THRESHOLD = 75;
 
 const MODEL_STATS_PROFILES = [
   {
+    modelName: "vit",
+    architecture: "Vision transformer variant",
+    modalities: "Handwriting + audio + text + behavior",
+    strength: "Stronger visual representation",
+    note: "Useful when handwritten structure matters more than raw image texture.",
+  },
+  {
     modelName: "cnn",
     architecture: "Convolutional baseline",
     modalities: "Handwriting + audio + features",
@@ -242,13 +249,6 @@ const MODEL_STATS_PROFILES = [
     modalities: "Text + behavior + features",
     strength: "Sequential pattern capture",
     note: "Useful when reading and temporal behavior signals matter most.",
-  },
-  {
-    modelName: "vit",
-    architecture: "Vision transformer variant",
-    modalities: "Handwriting + audio + text + behavior",
-    strength: "Stronger visual representation",
-    note: "Useful when handwritten structure matters more than raw image texture.",
   },
   {
     modelName: "transformer",
@@ -269,8 +269,8 @@ const MODEL_STATS_PROFILES = [
 const MODEL_STATS_ORDER = {
   multimodal_attention: 5,
   transformer: 4,
-  cnn: 3,
-  vit: 2,
+  vit: 3,
+  cnn: 2,
   lstm: 1,
 };
 

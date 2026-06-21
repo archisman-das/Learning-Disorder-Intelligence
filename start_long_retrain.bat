@@ -1,2 +1,2 @@
 @echo off
-python scripts\run_long_retrain.py
+python scripts\run_proper_retrain.py

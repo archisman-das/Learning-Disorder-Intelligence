@@ -122,8 +122,8 @@ Current ranking order used in the latest comparison snapshot:
 
 1. `multimodal_attention`
 2. `transformer`
-3. `cnn`
-4. `vit`
+3. `vit`
+4. `cnn`
 5. `lstm`
 
 ## 4. User-Facing Surfaces

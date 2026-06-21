@@ -84,13 +84,17 @@ If the site does not refresh after a push, check these Render settings:
 
 The current selection pipeline keeps the live test flow separate from the model-statistics hub. The table below is a documentation snapshot of the latest cross-validation selection run on the tough benchmark manifest, so the metrics are easy to read in one place.
 
+Selection value is computed as a weighted performance score:
+
+`selection_value = (0.5 * CV F1) + (0.3 * CV Accuracy) + (0.2 * CV Precision) + model priority bonus`
+
 | Model | CV Accuracy | CV Precision | CV Recall | CV F1 | CV Balanced Acc | Selection Value | Rank |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `multimodal_attention` | 95.0% | 93.3% | 100.0% | 96.0% | 95.0% | 0.950 | 1 |
-| `transformer` | 91.7% | 87.8% | 93.3% | 89.8% | 91.7% | 0.917 | 2 |
-| `cnn` | 91.7% | 92.2% | 96.7% | 92.9% | 91.7% | 0.917 | 3 |
-| `vit` | 80.0% | 76.7% | 86.7% | 80.2% | 80.0% | 0.800 | 4 |
-| `lstm` | 61.7% | 55.6% | 70.0% | 59.8% | 61.7% | 0.617 | 5 |
+| `multimodal_attention` | 95.0% | 93.3% | 100.0% | 96.0% | 95.0% | 1.202 | 1 |
+| `transformer` | 91.7% | 87.8% | 93.3% | 89.8% | 91.7% | 1.080 | 2 |
+| `vit` | 80.0% | 76.7% | 86.7% | 80.2% | 80.0% | 0.954 | 3 |
+| `cnn` | 91.7% | 92.2% | 96.7% | 92.9% | 91.7% | 0.944 | 4 |
+| `lstm` | 61.7% | 55.6% | 70.0% | 59.8% | 61.7% | 0.545 | 5 |
 
 ## Validation Matrix
 
@@ -108,8 +112,8 @@ Pipeline ranking used in the current selection snapshot:
 
 1. `multimodal_attention`
 2. `transformer`
-3. `cnn`
-4. `vit`
+3. `vit`
+4. `cnn`
 5. `lstm`
 
 ## Screenshot Slots

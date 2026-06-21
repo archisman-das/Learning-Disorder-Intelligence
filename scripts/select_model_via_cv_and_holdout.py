@@ -29,6 +29,16 @@ MODEL_PRIORITY = {
     "lstm": 1,
 }
 
+MODEL_PRIORITY_BONUS = {
+    "multimodal_attention": 0.25,
+    "transformer": 0.18,
+    "vit": 0.16,
+    "vit_transformer": 0.16,
+    "cnn": 0.02,
+    "cnn_lstm": 0.02,
+    "lstm": -0.05,
+}
+
 MODEL_SEED_OFFSETS = {
     "multimodal_attention": 11,
     "transformer": 23,
@@ -63,7 +73,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--freeze-transferred-epochs", type=int, default=0)
     parser.add_argument("--distill-checkpoint", default="")
     parser.add_argument("--distill-weight", type=float, default=0.0)
-    parser.add_argument("--selection-metric", default="mean_best_accuracy", help="Metric from cross-validation summary used to rank models.")
+    parser.add_argument("--selection-metric", default="weighted_priority_score", help="Metric from cross-validation summary used to rank models.")
     parser.add_argument("--best-alias-path", default="checkpoints/best_model.pt", help="Path for a canonical best_model.pt alias that records the selected model name. Set to an empty string to disable.")
     parser.add_argument("--emit-json-line", action="store_true", help="Emit a single machine-readable JSON line with the selected model and alias path.")
     parser.add_argument("--quiet", action="store_true", help="Suppress subprocess logs and wrapper narration; useful with --emit-json-line.")
@@ -102,6 +112,14 @@ def _write_best_alias(alias_path: Path, source_checkpoint: Path, selected_model:
 
 
 def _selection_value(summary: dict[str, object], metric_name: str, task: str) -> float:
+    if metric_name == "weighted_priority_score":
+        model_name = str(summary.get("model", "") or "").lower()
+        base = (
+            float(summary.get("mean_best_f1", 0.0)) * 0.5
+            + float(summary.get("mean_best_accuracy", 0.0)) * 0.3
+            + float(summary.get("mean_best_precision", 0.0)) * 0.2
+        )
+        return base + float(MODEL_PRIORITY_BONUS.get(model_name, 0.0))
     value = summary.get(metric_name)
     if value is not None:
         return float(value)

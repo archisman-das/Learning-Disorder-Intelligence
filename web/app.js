@@ -924,13 +924,13 @@ function getNextRoundLabel(roundKey = "screening", language = getDashboardLangua
         testlab: "বায়োমার্কার্স",
         biomarkers: "রেকর্ডস",
       }
-    : {
-        screening: "Speech Therapy",
-        therapy: "Visual Focus Test",
-        eye: "Test Lab & Report",
-        testlab: "Biomarkers",
-        biomarkers: "Records",
-      };
+      : {
+          screening: "Speech Therapy",
+          therapy: "Visual Focus Test",
+          eye: "Test Lab & Report",
+          testlab: "Records",
+          biomarkers: "Records",
+        };
   return map[roundKey] || (bengali ? "পরবর্তী ধাপ" : "Next round");
 }
 
@@ -961,9 +961,9 @@ function applyDashboardLanguage(language = getDashboardLanguage()) {
   const bengali = isBengaliUi(language);
 
   const navLabels = bengali
-    ? ["স্ক্রিনিং", "স্পিচ থেরাপি", "ভিজুয়াল ফোকাস টেস্ট", "টেস্ট ল্যাব ও রিপোর্ট", "বায়োমার্কার্স", "রেকর্ডস", "মডেল পরিসংখ্যান"]
-    : ["Screening", "Speech Therapy", "Visual Focus Test", "Test Lab & Report", "Biomarkers", "Records", "Model statistics"];
-  const navIcons = ["bi-clipboard2-pulse", "bi-soundwave", "bi-eye", "bi-bar-chart-steps", "bi-activity", "bi-journal-text", "bi-graph-up-arrow"];
+    ? ["স্ক্রিনিং", "স্পিচ থেরাপি", "ভিজুয়াল ফোকাস টেস্ট", "টেস্ট ল্যাব ও রিপোর্ট", "রেকর্ডস", "মডেল পরিসংখ্যান"]
+    : ["Screening", "Speech Therapy", "Visual Focus Test", "Test Lab & Report", "Records", "Model statistics"];
+  const navIcons = ["bi-clipboard2-pulse", "bi-soundwave", "bi-eye", "bi-bar-chart-steps", "bi-journal-text", "bi-graph-up-arrow"];
   tabButtons.forEach((button, index) => {
     button.innerHTML = `<i class="bi ${navIcons[index]} me-2"></i>${navLabels[index]}`;
   });

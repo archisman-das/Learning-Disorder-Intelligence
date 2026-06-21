@@ -62,7 +62,6 @@ def _summarize_cv_summary(summary: dict[str, object], model_name: str) -> dict[s
 
 def _load_model_statistics_summary() -> dict[str, object]:
     selection_summary_path = _first_existing_path(
-        _CHECKPOINTS_DIR / "selection_holdout_priority_fast" / "selection_and_holdout_summary.json",
         _CHECKPOINTS_DIR / "selection_holdout_tough" / "selection_and_holdout_summary.json",
         _CHECKPOINTS_DIR / "selection_holdout_final" / "selection_and_holdout_summary.json",
         _CHECKPOINTS_DIR / "selection_holdout_smoke" / "selection_and_holdout_summary.json",
@@ -77,9 +76,7 @@ def _load_model_statistics_summary() -> dict[str, object]:
     strict_summary = _load_json_file(strict_summary_path) if strict_summary_path else None
 
     cv_summaries: list[dict[str, object]] = []
-    cv_root = _CHECKPOINTS_DIR / "selection_holdout_priority_fast" / "cv"
-    if not cv_root.exists():
-        cv_root = _CHECKPOINTS_DIR / "selection_holdout_tough" / "cv"
+    cv_root = _CHECKPOINTS_DIR / "selection_holdout_tough" / "cv"
     if not cv_root.exists():
         cv_root = _CHECKPOINTS_DIR / "selection_holdout_final" / "cv"
     if cv_root.exists():
@@ -96,7 +93,7 @@ def _load_model_statistics_summary() -> dict[str, object]:
         if holdout_path:
             holdout_summary = _load_json_file((BASE_DIR / str(holdout_path)).resolve()) or _load_json_file(Path(str(holdout_path)))
         if holdout_summary is None:
-            holdout_root = _CHECKPOINTS_DIR / "selection_holdout_priority_fast" / "holdout"
+            holdout_root = _CHECKPOINTS_DIR / "selection_holdout_tough" / "holdout"
             if not holdout_root.exists():
                 holdout_root = _CHECKPOINTS_DIR / "selection_holdout_final" / "holdout"
             for candidate in sorted(holdout_root.rglob("holdout_summary.json")) if holdout_root.exists() else []:

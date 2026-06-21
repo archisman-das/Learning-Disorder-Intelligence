@@ -99,7 +99,7 @@ let biomarkerChart;
 let modelCompareChart;
 let modelStatsChart;
 let modelStatsLoadAttempted = false;
-let modelStatsSortState = { key: "cv_f1", direction: "desc" };
+let modelStatsSortState = { key: "weighted_score", direction: "desc" };
 let latestScreening = null;
 let latestTherapy = null;
 let latestEye = null;
@@ -265,14 +265,6 @@ const MODEL_STATS_PROFILES = [
     note: "Usually the strongest choice when all modalities are available.",
   },
 ];
-
-const MODEL_STATS_ORDER = {
-  multimodal_attention: 5,
-  transformer: 4,
-  vit: 3,
-  cnn: 2,
-  lstm: 1,
-};
 
 const THERAPY_DURATION_TARGETS = {
   "Sound Drill": 18,
@@ -1796,22 +1788,24 @@ function compareModelStatsValues(left, right, direction = "desc") {
   return String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true, sensitivity: "base" }) * multiplier;
 }
 
+function calculateModelPerformanceScore(row) {
+  const f1 = normalizeModelStatsValue(row?.cv_f1, 0);
+  const accuracy = normalizeModelStatsValue(row?.cv_accuracy, 0);
+  const precision = normalizeModelStatsValue(row?.cv_precision, 0);
+  return (f1 * 0.5) + (accuracy * 0.3) + (precision * 0.2);
+}
+
 function compareModelStatsByPerformance(left, right, direction = "desc") {
+  const leftScore = calculateModelPerformanceScore(left);
+  const rightScore = calculateModelPerformanceScore(right);
   const multiplier = direction === "asc" ? 1 : -1;
-  const scores = [
-    ["cv_f1", "cv_f1"],
-    ["cv_accuracy", "cv_accuracy"],
-    ["cv_precision", "cv_precision"],
-    ["cv_balanced_accuracy", "cv_balanced_accuracy"],
-    ["risk", "risk"],
-  ];
-  for (const [key] of scores) {
-    const leftValue = normalizeModelStatsValue(left?.[key], key === "risk" ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY);
-    const rightValue = normalizeModelStatsValue(right?.[key], key === "risk" ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY);
-    if (leftValue !== rightValue) {
-      const reverseMultiplier = key === "risk" ? -1 : 1;
-      return (leftValue - rightValue) * multiplier * reverseMultiplier;
-    }
+  if (leftScore !== rightScore) {
+    return (leftScore - rightScore) * multiplier;
+  }
+  const leftRisk = normalizeModelStatsValue(left?.risk, Number.POSITIVE_INFINITY);
+  const rightRisk = normalizeModelStatsValue(right?.risk, Number.POSITIVE_INFINITY);
+  if (leftRisk !== rightRisk) {
+    return (rightRisk - leftRisk) * multiplier;
   }
   return String(left?.model || "").localeCompare(String(right?.model || ""), undefined, { numeric: true, sensitivity: "base" }) * multiplier;
 }
@@ -1819,12 +1813,14 @@ function compareModelStatsByPerformance(left, right, direction = "desc") {
 function compareModelStatsRows(left, right) {
   const sortKey = modelStatsSortState.key || "cv_f1";
   const sortDirection = modelStatsSortState.direction || "desc";
-  const performanceKeys = new Set(["cv_accuracy", "cv_precision", "cv_recall", "cv_f1", "cv_balanced_accuracy", "risk"]);
+  const performanceKeys = new Set(["cv_accuracy", "cv_precision", "cv_recall", "cv_f1", "cv_balanced_accuracy", "risk", "weighted_score"]);
   if (sortKey === "model" || sortKey === "architecture" || sortKey === "modalities" || sortKey === "notes") {
     return compareModelStatsValues(left?.[sortKey], right?.[sortKey], sortDirection);
   }
   if (performanceKeys.has(sortKey)) {
-    const primary = compareModelStatsValues(left?.[sortKey], right?.[sortKey], sortDirection);
+    const primaryLeft = sortKey === "weighted_score" ? calculateModelPerformanceScore(left) : left?.[sortKey];
+    const primaryRight = sortKey === "weighted_score" ? calculateModelPerformanceScore(right) : right?.[sortKey];
+    const primary = compareModelStatsValues(primaryLeft, primaryRight, sortDirection);
     if (primary !== 0) return primary;
     const secondary = compareModelStatsByPerformance(left, right, "desc");
     if (secondary !== 0) return secondary;
@@ -2078,6 +2074,11 @@ function renderModelStatisticsPage() {
       cv_f1: normalizeModelStatsValue(summary?.mean_best_f1),
       cv_balanced_accuracy: normalizeModelStatsValue(summary?.mean_best_balanced_accuracy),
       risk: normalizeModelStatsValue(prediction?.risk),
+      weighted_score: calculateModelPerformanceScore({
+        cv_f1: summary?.mean_best_f1,
+        cv_accuracy: summary?.mean_best_accuracy,
+        cv_precision: summary?.mean_best_precision,
+      }),
       band,
       note: summaryInfo.aliasUsed
         ? `${profile.note || note} Shared CV source: ${summaryInfo.sourceModel}.`
@@ -2106,16 +2107,32 @@ function renderModelStatisticsPage() {
   if (rankingNode) {
     const pipelineRanking = Array.isArray(selectionPipeline.ranked_models) ? selectionPipeline.ranked_models : [];
     const rankingRowsSource = pipelineRanking.length
-      ? pipelineRanking.map((item) => ({
-          model: String(item.model || item.modelName || "-").toLowerCase(),
-          selection_value: Number(item.selection_value),
-        }))
+      ? pipelineRanking.map((item) => {
+          const modelName = String(item.model || item.modelName || "-").toLowerCase();
+          const summary = cvSummaryByModel.get(modelName) || null;
+          return {
+            model: modelName,
+            selection_value: summary
+              ? calculateModelPerformanceScore({
+                  cv_f1: summary.mean_best_f1,
+                  cv_accuracy: summary.mean_best_accuracy,
+                  cv_precision: summary.mean_best_precision,
+                })
+              : Number(item.selection_value),
+          };
+        })
       : MODEL_STATS_PROFILES.map((profile) => {
           const summaryInfo = getModelStatsSummaryForProfile(profile.modelName, cvSummaryByModel);
           const summary = summaryInfo.summary;
           return {
             model: profile.modelName,
-            selection_value: summary ? normalizeModelStatsValue(summary.mean_best_score ?? summary.mean_best_f1) : null,
+            selection_value: summary
+              ? calculateModelPerformanceScore({
+                  cv_f1: summary.mean_best_f1,
+                  cv_accuracy: summary.mean_best_accuracy,
+                  cv_precision: summary.mean_best_precision,
+                })
+              : null,
           };
         });
     const rankedByDisplayOrder = rankingRowsSource.slice().sort((left, right) => {
@@ -2184,7 +2201,7 @@ function renderModelStatisticsPage() {
       <div class="border rounded-3 p-3">
           <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
             <h6 class="mb-0">Validation Matrix</h6>
-            <span class="text-muted small">Sorted by CV score. Selected model: ${escapeHtml(selectedModel || "-")}</span>
+            <span class="text-muted small">Sorted by weighted performance score. Selected model: ${escapeHtml(selectedModel || "-")}</span>
           </div>
         <div class="table-responsive">
           <table class="table table-sm table-hover align-middle mb-0">

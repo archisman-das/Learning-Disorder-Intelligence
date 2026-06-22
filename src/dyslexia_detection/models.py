@@ -121,9 +121,9 @@ class TransformerTextEncoder(nn.Module):
         self,
         vocab_size: int,
         max_length: int,
-        embedding_dim: int = 96,
+        embedding_dim: int = 80,
         num_heads: int = 4,
-        num_layers: int = 2,
+        num_layers: int = 1,
     ):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx=0)
@@ -131,8 +131,8 @@ class TransformerTextEncoder(nn.Module):
         layer = nn.TransformerEncoderLayer(
             d_model=embedding_dim,
             nhead=num_heads,
-            dim_feedforward=128,
-            dropout=0.1,
+            dim_feedforward=96,
+            dropout=0.16,
             batch_first=True,
             activation="gelu",
         )
@@ -407,9 +407,9 @@ class TransformerMultimodalModel(FusionClassifier):
             text=TransformerTextEncoder(vocab_size=vocab_size, max_length=self.config.max_text_length),
             behavior=BehaviorEncoder(),
             num_classes=num_classes,
-            hidden_dim=160,
-            dropout=0.4,
-            modality_dropout=0.2,
+            hidden_dim=144,
+            dropout=0.45,
+            modality_dropout=0.25,
         )
 
 
@@ -449,9 +449,9 @@ class AttentionMultimodalModel(AttentionFusionClassifier):
             text=TransformerTextEncoder(vocab_size=vocab_size, max_length=self.config.max_text_length),
             behavior=BehaviorEncoder(),
             num_classes=num_classes,
-            hidden_dim=112,
-            dropout=0.35,
-            modality_dropout=0.2,
+            hidden_dim=96,
+            dropout=0.4,
+            modality_dropout=0.25,
         )
 
 

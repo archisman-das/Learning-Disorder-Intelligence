@@ -2106,6 +2106,7 @@ function renderModelStatisticsPage() {
           const summary = cvSummaryByModel.get(modelName) || null;
           return {
             model: modelName,
+            accuracy: summary ? Number(summary.mean_best_accuracy ?? 0) : null,
             selection_value: summary
               ? calculateModelPerformanceScore({
                   cv_f1: summary.mean_best_f1,
@@ -2120,6 +2121,7 @@ function renderModelStatisticsPage() {
           const summary = summaryInfo.summary;
           return {
             model: profile.modelName,
+            accuracy: summary ? Number(summary.mean_best_accuracy ?? 0) : null,
             selection_value: summary
               ? calculateModelPerformanceScore({
                   cv_f1: summary.mean_best_f1,
@@ -2139,13 +2141,14 @@ function renderModelStatisticsPage() {
           <tr>
             <td>${index + 1}</td>
             <td>${formatModelStatsModelName(item.model)}</td>
+            <td>${item.accuracy === null || Number.isNaN(item.accuracy) ? "n/a" : formatModelStatsPercent(item.accuracy, 1)}</td>
             <td>${item.selection_value === null || Number.isNaN(item.selection_value) ? "n/a" : formatModelStatsNumber(item.selection_value, 3)}</td>
           </tr>
         `).join("");
     rankingNode.innerHTML = `
       <div class="table-responsive">
         <table class="table table-sm table-hover align-middle mb-0">
-          <thead><tr><th>Rank</th><th>Model</th><th>Selection value</th></tr></thead>
+          <thead><tr><th>Rank</th><th>Model</th><th>Accuracy</th><th>Selection value</th></tr></thead>
           <tbody>${rankingRows}</tbody>
         </table>
       </div>

@@ -1,6 +1,6 @@
 window.__BUNDLED_MODEL_STATISTICS__ = {
-  generatedAt: "2026-06-22T00:00:00",
-  benchmarkSource: "selection_holdout_long_retrain_attentionfix_full",
+  generatedAt: "2026-06-22T19:10:51+05:30",
+  benchmarkSource: "selection_holdout_long_retrain_attentionfix_three",
   selectionPipeline: {
     manifest: "data\\benchmarks\\tough_confidence_manifest.csv",
     task: "binary",
@@ -8,25 +8,25 @@ window.__BUNDLED_MODEL_STATISTICS__ = {
     selection_metric: "weighted_priority_score",
     selected_model: "multimodal_attention",
     selection_value: 1.1577777777777778,
-    best_alias_path: "checkpoints\\best_model_long_retrain_attentionfix.pt",
+    best_alias_path: "checkpoints\\best_model_long_retrain_attentionfix_three.pt",
     ranked_models: [
       {
         model: "multimodal_attention",
         selection_value: 1.1577777777777778,
         rank: 1,
-        summary_path: "checkpoints\\selection_holdout_long_retrain_attentionfix_full\\cv\\multimodal_attention\\cross_validation_summary.json",
+        summary_path: "checkpoints\\selection_holdout_long_retrain_attentionfix_three\\cv\\multimodal_attention\\cross_validation_summary.json",
       },
       {
         model: "transformer",
         selection_value: 1.1477777777777778,
         rank: 2,
-        summary_path: "checkpoints\\selection_holdout_long_retrain_attentionfix_full\\cv\\transformer\\cross_validation_summary.json",
+        summary_path: "checkpoints\\selection_holdout_long_retrain_attentionfix_three\\cv\\transformer\\cross_validation_summary.json",
       },
       {
         model: "vit",
         selection_value: 1.143888888888889,
         rank: 3,
-        summary_path: "checkpoints\\selection_holdout_long_retrain_attentionfix_full\\cv\\vit\\cross_validation_summary.json",
+        summary_path: "checkpoints\\selection_holdout_long_retrain_attentionfix_three\\cv\\vit\\cross_validation_summary.json",
       },
     ],
     holdout_metrics: {
@@ -41,11 +41,11 @@ window.__BUNDLED_MODEL_STATISTICS__ = {
   },
   selectionHistory: [
     {
-      source: "selection_holdout_long_retrain_attentionfix_full",
+      source: "selection_holdout_long_retrain_attentionfix_three",
       selected_model: "multimodal_attention",
       consensus_level: "multimodal_attention",
       average_risk: 0.2,
-      timestamp: "2026-06-22T00:00:00",
+      timestamp: "2026-06-22T19:10:51+05:30",
     },
   ],
   validationVsHoldout: {

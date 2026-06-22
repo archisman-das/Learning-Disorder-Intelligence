@@ -453,12 +453,12 @@ class AttentionMultimodalModel(AttentionFusionClassifier):
         super().__init__(
             handwriting=ViTHandwritingEncoder(image_size=self.config.image_size),
             audio=AudioEncoder(self.config),
-            text=TransformerTextEncoder(vocab_size=vocab_size, max_length=self.config.max_text_length),
+            text=TransformerTextEncoder(vocab_size=vocab_size, max_length=self.config.max_text_length, embedding_dim=96, num_layers=2),
             behavior=BehaviorEncoder(),
             num_classes=num_classes,
-            hidden_dim=96,
-            dropout=0.4,
-            modality_dropout=0.25,
+            hidden_dim=192,
+            dropout=0.22,
+            modality_dropout=0.1,
         )
 
 

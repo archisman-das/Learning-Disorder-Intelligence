@@ -155,13 +155,13 @@ def main() -> None:
         model_freeze_epochs = args.freeze_transferred_epochs
 
         if model_name == priority_model_name and teacher_checkpoint:
-            model_learning_rate = min(model_learning_rate, args.learning_rate * 0.7)
-            model_epochs = max(model_epochs, args.epochs + 12)
-            model_patience = max(model_patience, args.patience + 6)
+            model_learning_rate = min(model_learning_rate, args.learning_rate * 0.6)
+            model_epochs = max(model_epochs, args.epochs + 16)
+            model_patience = max(model_patience, args.patience + 8)
             model_transfer_checkpoint = teacher_checkpoint
             model_distill_checkpoint = teacher_checkpoint
-            model_distill_weight = max(model_distill_weight, 0.65)
-            model_freeze_epochs = max(model_freeze_epochs, 2)
+            model_distill_weight = max(model_distill_weight, 0.8)
+            model_freeze_epochs = max(model_freeze_epochs, 4)
 
         model_configs[model_name] = {
             "epochs": model_epochs,
@@ -250,7 +250,15 @@ def main() -> None:
         reverse=True,
     )
     if baseline_ranked:
-        teacher_model = str(baseline_ranked[0]["model"])
+        teacher_row = max(
+            baseline_ranked,
+            key=lambda row: (
+                float(row["summary"].get("mean_best_f1", 0.0)),
+                float(row["selection_value"]),
+                MODEL_PRIORITY.get(str(row["model"]), 0),
+            ),
+        )
+        teacher_model = str(teacher_row["model"])
         teacher_config = model_configs.get(teacher_model, {})
         teacher_holdout_root = base_root / "teacher" / teacher_model
         teacher_holdout_root.mkdir(parents=True, exist_ok=True)

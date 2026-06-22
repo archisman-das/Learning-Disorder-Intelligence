@@ -7,8 +7,6 @@ from pathlib import Path
 
 
 SUPPORTED_MODELS = [
-    "cnn",
-    "lstm",
     "cnn_lstm",
     "transformer",
     "vit",

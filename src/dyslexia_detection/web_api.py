@@ -165,10 +165,8 @@ def summarize_comparison_payload(payload: dict[str, object]) -> dict[str, object
         + min(1.0, eye_wrong_clicks / 10.0) * 0.15
         + min(1.0, eye_consistency * 4.0) * 0.10
     )
-    models = ["cnn", "lstm", "transformer", "vit", "multimodal_attention"]
+    models = ["transformer", "vit", "multimodal_attention"]
     biases = {
-        "cnn": 0.02,
-        "lstm": -0.01,
         "transformer": 0.03,
         "vit": 0.01,
         "multimodal_attention": 0.05,

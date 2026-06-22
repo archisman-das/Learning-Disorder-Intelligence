@@ -32,8 +32,6 @@ except ImportError:  # pragma: no cover - older sklearn fallback
 
 
 SUPPORTED_MODELS = [
-    "cnn",
-    "lstm",
     "cnn_lstm",
     "transformer",
     "vit",

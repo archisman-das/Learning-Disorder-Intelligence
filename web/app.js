@@ -230,32 +230,18 @@ const THERAPY_PASS_THRESHOLD = 75;
 
 const MODEL_STATS_PROFILES = [
   {
-    modelName: "vit",
-    architecture: "Vision transformer variant",
-    modalities: "Handwriting + audio + text + behavior",
-    strength: "Stronger visual representation",
-    note: "Useful when handwritten structure matters more than raw image texture.",
-  },
-  {
-    modelName: "cnn",
-    architecture: "Convolutional baseline",
-    modalities: "Handwriting + audio + features",
-    strength: "Fast and compact",
-    note: "Useful as a smaller baseline and easy-to-debug reference.",
-  },
-  {
-    modelName: "lstm",
-    architecture: "Sequence-focused recurrent",
-    modalities: "Text + behavior + features",
-    strength: "Sequential pattern capture",
-    note: "Useful when reading and temporal behavior signals matter most.",
-  },
-  {
     modelName: "transformer",
     architecture: "Attention-based fusion",
     modalities: "Handwriting + audio + text + behavior",
     strength: "Context-aware fusion",
     note: "Balances multi-source signals and usually gives stable comparisons.",
+  },
+  {
+    modelName: "vit",
+    architecture: "Vision transformer variant",
+    modalities: "Handwriting + audio + text + behavior",
+    strength: "Stronger visual representation",
+    note: "Useful when handwritten structure matters more than raw image texture.",
   },
   {
     modelName: "multimodal_attention",
@@ -1555,17 +1541,6 @@ function getModelStatsSummaryForProfile(modelName, summaryMap) {
     return { summary: exact, sourceModel: exact.model || normalized, aliasUsed: false };
   }
 
-  const aliasMap = {
-    cnn: "cnn_lstm",
-    lstm: "cnn_lstm",
-    vit: "vit_transformer",
-  };
-  const aliasModel = aliasMap[normalized];
-  const aliasSummary = aliasModel ? summaryMap.get(aliasModel) || null : null;
-  if (aliasSummary) {
-    return { summary: aliasSummary, sourceModel: aliasSummary.model || aliasModel, aliasUsed: true };
-  }
-
   return { summary: null, sourceModel: normalized || "-", aliasUsed: false };
 }
 
@@ -1714,8 +1689,8 @@ function buildLocalComparison(sources) {
     + ((1 - Math.max(0, Math.min(1, therapyScore))) * 0.30)
     + (Math.min(1, eyeWrongClicks / 10) * 0.15)
     + (Math.min(1, eyeConsistency * 4) * 0.10);
-  const modelNames = ["cnn", "lstm", "transformer", "vit", "multimodal_attention"];
-  const biasMap = { cnn: 0.02, lstm: -0.01, transformer: 0.03, vit: 0.01, multimodal_attention: 0.05 };
+  const modelNames = ["transformer", "vit", "multimodal_attention"];
+  const biasMap = { transformer: 0.03, vit: 0.01, multimodal_attention: 0.05 };
   const predictions = modelNames.map((modelName) => {
     const risk = Math.max(0, Math.min(1, base + (biasMap[modelName] || 0)));
     const level = risk < 0.33 ? "Mild" : risk < 0.66 ? "Moderate" : "Severe";

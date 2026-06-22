@@ -33,7 +33,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--model",
-        choices=["cnn", "lstm", "cnn_lstm", "transformer", "vit", "vit_transformer", "multimodal", "multimodal_attention"],
+        choices=["cnn_lstm", "transformer", "vit", "vit_transformer", "multimodal", "multimodal_attention"],
         default="multimodal",
         help="Model architecture to train.",
     )

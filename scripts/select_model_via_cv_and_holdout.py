@@ -11,8 +11,6 @@ import torch
 
 
 SUPPORTED_MODELS = [
-    "cnn",
-    "lstm",
     "cnn_lstm",
     "transformer",
     "vit",
@@ -25,8 +23,8 @@ MODEL_PRIORITY = {
     "multimodal_attention": 5,
     "transformer": 4,
     "vit": 3,
-    "cnn": 2,
-    "lstm": 1,
+    "vit_transformer": 2,
+    "cnn_lstm": 1,
 }
 
 MODEL_PRIORITY_BONUS = {
@@ -34,17 +32,15 @@ MODEL_PRIORITY_BONUS = {
     "transformer": 0.18,
     "vit": 0.16,
     "vit_transformer": 0.16,
-    "cnn": 0.02,
     "cnn_lstm": 0.02,
-    "lstm": -0.05,
 }
 
 MODEL_SEED_OFFSETS = {
     "multimodal_attention": 11,
     "transformer": 23,
     "vit": 37,
-    "cnn": 41,
-    "lstm": 53,
+    "vit_transformer": 41,
+    "cnn_lstm": 53,
 }
 
 

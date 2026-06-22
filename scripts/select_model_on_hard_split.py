@@ -24,8 +24,6 @@ from src.dyslexia_detection.train import _class_weights, collect_logits_and_labe
 
 
 SUPPORTED_MODELS = [
-    "cnn",
-    "lstm",
     "cnn_lstm",
     "transformer",
     "vit",

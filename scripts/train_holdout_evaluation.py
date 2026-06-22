@@ -27,8 +27,6 @@ from src.dyslexia_detection.train import _best_binary_threshold, _class_weights,
 
 
 SUPPORTED_MODELS = [
-    "cnn",
-    "lstm",
     "cnn_lstm",
     "transformer",
     "vit",

@@ -11,8 +11,7 @@ DEFAULT_MODELS = [
     "multimodal_attention",
     "transformer",
     "vit",
-    "cnn",
-    "lstm",
+    "vit_transformer",
 ]
 
 

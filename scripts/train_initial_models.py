@@ -46,7 +46,7 @@ def train_model(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Train initial CNN, LSTM, and CNN/LSTM baselines.")
+    parser = argparse.ArgumentParser(description="Train the initial CNN/LSTM family baseline.")
     parser.add_argument("--manifest", default="data/demo/audio_augmented_manifest.csv")
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch-size", type=int, default=8)
@@ -57,21 +57,21 @@ def main() -> None:
     parser.add_argument("--grad-clip-norm", type=float, default=1.0)
     args = parser.parse_args()
 
-    for model_name in ["cnn", "lstm", "cnn_lstm"]:
-        print(f"\nTraining {model_name} baseline")
-        exit_code = train_model(
-            model_name,
-            args.manifest,
-            args.epochs,
-            args.batch_size,
-            args.text_language,
-            args.validation_fraction,
-            args.patience,
-            args.label_smoothing,
-            args.grad_clip_norm,
-        )
-        if exit_code != 0:
-            raise SystemExit(exit_code)
+    model_name = "cnn_lstm"
+    print(f"\nTraining {model_name} baseline")
+    exit_code = train_model(
+        model_name,
+        args.manifest,
+        args.epochs,
+        args.batch_size,
+        args.text_language,
+        args.validation_fraction,
+        args.patience,
+        args.label_smoothing,
+        args.grad_clip_norm,
+    )
+    if exit_code != 0:
+        raise SystemExit(exit_code)
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@ def main() -> None:
     parser.add_argument(
         "--model",
         default="vit_transformer",
-        choices=["cnn", "lstm", "cnn_lstm", "transformer", "vit", "vit_transformer", "multimodal", "multimodal_attention"],
+        choices=["cnn_lstm", "transformer", "vit", "vit_transformer", "multimodal", "multimodal_attention"],
     )
     parser.add_argument("--task", default="severity", choices=["binary", "severity", "regression"])
     parser.add_argument("--epochs", type=int, default=5)

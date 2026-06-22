@@ -522,68 +522,7 @@ class InitialCNNLSTMModel(nn.Module):
         return self.classifier(self.fuse_features(features))
 
 
-class InitialCNNModel(nn.Module):
-    def __init__(self, config: DataConfig | None = None, num_classes: int = 2):
-        super().__init__()
-        self.config = config or DataConfig()
-        self.handwriting = HandwritingEncoder()
-        self.audio = AudioEncoder(self.config)
-        self.classifier = nn.Sequential(
-            nn.Linear(64 + 64 + 2, 96),
-            nn.LayerNorm(96),
-            nn.GELU(),
-            nn.Dropout(0.2),
-            nn.Linear(96, num_classes),
-        )
-
-    def forward(
-        self,
-        image: torch.Tensor,
-        audio: torch.Tensor,
-        text: torch.Tensor,
-        errors: torch.Tensor,
-        behavior: torch.Tensor | None = None,
-    ) -> torch.Tensor:
-        _ = text, behavior
-        features = torch.cat([self.handwriting(image), self.audio(audio), errors], dim=1)
-        return self.classifier(features)
-
-
-class InitialLSTMModel(nn.Module):
-    def __init__(self, config: DataConfig | None = None, num_classes: int = 2):
-        super().__init__()
-        self.config = config or DataConfig()
-        vocab_size = len(build_char_vocab(getattr(self.config, "text_language", "bengali")))
-        self.text = LSTMTextEncoder(vocab_size=vocab_size)
-        self.behavior = BehaviorEncoder()
-        self.classifier = nn.Sequential(
-            nn.Linear(64 + 32 + 2, 96),
-            nn.LayerNorm(96),
-            nn.GELU(),
-            nn.Dropout(0.2),
-            nn.Linear(96, num_classes),
-        )
-
-    def forward(
-        self,
-        image: torch.Tensor,
-        audio: torch.Tensor,
-        text: torch.Tensor,
-        errors: torch.Tensor,
-        behavior: torch.Tensor | None = None,
-    ) -> torch.Tensor:
-        _ = image, audio
-        if behavior is None:
-            behavior = torch.zeros((text.shape[0], 4), dtype=errors.dtype, device=errors.device)
-        features = torch.cat([self.text(text), self.behavior(behavior), errors], dim=1)
-        return self.classifier(features)
-
-
 def build_model(model_name: str, config: DataConfig | None = None, num_classes: int = 2) -> nn.Module:
-    if model_name == "cnn":
-        return InitialCNNModel(config, num_classes=num_classes)
-    if model_name == "lstm":
-        return InitialLSTMModel(config, num_classes=num_classes)
     if model_name == "cnn_lstm":
         return InitialCNNLSTMModel(config, num_classes=num_classes)
     if model_name == "transformer":

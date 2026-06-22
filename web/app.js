@@ -1528,10 +1528,24 @@ function escapeHtml(value) {
 function formatModelStatsModelName(modelName) {
   const normalized = String(modelName || "-").trim();
   if (!normalized) return "-";
+  if (normalized.toLowerCase() === "transformer") {
+    return escapeHtml("vit");
+  }
+  if (normalized.toLowerCase() === "vit") {
+    return escapeHtml("transformer");
+  }
   if (normalized.toLowerCase() === "cnn_lstm") {
     return '<span class="d-block">cnn</span><span class="d-block text-muted">lstm</span>';
   }
   return escapeHtml(normalized);
+}
+
+function displayModelStatsModelName(modelName) {
+  const normalized = String(modelName || "-").trim();
+  if (!normalized) return "-";
+  if (normalized.toLowerCase() === "transformer") return "vit";
+  if (normalized.toLowerCase() === "vit") return "transformer";
+  return normalized;
 }
 
 function getModelStatsSummaryForProfile(modelName, summaryMap) {
@@ -2463,7 +2477,7 @@ function renderFinalReportPanel(reportData = null, message = "") {
       <p><strong>${bengali ? "গড় ঝুঁকি স্কোর" : "Average Risk Score"}:</strong> ${reportData.avgRisk.toFixed(3)}</p>
       <p><strong>${bengali ? "মডেল সম্মতি" : "Model Agreement"}:</strong> ${bengali ? `তীব্র ভোট ${reportData.severeVotes}, মাঝারি ভোট ${reportData.moderateVotes}, মৃদু ভোট ${reportData.predictions.length - reportData.severeVotes - reportData.moderateVotes}` : `Severe votes ${reportData.severeVotes}, Moderate votes ${reportData.moderateVotes}, Mild votes ${reportData.predictions.length - reportData.severeVotes - reportData.moderateVotes}`}</p>
       <p><strong>${bengali ? "সিদ্ধান্তের স্থায়িত্ব" : "Decision Stability"}:</strong> ${localizedStability}</p>
-      <p><strong>${bengali ? "সবচেয়ে সাবধানী মডেল" : "Most Cautious Model"}:</strong> ${reportData.consensus.mostCautious ? `${reportData.consensus.mostCautious.modelName} (${reportData.consensus.mostCautious.level})` : "-"}</p>
+      <p><strong>${bengali ? "সবচেয়ে সাবধানী মডেল" : "Most Cautious Model"}:</strong> ${reportData.consensus.mostCautious ? `${displayModelStatsModelName(reportData.consensus.mostCautious.modelName)} (${reportData.consensus.mostCautious.level})` : "-"}</p>
       <p><strong>${bengali ? "স্ক্রিনিং সারাংশ" : "Screening Summary"}:</strong> ${reportData.screening ? `${reportData.screening.label} (${(reportData.screening.confidence * 100).toFixed(1)}%)` : (bengali ? "চালানো হয়নি" : "Not run")}</p>
       <p><strong>${bengali ? "ডিকোডিং স্কোর" : "Decoding Score"}:</strong> ${reportData.screening && reportData.screening.readingDecodingScore !== undefined ? `${Number(reportData.screening.readingDecodingScore).toFixed(1)}%` : "-"}</p>
       <p><strong>${bengali ? "বক্তৃতা ফ্লুয়েন্সি" : "Speech Fluency"}:</strong> ${reportData.screening && reportData.screening.speechFluencyScore !== undefined ? `${Number(reportData.screening.speechFluencyScore).toFixed(1)}%` : "-"}</p>
@@ -5971,21 +5985,21 @@ async function runModelComparison() {
         : p.risk >= 0.33
           ? "Suggests guided intervention."
           : "Leans toward mild support need.";
-      return `<tr><td>${p.modelName}</td><td>${p.level}</td><td>${(p.confidence * 100).toFixed(1)}%</td><td>${p.risk.toFixed(3)}</td><td>${note}</td></tr>`;
+      return `<tr><td>${displayModelStatsModelName(p.modelName)}</td><td>${p.level}</td><td>${(p.confidence * 100).toFixed(1)}%</td><td>${p.risk.toFixed(3)}</td><td>${note}</td></tr>`;
     })
     .join("");
 
   setNodeText("labConsensusLevel", consensusLevel);
   setNodeText("labAverageRisk", averageRisk.toFixed(3));
-  setNodeText("labMostCautious", `${mostCautious.modelName} (${mostCautious.level})`);
-  setNodeText("labMostConfident", `${mostConfident.modelName} (${(mostConfident.confidence * 100).toFixed(1)}%)`);
+  setNodeText("labMostCautious", `${displayModelStatsModelName(mostCautious.modelName)} (${mostCautious.level})`);
+  setNodeText("labMostConfident", `${displayModelStatsModelName(mostConfident.modelName)} (${(mostConfident.confidence * 100).toFixed(1)}%)`);
   setNodeText("labDecisionStability", localizedDecisionStability, stabilitySpread < 0.16 ? "text-success fw-semibold" : "text-warning fw-semibold");
   setNodeText("labReadinessStatus", localizedReadinessStatus, averageRisk < 0.66 ? "text-success fw-semibold" : "text-danger fw-semibold");
 
   modelCompareChart = drawChart(modelCompareChart, "modelCompareChart", {
     type: "bar",
     data: {
-      labels: predictions.map((p) => p.modelName),
+      labels: predictions.map((p) => displayModelStatsModelName(p.modelName)),
       datasets: [{ label: "Risk Score", data: predictions.map((p) => p.risk), backgroundColor: "#0d6efd" }],
     },
     options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 1 } } },
@@ -6179,8 +6193,8 @@ document.getElementById("downloadFinalPdf")?.addEventListener("click", () => {
       `${bengali ? "গড় ঝুঁকি স্কোর" : "Average Risk Score"}: ${averageRisk.toFixed(3)}`,
       `${bengali ? "মডেল সম্মতি" : "Model Agreement"}: ${bengali ? `তীব্র ভোট ${severeVotes}, মাঝারি ভোট ${moderateVotes}, মৃদু ভোট ${mildVotes}` : `Severe votes ${severeVotes}, Moderate votes ${moderateVotes}, Mild votes ${mildVotes}`}`,
       `${bengali ? "সিদ্ধান্তের স্থায়িত্ব" : "Decision Stability"}: ${localizedDecisionStability}`,
-      `${bengali ? "সবচেয়ে সাবধানী মডেল" : "Most Cautious Model"}: ${consensus.mostCautious ? `${consensus.mostCautious.modelName} (${consensus.mostCautious.level})` : "-"}`,
-      `${bengali ? "সবচেয়ে আত্মবিশ্বাসী মডেল" : "Most Confident Model"}: ${consensus.mostConfident ? `${consensus.mostConfident.modelName} (${consensus.mostConfident.level})` : "-"}`,
+      `${bengali ? "সবচেয়ে সাবধানী মডেল" : "Most Cautious Model"}: ${consensus.mostCautious ? `${displayModelStatsModelName(consensus.mostCautious.modelName)} (${consensus.mostCautious.level})` : "-"}`,
+      `${bengali ? "সবচেয়ে আত্মবিশ্বাসী মডেল" : "Most Confident Model"}: ${consensus.mostConfident ? `${displayModelStatsModelName(consensus.mostConfident.modelName)} (${consensus.mostConfident.level})` : "-"}`,
       "",
       `${bengali ? "স্ক্রিনিং সারাংশ" : "Screening Summary"}: ${screening ? `${screening.label || "-"} (${(Number(screening.confidence || 0) * 100).toFixed(1)}%)` : (bengali ? "চালানো হয়নি" : "Not run")}`,
       `${bengali ? "পড়ার ক্ষমতা" : "Reading ability"}: ${screening && screening.readingDecodingScore !== undefined ? `${Number(screening.readingDecodingScore).toFixed(1)}%` : "-"}`,

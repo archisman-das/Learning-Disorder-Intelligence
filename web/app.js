@@ -1548,6 +1548,18 @@ function displayModelStatsModelName(modelName) {
   return normalized;
 }
 
+function displayModelStatsArchitectureName(modelName, architecture) {
+  const normalizedModel = String(modelName || "").trim().toLowerCase();
+  const normalizedArchitecture = String(architecture || "-").trim();
+  if (normalizedModel === "transformer") {
+    return "Vision transformer variant";
+  }
+  if (normalizedModel === "vit") {
+    return "Attention-based fusion";
+  }
+  return normalizedArchitecture || "-";
+}
+
 function getModelStatsSummaryForProfile(modelName, summaryMap) {
   const normalized = String(modelName || "").toLowerCase();
   const exact = summaryMap.get(normalized) || null;
@@ -2105,7 +2117,7 @@ function renderModelStatisticsPage() {
   const rowsHtml = rows.map((row) => `
     <tr>
       <td>${formatModelStatsModelName(row.model)}</td>
-      <td>${escapeHtml(row.architecture)}</td>
+      <td>${escapeHtml(displayModelStatsArchitectureName(row.model, row.architecture))}</td>
       <td>${escapeHtml(row.modalities)}</td>
       <td>${formatModelStatsPercent(row.cv_accuracy, 1)}</td>
       <td>${formatModelStatsPercent(row.cv_precision, 1)}</td>

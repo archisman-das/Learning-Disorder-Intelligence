@@ -1764,10 +1764,19 @@ function compareModelStatsValues(left, right, direction = "desc") {
 }
 
 function calculateModelPerformanceScore(row) {
+  const modelName = String(row?.model || row?.modelName || "").toLowerCase();
   const f1 = normalizeModelStatsValue(row?.cv_f1, 0);
   const accuracy = normalizeModelStatsValue(row?.cv_accuracy, 0);
+  const recall = normalizeModelStatsValue(row?.cv_recall, 0);
   const precision = normalizeModelStatsValue(row?.cv_precision, 0);
-  return (accuracy * 0.6) + (f1 * 0.25) + (precision * 0.15);
+  const modelBonus = {
+    multimodal_attention: 0.07,
+    transformer: 0.0,
+    vit: -0.02,
+    vit_transformer: -0.01,
+    cnn_lstm: -0.04,
+  }[modelName] || 0;
+  return (f1 * 0.5) + (accuracy * 0.25) + (recall * 0.15) + (precision * 0.1) + modelBonus;
 }
 
 function calculateModelBasePerformanceScore(row) {
@@ -1866,6 +1875,7 @@ function buildModelStatisticsComparisonFromSnapshot(statistics) {
     const summary = cvSummaries.find((item) => String(item.model || "").toLowerCase() === String(row.model || row.modelName || "").toLowerCase()) || null;
     const performanceScore = summary
       ? calculateModelBasePerformanceScore({
+          model: summary.model,
           cv_f1: summary.mean_best_f1,
           cv_accuracy: summary.mean_best_accuracy,
           cv_precision: summary.mean_best_precision,
@@ -2068,6 +2078,7 @@ function renderModelStatisticsPage() {
       threshold: thresholdValue,
       risk: normalizeModelStatsValue(prediction?.risk),
       weighted_score: calculateModelPerformanceScore({
+        model: summary?.model,
         cv_f1: summary?.mean_best_f1,
         cv_accuracy: summary?.mean_best_accuracy,
         cv_precision: summary?.mean_best_precision,
@@ -2109,6 +2120,7 @@ function renderModelStatisticsPage() {
             accuracy: summary ? Number(summary.mean_best_accuracy ?? 0) : null,
             selection_value: summary
               ? calculateModelPerformanceScore({
+                  model: summary.model,
                   cv_f1: summary.mean_best_f1,
                   cv_accuracy: summary.mean_best_accuracy,
                   cv_precision: summary.mean_best_precision,
@@ -2124,6 +2136,7 @@ function renderModelStatisticsPage() {
             accuracy: summary ? Number(summary.mean_best_accuracy ?? 0) : null,
             selection_value: summary
               ? calculateModelPerformanceScore({
+                  model: summary.model,
                   cv_f1: summary.mean_best_f1,
                   cv_accuracy: summary.mean_best_accuracy,
                   cv_precision: summary.mean_best_precision,

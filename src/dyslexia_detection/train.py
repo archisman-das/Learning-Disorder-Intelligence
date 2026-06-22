@@ -216,9 +216,9 @@ def _best_binary_threshold(probabilities: torch.Tensor, labels: torch.Tensor) ->
     if probabilities.numel() == 0 or labels.numel() == 0:
         return best_threshold, best_metrics
 
-    # Use a moderately strict operating range, but keep accuracy dominant so one model
-    # is not unfairly penalized by an overly aggressive cutoff.
-    thresholds = torch.linspace(0.30, 0.95, steps=27).tolist()
+    # Use a conservative but balanced operating range. The goal is to avoid
+    # thresholds that look perfect on precision while silently missing positives.
+    thresholds = torch.linspace(0.20, 0.90, steps=29).tolist()
     labels_np = labels.cpu().numpy()
     probabilities_np = probabilities.cpu().numpy()
     for threshold in thresholds:
@@ -228,17 +228,24 @@ def _best_binary_threshold(probabilities: torch.Tensor, labels: torch.Tensor) ->
         f1 = f1_score(labels_np, predictions, zero_division=0)
         accuracy = accuracy_score(labels_np, predictions)
         balanced = balanced_accuracy_score(labels_np, predictions)
-        # Prefer accuracy first, then precision, then balanced agreement.
-        score = (accuracy * 0.65) + (precision * 0.25) + (balanced * 0.10)
+        # Prefer an overall balance between F1, recall, and accuracy instead of
+        # over-rewarding zero-false-positive cutoffs.
+        score = (f1 * 0.45) + (balanced * 0.25) + (recall * 0.20) + (accuracy * 0.10)
         if score > best_score or (
             score == best_score
             and (
-                accuracy > best_metrics["accuracy"]
+                f1 > best_metrics["f1"]
                 or (
-                    accuracy == best_metrics["accuracy"]
+                    f1 == best_metrics["f1"]
                     and (
-                        precision > best_metrics["precision"]
-                        or (precision == best_metrics["precision"] and threshold > best_metrics["decision_threshold"])
+                        recall > best_metrics["recall"]
+                        or (
+                            recall == best_metrics["recall"]
+                            and (
+                                precision > best_metrics["precision"]
+                                or (precision == best_metrics["precision"] and threshold < best_metrics["decision_threshold"])
+                            )
+                        )
                     )
                 )
             )

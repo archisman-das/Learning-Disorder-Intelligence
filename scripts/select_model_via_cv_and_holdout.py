@@ -28,11 +28,11 @@ MODEL_PRIORITY = {
 }
 
 MODEL_PRIORITY_BONUS = {
-    "multimodal_attention": 0.25,
-    "transformer": 0.18,
-    "vit": 0.16,
-    "vit_transformer": 0.16,
-    "cnn_lstm": 0.02,
+    "multimodal_attention": 0.07,
+    "transformer": 0.0,
+    "vit": -0.02,
+    "vit_transformer": -0.01,
+    "cnn_lstm": -0.04,
 }
 
 MODEL_SEED_OFFSETS = {
@@ -112,8 +112,9 @@ def _selection_value(summary: dict[str, object], metric_name: str, task: str) ->
         model_name = str(summary.get("model", "") or "").lower()
         base = (
             float(summary.get("mean_best_f1", 0.0)) * 0.5
-            + float(summary.get("mean_best_accuracy", 0.0)) * 0.3
-            + float(summary.get("mean_best_precision", 0.0)) * 0.2
+            + float(summary.get("mean_best_accuracy", 0.0)) * 0.25
+            + float(summary.get("mean_best_recall", 0.0)) * 0.15
+            + float(summary.get("mean_best_precision", 0.0)) * 0.10
         )
         return base + float(MODEL_PRIORITY_BONUS.get(model_name, 0.0))
     value = summary.get(metric_name)

@@ -2281,7 +2281,7 @@ function renderModelStatisticsPage() {
   modelStatsChart = drawChart(modelStatsChart, "modelStatsChart", {
     type: "bar",
     data: {
-      labels: visibleOverviewPredictions.map((p) => p.modelName),
+      labels: visibleOverviewPredictions.map((p) => displayModelStatsModelName(p.modelName)),
       datasets: [
         { label: "Estimated Confidence", data: visibleOverviewPredictions.map((p) => Number(p.confidence || 0)), backgroundColor: "#198754" },
         { label: "Risk Score", data: visibleOverviewPredictions.map((p) => Number(p.risk || 0)), backgroundColor: "#dc3545" },

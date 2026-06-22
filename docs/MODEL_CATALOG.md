@@ -19,6 +19,9 @@ Not all of them are prediction models in the strict sense, but all of them influ
 The latest comparison snapshot is useful as a quick ordering reference, but it should be read alongside the
 full validation and holdout matrices in the dashboard and docs.
 
+The standalone web dashboard uses display-only label swapping in some model-statistics panels, so `vit` and
+`transformer` can appear exchanged in the UI even though the underlying model identifiers remain distinct.
+
 The selection value used by the dashboard ranking is a weighted score:
 
 `selection_value = (0.5 * CV F1) + (0.3 * CV Accuracy) + (0.2 * CV Precision) + model priority bonus`

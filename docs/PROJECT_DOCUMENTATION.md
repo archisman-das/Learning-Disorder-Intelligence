@@ -112,6 +112,9 @@ The repository is easiest to understand as five layers:
 The current docs and dashboard flows use a snapshot-driven comparison layer rather than a single live score.
 That keeps validation summaries, model rankings, and holdout checks easier to interpret.
 
+In the standalone web dashboard, some model-statistics panels use display-only label swapping for `vit` and
+`transformer`, so the visible labels may differ from the underlying model identifiers described here.
+
 Useful reference files:
 
 - [`README.md`](/d:/Project/Dyslexia_Detection_System/README.md)

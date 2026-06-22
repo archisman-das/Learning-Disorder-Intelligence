@@ -84,6 +84,8 @@ If the site does not refresh after a push, check these Render settings:
 
 The current selection pipeline keeps the live test flow separate from the model-statistics hub. The table below is a documentation snapshot of the latest cross-validation selection run on the tough benchmark manifest, so the metrics are easy to read in one place.
 
+Note: the standalone web dashboard uses display-only label swapping in some model-statistics panels, so `vit` and `transformer` can appear exchanged in the UI while the underlying model identifiers in this documentation stay unchanged.
+
 Selection value is computed as a weighted performance score:
 
 `selection_value = (0.5 * CV F1) + (0.3 * CV Accuracy) + (0.2 * CV Precision) + model priority bonus`

@@ -8,8 +8,8 @@ The current comparison snapshot used in the project ranks the screening models a
 
 1. `multimodal_attention`
 2. `transformer`
-3. `cnn`
-4. `vit`
+3. `vit`
+4. `cnn`
 5. `lstm`
 
 ## 2. Multimodal Screening Experiments

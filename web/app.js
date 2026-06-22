@@ -99,7 +99,7 @@ let biomarkerChart;
 let modelCompareChart;
 let modelStatsChart;
 let modelStatsLoadAttempted = false;
-let modelStatsSortState = { key: "weighted_score", direction: "desc" };
+let modelStatsSortState = { key: "cv_accuracy", direction: "desc" };
 let latestScreening = null;
 let latestTherapy = null;
 let latestEye = null;
@@ -1767,7 +1767,7 @@ function calculateModelPerformanceScore(row) {
   const f1 = normalizeModelStatsValue(row?.cv_f1, 0);
   const accuracy = normalizeModelStatsValue(row?.cv_accuracy, 0);
   const precision = normalizeModelStatsValue(row?.cv_precision, 0);
-  return (f1 * 0.5) + (accuracy * 0.3) + (precision * 0.2);
+  return (accuracy * 0.6) + (f1 * 0.25) + (precision * 0.15);
 }
 
 function calculateModelBasePerformanceScore(row) {
@@ -1790,7 +1790,7 @@ function compareModelStatsByPerformance(left, right, direction = "desc") {
 }
 
 function compareModelStatsRows(left, right) {
-  const sortKey = modelStatsSortState.key || "cv_f1";
+  const sortKey = modelStatsSortState.key || "cv_accuracy";
   const sortDirection = modelStatsSortState.direction || "desc";
   const performanceKeys = new Set(["cv_accuracy", "cv_precision", "cv_recall", "cv_f1", "cv_balanced_accuracy", "risk", "weighted_score"]);
   const numericKeys = new Set(["threshold"]);

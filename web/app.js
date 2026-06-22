@@ -1806,6 +1806,13 @@ function calculateModelPerformanceScore(row, modelName = "") {
   return (f1 * 0.5) + (accuracy * 0.3) + (precision * 0.2) + priorityBonus;
 }
 
+function calculateModelBasePerformanceScore(row) {
+  const f1 = normalizeModelStatsValue(row?.cv_f1, 0);
+  const accuracy = normalizeModelStatsValue(row?.cv_accuracy, 0);
+  const precision = normalizeModelStatsValue(row?.cv_precision, 0);
+  return (f1 * 0.5) + (accuracy * 0.3) + (precision * 0.2);
+}
+
 function compareModelStatsByPerformance(left, right, direction = "desc") {
   const leftScore = calculateModelPerformanceScore(left, left?.model);
   const rightScore = calculateModelPerformanceScore(right, right?.model);
@@ -1893,11 +1900,11 @@ function buildModelStatisticsComparisonFromSnapshot(statistics) {
   const predictions = sourceRows.map((row) => {
     const summary = cvSummaries.find((item) => String(item.model || "").toLowerCase() === String(row.model || row.modelName || "").toLowerCase()) || null;
     const performanceScore = summary
-      ? calculateModelPerformanceScore({
+      ? calculateModelBasePerformanceScore({
           cv_f1: summary.mean_best_f1,
           cv_accuracy: summary.mean_best_accuracy,
           cv_precision: summary.mean_best_precision,
-        }, summary.model)
+        })
       : Number(row.selection_value ?? 0);
     const confidence = clamp(Number(performanceScore ?? 0), 0, 1);
     const risk = clamp(1.0 - confidence, 0, 1);

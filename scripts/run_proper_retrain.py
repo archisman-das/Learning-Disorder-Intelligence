@@ -31,7 +31,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epochs", type=int, default=8)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--patience", type=int, default=4)
-    parser.add_argument("--selection-metric", default="score")
+    parser.add_argument("--selection-metric", default="weighted_priority_score")
     parser.add_argument("--label-smoothing", type=float, default=0.1)
     parser.add_argument("--grad-clip-norm", type=float, default=1.0)
     parser.add_argument("--learning-rate", type=float, default=5e-4)

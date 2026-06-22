@@ -1891,7 +1891,15 @@ function buildModelStatisticsComparisonFromSnapshot(statistics) {
         selection_value: Number(summary.mean_best_accuracy ?? summary.mean_best_f1 ?? summary.mean_best_score ?? 0),
       }));
   const predictions = sourceRows.map((row) => {
-    const confidence = clamp(Number(row.selection_value ?? 0), 0, 1);
+    const summary = cvSummaries.find((item) => String(item.model || "").toLowerCase() === String(row.model || row.modelName || "").toLowerCase()) || null;
+    const performanceScore = summary
+      ? calculateModelPerformanceScore({
+          cv_f1: summary.mean_best_f1,
+          cv_accuracy: summary.mean_best_accuracy,
+          cv_precision: summary.mean_best_precision,
+        }, summary.model)
+      : Number(row.selection_value ?? 0);
+    const confidence = clamp(Number(performanceScore ?? 0), 0, 1);
     const risk = clamp(1.0 - confidence, 0, 1);
     return {
       modelName: String(row.model || row.modelName || "-"),

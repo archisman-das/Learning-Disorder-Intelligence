@@ -2107,7 +2107,9 @@ function renderModelStatisticsPage() {
   updateModelStatsSortIndicators();
 
   if (rankingNode) {
-    const pipelineRanking = Array.isArray(selectionPipeline.ranked_models) ? selectionPipeline.ranked_models : [];
+    const pipelineRanking = Array.isArray(selectionPipeline.ranked_models)
+      ? selectionPipeline.ranked_models.filter((item) => String(item.model || item.modelName || "").toLowerCase() !== "vit_transformer")
+      : [];
     const rankingRowsSource = pipelineRanking.length
       ? pipelineRanking.map((item) => {
           const modelName = String(item.model || item.modelName || "-").toLowerCase();

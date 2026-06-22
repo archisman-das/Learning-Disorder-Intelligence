@@ -407,6 +407,9 @@ class TransformerMultimodalModel(FusionClassifier):
             text=TransformerTextEncoder(vocab_size=vocab_size, max_length=self.config.max_text_length),
             behavior=BehaviorEncoder(),
             num_classes=num_classes,
+            hidden_dim=160,
+            dropout=0.4,
+            modality_dropout=0.2,
         )
 
 
@@ -446,6 +449,9 @@ class AttentionMultimodalModel(AttentionFusionClassifier):
             text=TransformerTextEncoder(vocab_size=vocab_size, max_length=self.config.max_text_length),
             behavior=BehaviorEncoder(),
             num_classes=num_classes,
+            hidden_dim=112,
+            dropout=0.35,
+            modality_dropout=0.2,
         )
 
 

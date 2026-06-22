@@ -99,7 +99,7 @@ let biomarkerChart;
 let modelCompareChart;
 let modelStatsChart;
 let modelStatsLoadAttempted = false;
-let modelStatsSortState = { key: "weighted_score", direction: "desc" };
+let modelStatsSortState = { key: "pipeline_rank", direction: "asc" };
 let latestScreening = null;
 let latestTherapy = null;
 let latestEye = null;
@@ -251,6 +251,8 @@ const MODEL_STATS_PROFILES = [
     note: "Usually the strongest choice when all modalities are available.",
   },
 ];
+const MODEL_STATS_ROW_ORDER = ["multimodal_attention", "transformer", "vit"];
+const MODEL_STATS_VISIBLE_MODELS = new Set(MODEL_STATS_PROFILES.map((profile) => profile.modelName.toLowerCase()));
 
 const THERAPY_DURATION_TARGETS = {
   "Sound Drill": 18,
@@ -1794,6 +1796,9 @@ function compareModelStatsRows(left, right) {
   const sortDirection = modelStatsSortState.direction || "desc";
   const performanceKeys = new Set(["cv_accuracy", "cv_precision", "cv_recall", "cv_f1", "cv_balanced_accuracy", "risk", "weighted_score"]);
   const numericKeys = new Set(["threshold"]);
+  if (sortKey === "pipeline_rank") {
+    return compareModelStatsValues(left?.pipeline_rank, right?.pipeline_rank, sortDirection);
+  }
   if (sortKey === "model" || sortKey === "architecture" || sortKey === "modalities" || sortKey === "notes") {
     return compareModelStatsValues(left?.[sortKey], right?.[sortKey], sortDirection);
   }
@@ -1853,15 +1858,16 @@ function getBundledModelStatisticsSnapshot() {
 function buildModelStatisticsComparisonFromSnapshot(statistics) {
   const selectionPipeline = statistics?.selectionPipeline || {};
   const cvSummaries = Array.isArray(statistics?.validationVsHoldout?.cvSummaries)
-    ? statistics.validationVsHoldout.cvSummaries
+    ? statistics.validationVsHoldout.cvSummaries.filter((summary) => MODEL_STATS_VISIBLE_MODELS.has(String(summary.model || "").toLowerCase()))
     : [];
   const rankedModels = Array.isArray(selectionPipeline.ranked_models) ? selectionPipeline.ranked_models : [];
-  const sourceRows = rankedModels.length
-    ? rankedModels
+  const visibleRankedModels = rankedModels.filter((row) => MODEL_STATS_VISIBLE_MODELS.has(String(row.model || row.modelName || "").toLowerCase()));
+  const sourceRows = (visibleRankedModels.length >= MODEL_STATS_PROFILES.length
+    ? visibleRankedModels
     : cvSummaries.map((summary) => ({
         model: summary.model,
         selection_value: Number(summary.mean_best_accuracy ?? summary.mean_best_f1 ?? summary.mean_best_score ?? 0),
-      }));
+      }))).filter((row) => MODEL_STATS_VISIBLE_MODELS.has(String(row.model || row.modelName || "").toLowerCase()));
   const predictions = sourceRows.map((row) => {
     const summary = cvSummaries.find((item) => String(item.model || "").toLowerCase() === String(row.model || row.modelName || "").toLowerCase()) || null;
     const performanceScore = summary
@@ -2072,11 +2078,17 @@ function renderModelStatisticsPage() {
         cv_accuracy: summary?.mean_best_accuracy,
         cv_precision: summary?.mean_best_precision,
       }),
+      pipeline_rank: Number.POSITIVE_INFINITY,
       band,
       note: summaryInfo.aliasUsed
         ? `${profile.note || note} Shared CV source: ${summaryInfo.sourceModel}.`
         : (profile.note || note),
     };
+  });
+  const pipelineOrder = MODEL_STATS_ROW_ORDER;
+  rowData.forEach((row) => {
+    const index = pipelineOrder.indexOf(String(row.model || "").toLowerCase());
+    row.pipeline_rank = index >= 0 ? index + 1 : Number.POSITIVE_INFINITY;
   });
   const rows = rowData.slice().sort((left, right) => compareModelStatsRows(left, right));
   const rowsHtml = rows.map((row) => `
@@ -2099,53 +2111,24 @@ function renderModelStatisticsPage() {
   updateModelStatsSortIndicators();
 
   if (rankingNode) {
-    const pipelineRanking = Array.isArray(selectionPipeline.ranked_models) ? selectionPipeline.ranked_models : [];
-    const rankingRowsSource = pipelineRanking.length
-      ? pipelineRanking.map((item) => {
-          const modelName = String(item.model || item.modelName || "-").toLowerCase();
-          const summary = cvSummaryByModel.get(modelName) || null;
-          return {
-            model: modelName,
-            selection_value: summary
-              ? calculateModelPerformanceScore({
-                  cv_f1: summary.mean_best_f1,
-                  cv_accuracy: summary.mean_best_accuracy,
-                  cv_precision: summary.mean_best_precision,
-                })
-              : Number(item.selection_value),
-          };
-        })
-      : MODEL_STATS_PROFILES.map((profile) => {
-          const summaryInfo = getModelStatsSummaryForProfile(profile.modelName, cvSummaryByModel);
-          const summary = summaryInfo.summary;
-          return {
-            model: profile.modelName,
-            selection_value: summary
-              ? calculateModelPerformanceScore({
-                  cv_f1: summary.mean_best_f1,
-                  cv_accuracy: summary.mean_best_accuracy,
-                  cv_precision: summary.mean_best_precision,
-                })
-              : null,
-          };
-        });
-    const rankedByDisplayOrder = rankingRowsSource.slice().sort((left, right) => {
-      const leftValue = normalizeModelStatsValue(left.selection_value);
-      const rightValue = normalizeModelStatsValue(right.selection_value);
-      if (leftValue !== rightValue) return rightValue - leftValue;
-      return String(left.model || "").localeCompare(String(right.model || ""), undefined, { numeric: true, sensitivity: "base" });
+    const rankingRowsSource = MODEL_STATS_ROW_ORDER.map((modelName) => {
+      const summary = cvSummaryByModel.get(modelName) || null;
+      return {
+        model: modelName,
+        accuracy_value: summary ? Number(summary.mean_best_accuracy ?? 0) : null,
+      };
     });
-    const rankingRows = rankedByDisplayOrder.map((item, index) => `
+    const rankingRows = rankingRowsSource.map((item, index) => `
           <tr>
             <td>${index + 1}</td>
             <td>${formatModelStatsModelName(item.model)}</td>
-            <td>${item.selection_value === null || Number.isNaN(item.selection_value) ? "n/a" : formatModelStatsNumber(item.selection_value, 3)}</td>
+            <td>${item.accuracy_value === null || Number.isNaN(item.accuracy_value) ? "n/a" : formatModelStatsPercent(item.accuracy_value, 1)}</td>
           </tr>
         `).join("");
     rankingNode.innerHTML = `
       <div class="table-responsive">
         <table class="table table-sm table-hover align-middle mb-0">
-          <thead><tr><th>Rank</th><th>Model</th><th>Selection value</th></tr></thead>
+          <thead><tr><th>Rank</th><th>Model</th><th>CV Accuracy</th></tr></thead>
           <tbody>${rankingRows}</tbody>
         </table>
       </div>
@@ -2154,9 +2137,8 @@ function renderModelStatisticsPage() {
 
   if (validationNode) {
     const selectedModel = String(selectionPipeline.selected_model || comparison.mostConfident?.modelName || "").trim();
-    const hiddenValidationModels = new Set(["cnn_lstm", "vit_transformer"]);
     const visibleValidationSummaries = cvSummaries
-      .filter((summary) => !hiddenValidationModels.has(String(summary.model || "").toLowerCase()))
+      .filter((summary) => MODEL_STATS_VISIBLE_MODELS.has(String(summary.model || "").toLowerCase()))
       .slice()
       .sort((left, right) => {
         const leftScore = {

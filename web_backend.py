@@ -17,6 +17,8 @@ _WHISPER_MODEL_KEY = None
 _FFMPEG_READY = False
 _WEB_API = None
 _CHECKPOINTS_DIR = BASE_DIR / "checkpoints"
+_MODEL_STATS_ASSET_PATH = WEB_ROOT / "assets" / "model-statistics.json"
+_MODEL_STATS_VISIBLE_MODELS = {"multimodal_attention", "transformer", "vit"}
 
 
 def _load_json_file(path: Path) -> dict[str, object] | None:
@@ -60,100 +62,44 @@ def _summarize_cv_summary(summary: dict[str, object], model_name: str) -> dict[s
     }
 
 
-def _load_model_statistics_summary() -> dict[str, object]:
-    selection_summary_path = _first_existing_path(
-        _CHECKPOINTS_DIR / "hard_split_selection_balanced_harder_run_proper" / "strict_benchmark_summary.json",
-        _CHECKPOINTS_DIR / "hard_split_selection_balanced_harder_run2" / "strict_benchmark_summary.json",
-        _CHECKPOINTS_DIR / "selection_holdout_tough" / "selection_and_holdout_summary.json",
-        _CHECKPOINTS_DIR / "selection_holdout_final" / "selection_and_holdout_summary.json",
-        _CHECKPOINTS_DIR / "selection_holdout_smoke" / "selection_and_holdout_summary.json",
-    )
-    strict_summary_path = _first_existing_path(
-        _CHECKPOINTS_DIR / "hard_split_selection_balanced_harder_run" / "strict_benchmark_summary.json",
-        _CHECKPOINTS_DIR / "hard_split_selection_balanced_harder_run" / "seed_21" / "hard_split_selection_report.json",
-        _CHECKPOINTS_DIR / "hard_split_selection_strict_run" / "hard_split_selection_report.json",
-    )
+def _is_visible_model(model_name: object) -> bool:
+    return str(model_name or "").lower() in _MODEL_STATS_VISIBLE_MODELS
 
-    selection_summary = _load_json_file(selection_summary_path) if selection_summary_path else None
-    strict_summary = _load_json_file(strict_summary_path) if strict_summary_path else None
+
+def _selection_value_from_summary(summary: dict[str, object]) -> float:
+    f1 = float(summary.get("mean_best_f1") or 0.0)
+    accuracy = float(summary.get("mean_best_accuracy") or 0.0)
+    precision = float(summary.get("mean_best_precision") or 0.0)
+    return (0.5 * f1) + (0.3 * accuracy) + (0.2 * precision)
+
+
+def _load_model_statistics_summary() -> dict[str, object]:
+    bundled_summary = _load_json_file(_MODEL_STATS_ASSET_PATH)
+    if bundled_summary:
+        bundled_summary["generatedAt"] = datetime.now().isoformat(timespec="seconds")
+        return bundled_summary
+
+    selection_summary_path = _CHECKPOINTS_DIR / "selection_holdout_long_retrain" / "selection_and_holdout_summary.json"
+    selection_summary = _load_json_file(selection_summary_path)
 
     cv_summaries: list[dict[str, object]] = []
-    cv_root = _CHECKPOINTS_DIR / "selection_holdout_tough" / "cv"
-    if not cv_root.exists():
-        cv_root = _CHECKPOINTS_DIR / "selection_holdout_final" / "cv"
+    cv_root = selection_summary_path.parent / "cv"
     if cv_root.exists():
         for summary_path in sorted(cv_root.rglob("cross_validation_summary.json")):
             summary = _load_json_file(summary_path)
             if not summary:
                 continue
             model_name = str(summary.get("model") or summary_path.parent.name)
+            if not _is_visible_model(model_name):
+                continue
             cv_summaries.append(_summarize_cv_summary(summary, model_name))
 
-    strict_report: dict[str, object] | None = None
-    if selection_summary_path and "hard_split_selection_balanced_harder_run" in str(selection_summary_path):
-        runs = strict_summary.get("runs") or [] if strict_summary else []
-        first_run = next((run for run in runs if isinstance(run, dict)), None) if isinstance(runs, list) else None
-        report_path = str(first_run.get("report_path") or "") if first_run else ""
-        if first_run and first_run.get("report_path"):
-            strict_report = _load_json_file((BASE_DIR / str(first_run["report_path"])).resolve()) or _load_json_file(Path(str(first_run["report_path"])))
-        if strict_report:
-            ranking_rows = strict_report.get("ranking") if isinstance(strict_report.get("ranking"), list) else []
-            selection_pipeline = {
-                "manifest": strict_report.get("train_manifest"),
-                "task": selection_summary.get("task") if selection_summary else None,
-                "text_language": selection_summary.get("text_language") if selection_summary else None,
-                "selection_metric": "score",
-                "selected_model": strict_report.get("selected_model"),
-                "selection_value": float(ranking_rows[0].get("selection_value", 0.0)) if ranking_rows else float((strict_report.get("final_eval_metrics") or {}).get("score", 0.0)),
-                "best_alias_path": strict_report.get("best_alias_path"),
-                "ranked_models": [
-                    {
-                        "model": row.get("model"),
-                        "selection_value": row.get("selection_value"),
-                        "rank": index + 1,
-                        "summary_path": report_path,
-                    }
-                    for index, row in enumerate(ranking_rows if isinstance(ranking_rows, list) else [])
-                ],
-                "holdout_metrics": strict_report.get("final_eval_metrics"),
-            }
-            selection_summary = {
-                "manifest": strict_report.get("train_manifest"),
-                "task": selection_summary.get("task") if selection_summary else None,
-                "text_language": selection_summary.get("text_language") if selection_summary else None,
-                "selection_metric": "score",
-                "selected_model": strict_report.get("selected_model"),
-                "best_alias_path": strict_report.get("best_alias_path"),
-                "selection_value": float(ranking_rows[0].get("selection_value", 0.0)) if ranking_rows else float((strict_report.get("final_eval_metrics") or {}).get("score", 0.0)),
-                "ranked_models": selection_pipeline["ranked_models"],
-                "holdout_metrics": strict_report.get("final_eval_metrics"),
-            }
-            if cv_summaries:
-                final_metrics = strict_report.get("final_eval_metrics") or {}
-                for summary in cv_summaries:
-                    if str(summary.get("model") or "").lower() == str(strict_report.get("selected_model") or "").lower():
-                        summary.update(
-                            {
-                                "manifest": strict_report.get("final_eval_manifest"),
-                                "folds": 1,
-                                "repeats": 1,
-                                "mean_best_accuracy": final_metrics.get("accuracy"),
-                                "std_best_accuracy": 0,
-                                "mean_best_precision": final_metrics.get("precision"),
-                                "std_best_precision": 0,
-                                "mean_best_recall": final_metrics.get("recall"),
-                                "std_best_recall": 0,
-                                "mean_best_f1": final_metrics.get("f1"),
-                                "std_best_f1": 0,
-                                "mean_best_score": final_metrics.get("score"),
-                                "std_best_score": 0,
-                                "mean_best_balanced_accuracy": final_metrics.get("balanced_accuracy"),
-                                "std_best_balanced_accuracy": 0,
-                                "mean_best_decision_threshold": final_metrics.get("decision_threshold"),
-                                "std_best_decision_threshold": 0,
-                            }
-                        )
-                        break
+    desired_order = ["multimodal_attention", "transformer", "vit"]
+    visible_cv_by_model = {
+        str(summary.get("model") or "").lower(): summary
+        for summary in cv_summaries
+        if _is_visible_model(summary.get("model"))
+    }
 
     holdout_summary: dict[str, object] | None = None
     if selection_summary:
@@ -161,98 +107,125 @@ def _load_model_statistics_summary() -> dict[str, object]:
         if holdout_path:
             holdout_summary = _load_json_file((BASE_DIR / str(holdout_path)).resolve()) or _load_json_file(Path(str(holdout_path)))
         if holdout_summary is None:
-            holdout_root = _CHECKPOINTS_DIR / "selection_holdout_tough" / "holdout"
-            if not holdout_root.exists():
-                holdout_root = _CHECKPOINTS_DIR / "selection_holdout_final" / "holdout"
-            for candidate in sorted(holdout_root.rglob("holdout_summary.json")) if holdout_root.exists() else []:
-                holdout_summary = _load_json_file(candidate)
-                if holdout_summary:
-                    break
+            maybe_holdout_metrics = selection_summary.get("holdout_metrics")
+            holdout_summary = maybe_holdout_metrics if isinstance(maybe_holdout_metrics, dict) else None
+
+    ordered_ranked_models: list[dict[str, object]] = []
+    if selection_summary:
+        ranked_models = selection_summary.get("ranked_models")
+        ranked_map = {
+            str(row.get("model") or "").lower(): row
+            for row in ranked_models
+            if isinstance(row, dict)
+        } if isinstance(ranked_models, list) else {}
+
+        for index, model_name in enumerate(desired_order, start=1):
+            row = ranked_map.get(model_name)
+            if row is not None:
+                ordered_ranked_models.append(
+                    {
+                        "model": row.get("model"),
+                        "selection_value": row.get("selection_value"),
+                        "rank": index,
+                        "summary_path": row.get("summary_path"),
+                    }
+                )
+
+        if not ordered_ranked_models:
+            for index, model_name in enumerate(desired_order, start=1):
+                summary = visible_cv_by_model.get(model_name)
+                if not summary:
+                    continue
+                ordered_ranked_models.append(
+                    {
+                        "model": summary.get("model"),
+                        "selection_value": _selection_value_from_summary(summary),
+                        "rank": index,
+                        "summary_path": None,
+                    }
+                )
+
+    if selection_summary:
+        selection_pipeline = {
+            "manifest": selection_summary.get("manifest"),
+            "task": selection_summary.get("task"),
+            "text_language": selection_summary.get("text_language"),
+            "selection_metric": selection_summary.get("selection_metric"),
+            "selected_model": selection_summary.get("selected_model"),
+            "selection_value": selection_summary.get("selection_value"),
+            "best_alias_path": selection_summary.get("best_alias_path"),
+            "ranked_models": ordered_ranked_models or selection_summary.get("ranked_models") or [],
+            "holdout_metrics": selection_summary.get("holdout_metrics"),
+        }
+        if selection_pipeline["ranked_models"]:
+            selection_pipeline["ranked_models"] = [
+                row
+                for row in selection_pipeline["ranked_models"]
+                if isinstance(row, dict) and _is_visible_model(row.get("model"))
+            ]
+    else:
+        selection_pipeline = {
+            "manifest": None,
+            "task": None,
+            "text_language": None,
+            "selection_metric": None,
+            "selected_model": None,
+            "selection_value": None,
+            "best_alias_path": None,
+            "ranked_models": [],
+            "holdout_metrics": None,
+        }
+
+    if selection_pipeline.get("ranked_models"):
+        selection_pipeline["ranked_models"] = [
+            {
+                "model": row.get("model"),
+                "selection_value": row.get("selection_value"),
+                "rank": index,
+                "summary_path": row.get("summary_path"),
+            }
+            for index, row in enumerate(selection_pipeline["ranked_models"], start=1)
+        ]
+        if selection_pipeline.get("selection_value") is None:
+            selection_pipeline["selection_value"] = selection_pipeline["ranked_models"][0].get("selection_value")
 
     selection_history: list[dict[str, object]] = []
-    if strict_report:
-        final_metrics = strict_report.get("final_eval_metrics") or {}
+    if selection_summary:
         selection_history.append(
             {
-                "source": selection_summary_path.parent.name if selection_summary_path else "hard_split_selection_balanced_harder_run_proper",
-                "selected_model": strict_report.get("selected_model"),
-                "consensus_level": strict_report.get("selected_model"),
-                "average_risk": 1.0 - float(final_metrics.get("score", 0.0) or 0.0),
-                "timestamp": datetime.now().isoformat(timespec="seconds"),
-            }
-        )
-    elif selection_summary:
-        selection_history.append(
-            {
-                "source": "selection_holdout_final",
+                "source": selection_summary_path.parent.name,
                 "selected_model": selection_summary.get("selected_model"),
                 "selection_metric": selection_summary.get("selection_metric"),
                 "selection_value": selection_summary.get("selection_value"),
                 "best_alias_path": selection_summary.get("best_alias_path"),
-                "ranked_models": selection_summary.get("ranked_models") or [],
+                "ranked_models": selection_pipeline.get("ranked_models") or [],
                 "summary": f"Selected {selection_summary.get('selected_model') or 'unknown'} using {selection_summary.get('selection_metric') or 'selection metric'}",
             }
         )
-    if strict_summary:
-        runs = strict_summary.get("runs") or []
-        for run in runs if isinstance(runs, list) else []:
-            if not isinstance(run, dict):
-                continue
-            selection_history.append(
-                {
-                    "source": "strict_benchmark",
-                    "seed": run.get("seed"),
-                    "selected_model": run.get("selected_model"),
-                    "final_threshold_mode": strict_summary.get("final_threshold_mode"),
-                    "final_eval_metrics": run.get("final_eval_metrics"),
-                    "threshold_comparison": run.get("threshold_comparison"),
-                    "report_path": run.get("report_path"),
-                    "summary": f"Seed {run.get('seed')} selected {run.get('selected_model') or 'unknown'} with F1 {float((run.get('final_eval_metrics') or {}).get('f1', 0)):.3f}",
-                }
-            )
 
-    threshold_logs: dict[str, object] | None = None
-    threshold_source: dict[str, object] | None = None
-    if strict_summary:
-        runs = strict_summary.get("runs") or []
-        first_run = next((run for run in runs if isinstance(run, dict)), None) if isinstance(runs, list) else None
-        if first_run and first_run.get("report_path"):
-            threshold_source = _load_json_file((BASE_DIR / str(first_run["report_path"])).resolve()) or _load_json_file(Path(str(first_run["report_path"])))
-        threshold_logs = {
-            "split_dir": strict_summary.get("split_dir"),
-            "final_threshold_mode": strict_summary.get("final_threshold_mode"),
-            "selected_model": strict_summary.get("selected_model"),
-            "aggregate_metrics": strict_summary.get("aggregate_metrics"),
-            "runs": strict_summary.get("runs") or [],
-            "report": threshold_source or {},
-        }
-
-    selection_pipeline = (
-        selection_pipeline
-        if strict_report
-        else {
-            "manifest": selection_summary.get("manifest") if selection_summary else None,
-            "task": selection_summary.get("task") if selection_summary else None,
-            "text_language": selection_summary.get("text_language") if selection_summary else None,
-            "selection_metric": selection_summary.get("selection_metric") if selection_summary else None,
-            "selected_model": selection_summary.get("selected_model") if selection_summary else None,
-            "selection_value": selection_summary.get("selection_value") if selection_summary else None,
-            "best_alias_path": selection_summary.get("best_alias_path") if selection_summary else None,
-            "ranked_models": selection_summary.get("ranked_models") if selection_summary else [],
-            "holdout_metrics": selection_summary.get("holdout_metrics") if selection_summary else None,
-        }
+    cv_summaries = [
+        summary
+        for summary in cv_summaries
+        if _is_visible_model(summary.get("model"))
+    ]
+    visible_order = {model_name: index for index, model_name in enumerate(desired_order)}
+    cv_summaries.sort(
+        key=lambda summary: (
+            visible_order.get(str(summary.get("model") or "").lower(), len(desired_order)),
+            str(summary.get("model") or ""),
+        )
     )
 
     return {
         "generatedAt": datetime.now().isoformat(timespec="seconds"),
-        "benchmarkSource": selection_summary_path.parent.name if selection_summary_path else "unknown",
+        "benchmarkSource": selection_summary_path.parent.name if selection_summary else "unknown",
         "selectionPipeline": selection_pipeline,
         "selectionHistory": selection_history,
         "validationVsHoldout": {
             "cvSummaries": cv_summaries,
             "holdoutSummary": holdout_summary,
         },
-        "thresholdLogs": threshold_logs or {},
+        "thresholdLogs": {},
     }
 
 

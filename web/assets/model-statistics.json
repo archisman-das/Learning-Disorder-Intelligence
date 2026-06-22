@@ -1,0 +1,125 @@
+{
+  "generatedAt": "2026-06-22T00:00:00",
+  "benchmarkSource": "selection_holdout_long_retrain",
+  "selectionPipeline": {
+    "manifest": "data\\benchmarks\\tough_confidence_manifest.csv",
+    "task": "binary",
+    "text_language": "multilingual",
+    "selection_metric": "weighted_priority_score",
+    "selected_model": "multimodal_attention",
+    "selection_value": 0.9305555555555556,
+    "best_alias_path": "checkpoints\\best_model_long_retrain.pt",
+    "ranked_models": [
+      {
+        "model": "multimodal_attention",
+        "selection_value": 0.9305555555555556,
+        "rank": 1,
+        "summary_path": "checkpoints\\selection_holdout_long_retrain\\cv\\multimodal_attention\\cross_validation_summary.json"
+      },
+      {
+        "model": "transformer",
+        "selection_value": 0.7844444444444445,
+        "rank": 2,
+        "summary_path": "checkpoints\\selection_holdout_long_retrain\\cv\\transformer\\cross_validation_summary.json"
+      },
+      {
+        "model": "vit",
+        "selection_value": 0.83,
+        "rank": 3,
+        "summary_path": "checkpoints\\selection_holdout_long_retrain\\cv\\vit\\cross_validation_summary.json"
+      }
+    ],
+    "holdout_metrics": {
+      "accuracy": 0.8571428571428571,
+      "precision": 1,
+      "recall": 0.6666666666666666,
+      "f1": 0.8,
+      "balanced_accuracy": 0.8333333333333333,
+      "decision_threshold": 0.6499999761581421,
+      "score": 0.8
+    }
+  },
+  "selectionHistory": [
+    {
+      "source": "selection_holdout_long_retrain",
+      "selected_model": "multimodal_attention",
+      "consensus_level": "multimodal_attention",
+      "average_risk": 0.16388888888888886,
+      "timestamp": "2026-06-22T00:00:00"
+    }
+  ],
+  "validationVsHoldout": {
+    "cvSummaries": [
+      {
+        "model": "multimodal_attention",
+        "manifest": "data\\benchmarks\\tough_confidence_manifest.csv",
+        "folds": 5,
+        "repeats": 3,
+        "mean_best_accuracy": 0.9,
+        "std_best_accuracy": 0.15275252316519466,
+        "mean_best_precision": 0.9333333333333333,
+        "std_best_precision": 0.24944382578492943,
+        "mean_best_recall": 0.8,
+        "std_best_recall": 0.30550504633038933,
+        "mean_best_f1": 0.8444444444444444,
+        "std_best_f1": 0.26851213274654606,
+        "mean_best_score": null,
+        "std_best_score": null,
+        "mean_best_balanced_accuracy": 0.9,
+        "std_best_balanced_accuracy": 0.15275252316519466,
+        "mean_best_decision_threshold": 0.6726666410764058,
+        "std_best_decision_threshold": 0.08127867216827936
+      },
+      {
+        "model": "transformer",
+        "manifest": "data\\benchmarks\\tough_confidence_manifest.csv",
+        "folds": 5,
+        "repeats": 3,
+        "mean_best_accuracy": 0.8666666666666667,
+        "std_best_accuracy": 0.20138409955990955,
+        "mean_best_precision": 0.8,
+        "std_best_precision": 0.4,
+        "mean_best_recall": 0.7333333333333333,
+        "std_best_recall": 0.4027681991198191,
+        "mean_best_f1": 0.7555555555555555,
+        "std_best_f1": 0.3937787810370967,
+        "mean_best_score": null,
+        "std_best_score": null,
+        "mean_best_balanced_accuracy": 0.8666666666666667,
+        "std_best_balanced_accuracy": 0.20138409955990955,
+        "mean_best_decision_threshold": 0.7899999896685282,
+        "std_best_decision_threshold": 0.1287892359480872
+      },
+      {
+        "model": "vit",
+        "manifest": "data\\benchmarks\\tough_confidence_manifest.csv",
+        "folds": 5,
+        "repeats": 3,
+        "mean_best_accuracy": 0.9,
+        "std_best_accuracy": 0.17795130420052185,
+        "mean_best_precision": 0.8444444444444444,
+        "std_best_precision": 0.341384255460827,
+        "mean_best_recall": 0.8333333333333334,
+        "std_best_recall": 0.3496029493900505,
+        "mean_best_f1": 0.8311111111111111,
+        "std_best_f1": 0.3389453504877799,
+        "mean_best_score": null,
+        "std_best_score": null,
+        "mean_best_balanced_accuracy": 0.9,
+        "std_best_balanced_accuracy": 0.17795130420052185,
+        "mean_best_decision_threshold": 0.8486666599909465,
+        "std_best_decision_threshold": 0.12273910560440601
+      }
+    ],
+    "holdoutSummary": {
+      "accuracy": 0.8571428571428571,
+      "precision": 1,
+      "recall": 0.6666666666666666,
+      "f1": 0.8,
+      "balanced_accuracy": 0.8333333333333333,
+      "decision_threshold": 0.6499999761581421,
+      "score": 0.8
+    }
+  },
+  "thresholdLogs": {}
+}

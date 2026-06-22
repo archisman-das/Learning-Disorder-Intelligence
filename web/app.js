@@ -2104,7 +2104,7 @@ function renderModelStatisticsPage() {
   const rows = rowData.slice().sort((left, right) => compareModelStatsRows(left, right));
   const rowsHtml = rows.map((row) => `
     <tr>
-      <td>${escapeHtml(row.model)}</td>
+      <td>${formatModelStatsModelName(row.model)}</td>
       <td>${escapeHtml(row.architecture)}</td>
       <td>${escapeHtml(row.modalities)}</td>
       <td>${formatModelStatsPercent(row.cv_accuracy, 1)}</td>

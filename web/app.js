@@ -99,7 +99,7 @@ let biomarkerChart;
 let modelCompareChart;
 let modelStatsChart;
 let modelStatsLoadAttempted = false;
-let modelStatsSortState = { key: "cv_accuracy", direction: "desc" };
+let modelStatsSortState = { key: "weighted_score", direction: "desc" };
 let latestScreening = null;
 let latestTherapy = null;
 let latestEye = null;
@@ -1528,56 +1528,10 @@ function escapeHtml(value) {
 function formatModelStatsModelName(modelName) {
   const normalized = String(modelName || "-").trim();
   if (!normalized) return "-";
-  if (normalized.toLowerCase() === "transformer") {
-    return escapeHtml("vit");
-  }
-  if (normalized.toLowerCase() === "vit") {
-    return escapeHtml("transformer");
-  }
   if (normalized.toLowerCase() === "cnn_lstm") {
     return '<span class="d-block">cnn</span><span class="d-block text-muted">lstm</span>';
   }
   return escapeHtml(normalized);
-}
-
-function displayModelStatsModelName(modelName) {
-  const normalized = String(modelName || "-").trim();
-  if (!normalized) return "-";
-  if (normalized.toLowerCase() === "transformer") return "vit";
-  if (normalized.toLowerCase() === "vit") return "transformer";
-  return normalized;
-}
-
-function displayModelStatsArchitectureName(modelName, architecture) {
-  const normalizedModel = String(modelName || "").trim().toLowerCase();
-  const normalizedArchitecture = String(architecture || "-").trim();
-  if (normalizedModel === "transformer") {
-    return "Vision transformer variant";
-  }
-  if (normalizedModel === "vit") {
-    return "Attention-based fusion";
-  }
-  return normalizedArchitecture || "-";
-}
-
-function displayModelStatsNote(modelName, note) {
-  const normalizedModel = String(modelName || "").trim().toLowerCase();
-  const normalizedNote = String(note || "-").trim();
-  if (normalizedModel === "transformer") {
-    return "Useful when handwritten structure matters more than raw image texture.";
-  }
-  if (normalizedModel === "vit") {
-    return "Balances multi-source signals and usually gives stable comparisons.";
-  }
-  return normalizedNote || "-";
-}
-
-function displayConfidenceRiskNote(risk) {
-  const value = Number(risk);
-  if (!Number.isFinite(value)) return "-";
-  if (value >= 0.66) return "High support need is likely.";
-  if (value >= 0.33) return "Guided intervention is recommended.";
-  return "Mild support need is more likely.";
 }
 
 function getModelStatsSummaryForProfile(modelName, summaryMap) {
@@ -1810,19 +1764,10 @@ function compareModelStatsValues(left, right, direction = "desc") {
 }
 
 function calculateModelPerformanceScore(row) {
-  const modelName = String(row?.model || row?.modelName || "").toLowerCase();
   const f1 = normalizeModelStatsValue(row?.cv_f1, 0);
   const accuracy = normalizeModelStatsValue(row?.cv_accuracy, 0);
-  const recall = normalizeModelStatsValue(row?.cv_recall, 0);
   const precision = normalizeModelStatsValue(row?.cv_precision, 0);
-  const modelBonus = {
-    multimodal_attention: 0.07,
-    transformer: 0.0,
-    vit: -0.02,
-    vit_transformer: -0.01,
-    cnn_lstm: -0.04,
-  }[modelName] || 0;
-  return (f1 * 0.5) + (accuracy * 0.25) + (recall * 0.15) + (precision * 0.1) + modelBonus;
+  return (f1 * 0.5) + (accuracy * 0.3) + (precision * 0.2);
 }
 
 function calculateModelBasePerformanceScore(row) {
@@ -1845,7 +1790,7 @@ function compareModelStatsByPerformance(left, right, direction = "desc") {
 }
 
 function compareModelStatsRows(left, right) {
-  const sortKey = modelStatsSortState.key || "cv_accuracy";
+  const sortKey = modelStatsSortState.key || "cv_f1";
   const sortDirection = modelStatsSortState.direction || "desc";
   const performanceKeys = new Set(["cv_accuracy", "cv_precision", "cv_recall", "cv_f1", "cv_balanced_accuracy", "risk", "weighted_score"]);
   const numericKeys = new Set(["threshold"]);
@@ -1921,7 +1866,6 @@ function buildModelStatisticsComparisonFromSnapshot(statistics) {
     const summary = cvSummaries.find((item) => String(item.model || "").toLowerCase() === String(row.model || row.modelName || "").toLowerCase()) || null;
     const performanceScore = summary
       ? calculateModelBasePerformanceScore({
-          model: summary.model,
           cv_f1: summary.mean_best_f1,
           cv_accuracy: summary.mean_best_accuracy,
           cv_precision: summary.mean_best_precision,
@@ -2097,6 +2041,7 @@ function renderModelStatisticsPage() {
     const prediction = predictionByModel.get(profile.modelName.toLowerCase()) || null;
     const summaryInfo = getModelStatsSummaryForProfile(profile.modelName, cvSummaryByModel);
     const summary = summaryInfo.summary;
+    const thresholdValue = normalizeModelStatsValue(summary?.mean_best_decision_threshold);
     const band = prediction
       ? (prediction.risk >= 0.66
         ? (bengali ? "উচ্চ" : "High")
@@ -2120,9 +2065,9 @@ function renderModelStatisticsPage() {
       cv_recall: normalizeModelStatsValue(summary?.mean_best_recall),
       cv_f1: normalizeModelStatsValue(summary?.mean_best_f1),
       cv_balanced_accuracy: normalizeModelStatsValue(summary?.mean_best_balanced_accuracy),
+      threshold: thresholdValue,
       risk: normalizeModelStatsValue(prediction?.risk),
       weighted_score: calculateModelPerformanceScore({
-        model: summary?.model,
         cv_f1: summary?.mean_best_f1,
         cv_accuracy: summary?.mean_best_accuracy,
         cv_precision: summary?.mean_best_precision,
@@ -2136,16 +2081,17 @@ function renderModelStatisticsPage() {
   const rows = rowData.slice().sort((left, right) => compareModelStatsRows(left, right));
   const rowsHtml = rows.map((row) => `
     <tr>
-      <td>${formatModelStatsModelName(row.model)}</td>
-      <td>${escapeHtml(displayModelStatsArchitectureName(row.model, row.architecture))}</td>
+      <td>${escapeHtml(row.model)}</td>
+      <td>${escapeHtml(row.architecture)}</td>
       <td>${escapeHtml(row.modalities)}</td>
       <td>${formatModelStatsPercent(row.cv_accuracy, 1)}</td>
       <td>${formatModelStatsPercent(row.cv_precision, 1)}</td>
       <td>${formatModelStatsPercent(row.cv_recall, 1)}</td>
       <td>${formatModelStatsPercent(row.cv_f1, 1)}</td>
       <td>${formatModelStatsPercent(row.cv_balanced_accuracy, 1)}</td>
+      <td>${formatModelStatsPercent(row.threshold, 1)}</td>
       <td>${formatModelStatsNumber(row.risk, 3)}</td>
-      <td>${escapeHtml(displayModelStatsNote(row.model, row.note))}${row.band !== "-" ? ` <span class="text-muted">(${escapeHtml(row.band)})</span>` : ""}</td>
+      <td>${escapeHtml(row.note)}${row.band !== "-" ? ` <span class="text-muted">(${escapeHtml(row.band)})</span>` : ""}</td>
     </tr>
   `).join("");
 
@@ -2153,19 +2099,15 @@ function renderModelStatisticsPage() {
   updateModelStatsSortIndicators();
 
   if (rankingNode) {
-    const pipelineRanking = Array.isArray(selectionPipeline.ranked_models)
-      ? selectionPipeline.ranked_models.filter((item) => String(item.model || item.modelName || "").toLowerCase() !== "vit_transformer")
-      : [];
+    const pipelineRanking = Array.isArray(selectionPipeline.ranked_models) ? selectionPipeline.ranked_models : [];
     const rankingRowsSource = pipelineRanking.length
       ? pipelineRanking.map((item) => {
           const modelName = String(item.model || item.modelName || "-").toLowerCase();
           const summary = cvSummaryByModel.get(modelName) || null;
           return {
             model: modelName,
-            accuracy: summary ? Number(summary.mean_best_accuracy ?? 0) : null,
             selection_value: summary
               ? calculateModelPerformanceScore({
-                  model: summary.model,
                   cv_f1: summary.mean_best_f1,
                   cv_accuracy: summary.mean_best_accuracy,
                   cv_precision: summary.mean_best_precision,
@@ -2178,10 +2120,8 @@ function renderModelStatisticsPage() {
           const summary = summaryInfo.summary;
           return {
             model: profile.modelName,
-            accuracy: summary ? Number(summary.mean_best_accuracy ?? 0) : null,
             selection_value: summary
               ? calculateModelPerformanceScore({
-                  model: summary.model,
                   cv_f1: summary.mean_best_f1,
                   cv_accuracy: summary.mean_best_accuracy,
                   cv_precision: summary.mean_best_precision,
@@ -2199,14 +2139,13 @@ function renderModelStatisticsPage() {
           <tr>
             <td>${index + 1}</td>
             <td>${formatModelStatsModelName(item.model)}</td>
-            <td>${item.accuracy === null || Number.isNaN(item.accuracy) ? "n/a" : formatModelStatsPercent(item.accuracy, 1)}</td>
             <td>${item.selection_value === null || Number.isNaN(item.selection_value) ? "n/a" : formatModelStatsNumber(item.selection_value, 3)}</td>
           </tr>
         `).join("");
     rankingNode.innerHTML = `
       <div class="table-responsive">
         <table class="table table-sm table-hover align-middle mb-0">
-          <thead><tr><th>Rank</th><th>Model</th><th>Accuracy</th><th>Selection value</th></tr></thead>
+          <thead><tr><th>Rank</th><th>Model</th><th>Selection value</th></tr></thead>
           <tbody>${rankingRows}</tbody>
         </table>
       </div>
@@ -2277,14 +2216,13 @@ function renderModelStatisticsPage() {
     `;
   }
 
-  const visibleOverviewPredictions = predictions.filter((prediction) => String(prediction.modelName || "").toLowerCase() !== "vit_transformer");
   modelStatsChart = drawChart(modelStatsChart, "modelStatsChart", {
     type: "bar",
     data: {
-      labels: visibleOverviewPredictions.map((p) => displayModelStatsModelName(p.modelName)),
+      labels: predictions.map((p) => p.modelName),
       datasets: [
-        { label: "Estimated Confidence", data: visibleOverviewPredictions.map((p) => Number(p.confidence || 0)), backgroundColor: "#198754" },
-        { label: "Risk Score", data: visibleOverviewPredictions.map((p) => Number(p.risk || 0)), backgroundColor: "#dc3545" },
+        { label: "Estimated Confidence", data: predictions.map((p) => Number(p.confidence || 0)), backgroundColor: "#198754" },
+        { label: "Risk Score", data: predictions.map((p) => Number(p.risk || 0)), backgroundColor: "#dc3545" },
       ],
     },
     options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 1 } } },
@@ -2509,7 +2447,7 @@ function renderFinalReportPanel(reportData = null, message = "") {
       <p><strong>${bengali ? "গড় ঝুঁকি স্কোর" : "Average Risk Score"}:</strong> ${reportData.avgRisk.toFixed(3)}</p>
       <p><strong>${bengali ? "মডেল সম্মতি" : "Model Agreement"}:</strong> ${bengali ? `তীব্র ভোট ${reportData.severeVotes}, মাঝারি ভোট ${reportData.moderateVotes}, মৃদু ভোট ${reportData.predictions.length - reportData.severeVotes - reportData.moderateVotes}` : `Severe votes ${reportData.severeVotes}, Moderate votes ${reportData.moderateVotes}, Mild votes ${reportData.predictions.length - reportData.severeVotes - reportData.moderateVotes}`}</p>
       <p><strong>${bengali ? "সিদ্ধান্তের স্থায়িত্ব" : "Decision Stability"}:</strong> ${localizedStability}</p>
-      <p><strong>${bengali ? "সবচেয়ে সাবধানী মডেল" : "Most Cautious Model"}:</strong> ${reportData.consensus.mostCautious ? `${displayModelStatsModelName(reportData.consensus.mostCautious.modelName)} (${reportData.consensus.mostCautious.level})` : "-"}</p>
+      <p><strong>${bengali ? "সবচেয়ে সাবধানী মডেল" : "Most Cautious Model"}:</strong> ${reportData.consensus.mostCautious ? `${reportData.consensus.mostCautious.modelName} (${reportData.consensus.mostCautious.level})` : "-"}</p>
       <p><strong>${bengali ? "স্ক্রিনিং সারাংশ" : "Screening Summary"}:</strong> ${reportData.screening ? `${reportData.screening.label} (${(reportData.screening.confidence * 100).toFixed(1)}%)` : (bengali ? "চালানো হয়নি" : "Not run")}</p>
       <p><strong>${bengali ? "ডিকোডিং স্কোর" : "Decoding Score"}:</strong> ${reportData.screening && reportData.screening.readingDecodingScore !== undefined ? `${Number(reportData.screening.readingDecodingScore).toFixed(1)}%` : "-"}</p>
       <p><strong>${bengali ? "বক্তৃতা ফ্লুয়েন্সি" : "Speech Fluency"}:</strong> ${reportData.screening && reportData.screening.speechFluencyScore !== undefined ? `${Number(reportData.screening.speechFluencyScore).toFixed(1)}%` : "-"}</p>
@@ -6012,22 +5950,26 @@ async function runModelComparison() {
   const table = document.getElementById("modelCompareTable");
   table.innerHTML = predictions
     .map((p) => {
-      const note = displayConfidenceRiskNote(p.risk);
-      return `<tr><td>${displayModelStatsModelName(p.modelName)}</td><td>${p.level}</td><td>${(p.confidence * 100).toFixed(1)}%</td><td>${p.risk.toFixed(3)}</td><td>${note}</td></tr>`;
+      const note = p.risk >= 0.66
+        ? "Flags high support need."
+        : p.risk >= 0.33
+          ? "Suggests guided intervention."
+          : "Leans toward mild support need.";
+      return `<tr><td>${p.modelName}</td><td>${p.level}</td><td>${(p.confidence * 100).toFixed(1)}%</td><td>${p.risk.toFixed(3)}</td><td>${note}</td></tr>`;
     })
     .join("");
 
   setNodeText("labConsensusLevel", consensusLevel);
   setNodeText("labAverageRisk", averageRisk.toFixed(3));
-  setNodeText("labMostCautious", `${displayModelStatsModelName(mostCautious.modelName)} (${mostCautious.level})`);
-  setNodeText("labMostConfident", `${displayModelStatsModelName(mostConfident.modelName)} (${(mostConfident.confidence * 100).toFixed(1)}%)`);
+  setNodeText("labMostCautious", `${mostCautious.modelName} (${mostCautious.level})`);
+  setNodeText("labMostConfident", `${mostConfident.modelName} (${(mostConfident.confidence * 100).toFixed(1)}%)`);
   setNodeText("labDecisionStability", localizedDecisionStability, stabilitySpread < 0.16 ? "text-success fw-semibold" : "text-warning fw-semibold");
   setNodeText("labReadinessStatus", localizedReadinessStatus, averageRisk < 0.66 ? "text-success fw-semibold" : "text-danger fw-semibold");
 
   modelCompareChart = drawChart(modelCompareChart, "modelCompareChart", {
     type: "bar",
     data: {
-      labels: predictions.map((p) => displayModelStatsModelName(p.modelName)),
+      labels: predictions.map((p) => p.modelName),
       datasets: [{ label: "Risk Score", data: predictions.map((p) => p.risk), backgroundColor: "#0d6efd" }],
     },
     options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 1 } } },
@@ -6221,8 +6163,8 @@ document.getElementById("downloadFinalPdf")?.addEventListener("click", () => {
       `${bengali ? "গড় ঝুঁকি স্কোর" : "Average Risk Score"}: ${averageRisk.toFixed(3)}`,
       `${bengali ? "মডেল সম্মতি" : "Model Agreement"}: ${bengali ? `তীব্র ভোট ${severeVotes}, মাঝারি ভোট ${moderateVotes}, মৃদু ভোট ${mildVotes}` : `Severe votes ${severeVotes}, Moderate votes ${moderateVotes}, Mild votes ${mildVotes}`}`,
       `${bengali ? "সিদ্ধান্তের স্থায়িত্ব" : "Decision Stability"}: ${localizedDecisionStability}`,
-      `${bengali ? "সবচেয়ে সাবধানী মডেল" : "Most Cautious Model"}: ${consensus.mostCautious ? `${displayModelStatsModelName(consensus.mostCautious.modelName)} (${consensus.mostCautious.level})` : "-"}`,
-      `${bengali ? "সবচেয়ে আত্মবিশ্বাসী মডেল" : "Most Confident Model"}: ${consensus.mostConfident ? `${displayModelStatsModelName(consensus.mostConfident.modelName)} (${consensus.mostConfident.level})` : "-"}`,
+      `${bengali ? "সবচেয়ে সাবধানী মডেল" : "Most Cautious Model"}: ${consensus.mostCautious ? `${consensus.mostCautious.modelName} (${consensus.mostCautious.level})` : "-"}`,
+      `${bengali ? "সবচেয়ে আত্মবিশ্বাসী মডেল" : "Most Confident Model"}: ${consensus.mostConfident ? `${consensus.mostConfident.modelName} (${consensus.mostConfident.level})` : "-"}`,
       "",
       `${bengali ? "স্ক্রিনিং সারাংশ" : "Screening Summary"}: ${screening ? `${screening.label || "-"} (${(Number(screening.confidence || 0) * 100).toFixed(1)}%)` : (bengali ? "চালানো হয়নি" : "Not run")}`,
       `${bengali ? "পড়ার ক্ষমতা" : "Reading ability"}: ${screening && screening.readingDecodingScore !== undefined ? `${Number(screening.readingDecodingScore).toFixed(1)}%` : "-"}`,

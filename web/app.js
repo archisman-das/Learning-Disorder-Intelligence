@@ -2051,7 +2051,6 @@ function renderModelStatisticsPage() {
     const prediction = predictionByModel.get(profile.modelName.toLowerCase()) || null;
     const summaryInfo = getModelStatsSummaryForProfile(profile.modelName, cvSummaryByModel);
     const summary = summaryInfo.summary;
-    const thresholdValue = normalizeModelStatsValue(summary?.mean_best_decision_threshold);
     const band = prediction
       ? (prediction.risk >= 0.66
         ? (bengali ? "উচ্চ" : "High")
@@ -2075,7 +2074,6 @@ function renderModelStatisticsPage() {
       cv_recall: normalizeModelStatsValue(summary?.mean_best_recall),
       cv_f1: normalizeModelStatsValue(summary?.mean_best_f1),
       cv_balanced_accuracy: normalizeModelStatsValue(summary?.mean_best_balanced_accuracy),
-      threshold: thresholdValue,
       risk: normalizeModelStatsValue(prediction?.risk),
       weighted_score: calculateModelPerformanceScore({
         model: summary?.model,
@@ -2100,7 +2098,6 @@ function renderModelStatisticsPage() {
       <td>${formatModelStatsPercent(row.cv_recall, 1)}</td>
       <td>${formatModelStatsPercent(row.cv_f1, 1)}</td>
       <td>${formatModelStatsPercent(row.cv_balanced_accuracy, 1)}</td>
-      <td>${formatModelStatsPercent(row.threshold, 1)}</td>
       <td>${formatModelStatsNumber(row.risk, 3)}</td>
       <td>${escapeHtml(row.note)}${row.band !== "-" ? ` <span class="text-muted">(${escapeHtml(row.band)})</span>` : ""}</td>
     </tr>

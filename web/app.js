@@ -6017,7 +6017,7 @@ async function runModelComparison() {
     })
     .join("");
 
-  setNodeText("labConsensusLevel", displayModelStatsModelName(consensusLevel));
+  setNodeText("labConsensusLevel", consensusLevel);
   setNodeText("labAverageRisk", averageRisk.toFixed(3));
   setNodeText("labMostCautious", `${displayModelStatsModelName(mostCautious.modelName)} (${mostCautious.level})`);
   setNodeText("labMostConfident", `${displayModelStatsModelName(mostConfident.modelName)} (${(mostConfident.confidence * 100).toFixed(1)}%)`);

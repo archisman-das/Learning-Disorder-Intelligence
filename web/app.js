@@ -2229,13 +2229,14 @@ function renderModelStatisticsPage() {
     `;
   }
 
+  const visibleOverviewPredictions = predictions.filter((prediction) => String(prediction.modelName || "").toLowerCase() !== "vit_transformer");
   modelStatsChart = drawChart(modelStatsChart, "modelStatsChart", {
     type: "bar",
     data: {
-      labels: predictions.map((p) => p.modelName),
+      labels: visibleOverviewPredictions.map((p) => p.modelName),
       datasets: [
-        { label: "Estimated Confidence", data: predictions.map((p) => Number(p.confidence || 0)), backgroundColor: "#198754" },
-        { label: "Risk Score", data: predictions.map((p) => Number(p.risk || 0)), backgroundColor: "#dc3545" },
+        { label: "Estimated Confidence", data: visibleOverviewPredictions.map((p) => Number(p.confidence || 0)), backgroundColor: "#198754" },
+        { label: "Risk Score", data: visibleOverviewPredictions.map((p) => Number(p.risk || 0)), backgroundColor: "#dc3545" },
       ],
     },
     options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 1 } } },

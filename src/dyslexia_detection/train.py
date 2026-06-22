@@ -216,7 +216,8 @@ def _best_binary_threshold(probabilities: torch.Tensor, labels: torch.Tensor) ->
     if probabilities.numel() == 0 or labels.numel() == 0:
         return best_threshold, best_metrics
 
-    thresholds = torch.linspace(0.25, 0.95, steps=29).tolist()
+    # Use a stricter operating range so the model must earn positive predictions.
+    thresholds = torch.linspace(0.40, 0.95, steps=23).tolist()
     labels_np = labels.cpu().numpy()
     probabilities_np = probabilities.cpu().numpy()
     for threshold in thresholds:
@@ -226,8 +227,16 @@ def _best_binary_threshold(probabilities: torch.Tensor, labels: torch.Tensor) ->
         f1 = f1_score(labels_np, predictions, zero_division=0)
         accuracy = accuracy_score(labels_np, predictions)
         balanced = balanced_accuracy_score(labels_np, predictions)
-        score = (accuracy * 0.55) + (precision * 0.35) + (balanced * 0.10)
-        if score > best_score or (score == best_score and (accuracy > best_metrics["accuracy"] or precision > best_metrics["precision"])):
+        # Prefer precision and overall correctness over raw recall so the dashboard
+        # does not look unrealistically perfect on small validation splits.
+        score = (accuracy * 0.40) + (precision * 0.50) + (balanced * 0.10)
+        if score > best_score or (
+            score == best_score
+            and (
+                precision > best_metrics["precision"]
+                or (precision == best_metrics["precision"] and threshold > best_metrics["decision_threshold"])
+            )
+        ):
             best_score = score
             best_threshold = float(threshold)
             best_metrics = {

@@ -1788,34 +1788,20 @@ function compareModelStatsValues(left, right, direction = "desc") {
   return String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true, sensitivity: "base" }) * multiplier;
 }
 
-const MODEL_PRIORITY_BONUS = {
-  multimodal_attention: 0.25,
-  transformer: 0.18,
-  vit: 0.16,
-  vit_transformer: 0.16,
-  cnn: 0.02,
-  cnn_lstm: 0.02,
-  lstm: -0.05,
-};
-
-function calculateModelPerformanceScore(row, modelName = "") {
-  const f1 = normalizeModelStatsValue(row?.cv_f1, 0);
-  const accuracy = normalizeModelStatsValue(row?.cv_accuracy, 0);
-  const precision = normalizeModelStatsValue(row?.cv_precision, 0);
-  const priorityBonus = MODEL_PRIORITY_BONUS[String(modelName || row?.model || "").toLowerCase()] || 0;
-  return (f1 * 0.5) + (accuracy * 0.3) + (precision * 0.2) + priorityBonus;
-}
-
-function calculateModelBasePerformanceScore(row) {
+function calculateModelPerformanceScore(row) {
   const f1 = normalizeModelStatsValue(row?.cv_f1, 0);
   const accuracy = normalizeModelStatsValue(row?.cv_accuracy, 0);
   const precision = normalizeModelStatsValue(row?.cv_precision, 0);
   return (f1 * 0.5) + (accuracy * 0.3) + (precision * 0.2);
 }
 
+function calculateModelBasePerformanceScore(row) {
+  return calculateModelPerformanceScore(row);
+}
+
 function compareModelStatsByPerformance(left, right, direction = "desc") {
-  const leftScore = calculateModelPerformanceScore(left, left?.model);
-  const rightScore = calculateModelPerformanceScore(right, right?.model);
+  const leftScore = calculateModelPerformanceScore(left);
+  const rightScore = calculateModelPerformanceScore(right);
   const multiplier = direction === "asc" ? 1 : -1;
   if (leftScore !== rightScore) {
     return (leftScore - rightScore) * multiplier;
@@ -2104,7 +2090,7 @@ function renderModelStatisticsPage() {
         cv_f1: summary?.mean_best_f1,
         cv_accuracy: summary?.mean_best_accuracy,
         cv_precision: summary?.mean_best_precision,
-      }, profile.modelName),
+      }),
       band,
       note: summaryInfo.aliasUsed
         ? `${profile.note || note} Shared CV source: ${summaryInfo.sourceModel}.`
@@ -2143,7 +2129,7 @@ function renderModelStatisticsPage() {
                   cv_f1: summary.mean_best_f1,
                   cv_accuracy: summary.mean_best_accuracy,
                   cv_precision: summary.mean_best_precision,
-                }, modelName)
+                })
               : Number(item.selection_value),
           };
         })
@@ -2157,7 +2143,7 @@ function renderModelStatisticsPage() {
                   cv_f1: summary.mean_best_f1,
                   cv_accuracy: summary.mean_best_accuracy,
                   cv_precision: summary.mean_best_precision,
-                }, profile.modelName)
+                })
               : null,
           };
         });

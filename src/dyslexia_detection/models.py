@@ -157,9 +157,9 @@ class ViTHandwritingEncoder(nn.Module):
         self,
         image_size: int = 128,
         patch_size: int = 16,
-        embedding_dim: int = 64,
-        num_heads: int = 4,
-        num_layers: int = 2,
+        embedding_dim: int = 96,
+        num_heads: int = 6,
+        num_layers: int = 3,
     ):
         super().__init__()
         if image_size % patch_size != 0:
@@ -171,13 +171,17 @@ class ViTHandwritingEncoder(nn.Module):
         layer = nn.TransformerEncoderLayer(
             d_model=embedding_dim,
             nhead=num_heads,
-            dim_feedforward=128,
-            dropout=0.1,
+            dim_feedforward=192,
+            dropout=0.08,
             batch_first=True,
             activation="gelu",
         )
         self.encoder = nn.TransformerEncoder(layer, num_layers=num_layers)
-        self.projection = nn.Linear(embedding_dim, 64)
+        self.projection = nn.Sequential(
+            nn.Linear(embedding_dim, 64),
+            nn.LayerNorm(64),
+            nn.GELU(),
+        )
 
     def forward(self, image: torch.Tensor) -> torch.Tensor:
         patches = self.patch(image).flatten(2).transpose(1, 2)
@@ -423,6 +427,9 @@ class ViTMultimodalModel(FusionClassifier):
             text=TextEncoder(vocab_size=vocab_size),
             behavior=BehaviorEncoder(),
             num_classes=num_classes,
+            hidden_dim=224,
+            dropout=0.22,
+            modality_dropout=0.05,
         )
 
 

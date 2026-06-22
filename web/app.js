@@ -1572,6 +1572,14 @@ function displayModelStatsNote(modelName, note) {
   return normalizedNote || "-";
 }
 
+function displayConfidenceRiskNote(risk) {
+  const value = Number(risk);
+  if (!Number.isFinite(value)) return "-";
+  if (value >= 0.66) return "High support need is likely.";
+  if (value >= 0.33) return "Guided intervention is recommended.";
+  return "Mild support need is more likely.";
+}
+
 function getModelStatsSummaryForProfile(modelName, summaryMap) {
   const normalized = String(modelName || "").toLowerCase();
   const exact = summaryMap.get(normalized) || null;
@@ -6004,11 +6012,7 @@ async function runModelComparison() {
   const table = document.getElementById("modelCompareTable");
   table.innerHTML = predictions
     .map((p) => {
-      const note = p.risk >= 0.66
-        ? "Flags high support need."
-        : p.risk >= 0.33
-          ? "Suggests guided intervention."
-          : "Leans toward mild support need.";
+      const note = displayConfidenceRiskNote(p.risk);
       return `<tr><td>${displayModelStatsModelName(p.modelName)}</td><td>${p.level}</td><td>${(p.confidence * 100).toFixed(1)}%</td><td>${p.risk.toFixed(3)}</td><td>${note}</td></tr>`;
     })
     .join("");

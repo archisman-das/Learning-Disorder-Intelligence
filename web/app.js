@@ -1560,6 +1560,18 @@ function displayModelStatsArchitectureName(modelName, architecture) {
   return normalizedArchitecture || "-";
 }
 
+function displayModelStatsNote(modelName, note) {
+  const normalizedModel = String(modelName || "").trim().toLowerCase();
+  const normalizedNote = String(note || "-").trim();
+  if (normalizedModel === "transformer") {
+    return "Useful when handwritten structure matters more than raw image texture.";
+  }
+  if (normalizedModel === "vit") {
+    return "Balances multi-source signals and usually gives stable comparisons.";
+  }
+  return normalizedNote || "-";
+}
+
 function getModelStatsSummaryForProfile(modelName, summaryMap) {
   const normalized = String(modelName || "").toLowerCase();
   const exact = summaryMap.get(normalized) || null;
@@ -2125,7 +2137,7 @@ function renderModelStatisticsPage() {
       <td>${formatModelStatsPercent(row.cv_f1, 1)}</td>
       <td>${formatModelStatsPercent(row.cv_balanced_accuracy, 1)}</td>
       <td>${formatModelStatsNumber(row.risk, 3)}</td>
-      <td>${escapeHtml(row.note)}${row.band !== "-" ? ` <span class="text-muted">(${escapeHtml(row.band)})</span>` : ""}</td>
+      <td>${escapeHtml(displayModelStatsNote(row.model, row.note))}${row.band !== "-" ? ` <span class="text-muted">(${escapeHtml(row.band)})</span>` : ""}</td>
     </tr>
   `).join("");
 

@@ -12,7 +12,7 @@ It focuses on what can be tested next, what should be compared, and what can bec
 Goal:
 
 - lock down baseline results for the current multimodal screening stack
-- compare CNN, LSTM, CNN-LSTM, transformer, ViT, and attention-based variants
+- compare  transformer, ViT, and attention-based variants
 - use cross-validation to choose the model, then confirm it on a hard holdout split
 
 Why:

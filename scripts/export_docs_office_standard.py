@@ -27,6 +27,7 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
+from pptx import Presentation
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -45,6 +46,7 @@ class Block:
 
 def discover_sources(docs_root: Path, output_root: Path) -> list[Path]:
     sources = [p for p in docs_root.rglob("*.md") if output_root not in p.parents]
+    sources.extend(p for p in docs_root.rglob("*.pptx") if output_root not in p.parents)
     for extra in [ROOT / "README.md", ROOT / "RELEASE_NOTES.md"]:
         if extra.exists():
             sources.append(extra)
@@ -328,8 +330,12 @@ def export_all(docs_root: Path, output_root: Path) -> None:
         relative = source.relative_to(docs_root) if docs_root in source.parents else Path(source.name)
         pdf_target = (pdf_root / relative).with_suffix(".pdf")
         docx_target = (docx_root / relative).with_suffix(".docx")
-        source_to_pdf(source, pdf_target, font_name)
-        source_to_docx(source, docx_target)
+        if source.suffix.lower() == ".pptx":
+            pptx_to_pdf(source, pdf_target, font_name)
+            pptx_to_docx(source, docx_target)
+        else:
+            source_to_pdf(source, pdf_target, font_name)
+            source_to_docx(source, docx_target)
         print(f"Exported {source} -> {pdf_target} and {docx_target}")
 
     write_index_pdf(output_root / "index.pdf", pdf_root, docx_root, font_name)
@@ -368,6 +374,64 @@ def write_index_pdf(target: Path, pdf_root: Path, docx_root: Path, font_name: st
         Paragraph(f"DOCX folder: {docx_root}", body),
         Paragraph("Source Markdown files remain in their original locations.", body),
     ]
+    target.parent.mkdir(parents=True, exist_ok=True)
+    doc.build(story)
+
+
+def pptx_iter_text(slide) -> list[str]:
+    lines: list[str] = []
+    for shape in slide.shapes:
+        if not hasattr(shape, "text"):
+            continue
+        text = getattr(shape, "text", "").strip()
+        if text:
+            lines.extend(part.strip() for part in text.splitlines() if part.strip())
+    return lines
+
+
+def pptx_to_docx(source: Path, target: Path) -> None:
+    prs = Presentation(str(source))
+    doc = Document()
+    styles = doc.styles
+    styles["Normal"].font.name = "Arial"
+    styles["Normal"]._element.rPr.rFonts.set(qn("w:eastAsia"), "Arial")
+    styles["Normal"].font.size = Pt(11)
+    doc.add_heading(source.stem.replace("_", " "), level=1)
+    for idx, slide in enumerate(prs.slides, start=1):
+        doc.add_heading(f"Slide {idx}", level=2)
+        lines = pptx_iter_text(slide)
+        if not lines:
+            doc.add_paragraph("(No text captured from slide)")
+        for line in lines:
+            doc.add_paragraph(line)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    doc.save(target)
+
+
+def pptx_to_pdf(source: Path, target: Path, font_name: str) -> None:
+    prs = Presentation(str(source))
+    styles = getSampleStyleSheet()
+    title = ParagraphStyle("Title", parent=styles["Title"], fontName=font_name, fontSize=20, leading=24, spaceAfter=12)
+    h2 = ParagraphStyle("H2", parent=styles["Heading2"], fontName=font_name, fontSize=15, leading=18, spaceAfter=8)
+    body = ParagraphStyle("Body", parent=styles["BodyText"], fontName=font_name, fontSize=11, leading=14, spaceAfter=6)
+    frame = Frame(inch * 0.7, inch * 0.7, A4[0] - inch * 1.4, A4[1] - inch * 1.4, id="body")
+    doc = BaseDocTemplate(str(target), pagesize=A4, leftMargin=0.7 * inch, rightMargin=0.7 * inch, topMargin=0.7 * inch, bottomMargin=0.7 * inch)
+    doc.addPageTemplates([PageTemplate(id="page", frames=[frame])])
+    story: list[object] = [
+        Paragraph(source.stem.replace("_", " "), title),
+        Paragraph("Text-only extraction from the PowerPoint deck.", body),
+        Spacer(1, 0.12 * inch),
+    ]
+    for idx, slide in enumerate(prs.slides, start=1):
+        story.append(Paragraph(f"Slide {idx}", h2))
+        lines = pptx_iter_text(slide)
+        if not lines:
+            story.append(Paragraph("(No text captured from slide)", body))
+            story.append(Spacer(1, 0.08 * inch))
+            continue
+        for line in lines:
+            story.append(Paragraph(line, body))
+        story.append(Spacer(1, 0.08 * inch))
     target.parent.mkdir(parents=True, exist_ok=True)
     doc.build(story)
 

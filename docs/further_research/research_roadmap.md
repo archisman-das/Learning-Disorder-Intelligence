@@ -38,7 +38,7 @@ Why:
 Goal:
 
 - compare attention summaries with human expectations
-- check whether Grad-CAM highlights plausible handwriting regions
+- check whether Grad-CAM highlights plausible archived image regions
 - verify that explanation text stays readable for teachers and parents
 
 Why:
@@ -60,7 +60,7 @@ Goal:
 Goal:
 
 - measure which biomarkers are stable across splits
-- compare handwriting, speech, and reading-behavior feature families
+- compare archived image, speech, and reading-behavior feature families
 - test whether the same markers stay important across language groups
 
 ### 3.3 Intervention effectiveness studies

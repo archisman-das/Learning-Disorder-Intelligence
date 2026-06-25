@@ -14,6 +14,8 @@ It is meant to answer:
 The project is multimodal and multi-surface. That means one feature may exist in more than one UI, but the backend
 logic and persistence layer can still be different. When debugging, always identify the active surface first.
 The documentation frames the system as a learning-disorder platform, with dyslexia as the primary use case.
+Handwriting/image-based sections are retained for archival comparison only; the active deployed story centers on
+audio, text, behavior, eye-tracking, and biomarker-driven screening.
 
 ## 2. High-Level View
 
@@ -43,7 +45,7 @@ Input data
                     |   Data Sources       |
                     |----------------------|
                     | manifest CSV rows    |
-                    | handwriting images   |
+                    | archived handwriting |
                     | reading audio files  |
                     | text samples         |
                     | behavior counts      |
@@ -64,7 +66,7 @@ Input data
                     +----------------------+
                     |  Modality Encoders   |
                     |----------------------|
-                    | handwriting encoder  |
+                    | archived visual enc. |
                     | audio encoder        |
                     | text encoder         |
                     | behavior encoder     |
@@ -238,6 +240,8 @@ That separation helps keep model comparison more trustworthy than a single accur
 
 ### 6.2 Handwriting encoder
 
+Archived reference only.
+
 The handwriting encoder is a small CNN stack:
 
 - Conv2d
@@ -248,7 +252,7 @@ The handwriting encoder is a small CNN stack:
 - adaptive pooling
 - linear projection
 
-It produces a compact handwriting embedding.
+It produces a compact archived handwriting embedding.
 
 ### 6.3 Audio encoder
 
@@ -274,6 +278,8 @@ Working principle:
 - the transformer version is used when sequence context is especially important
 
 ### 6.5 Vision Transformer handwriting encoder
+
+Archived reference only.
 
 `ViTHandwritingEncoder` uses patch embeddings instead of a pure CNN.
 
@@ -335,9 +341,9 @@ Legacy baselines remain available for historical comparison and experimentation.
 
 The repository includes:
 
-- `InitialCNNModel`
-- `InitialLSTMModel`
-- `InitialCNNLSTMModel`
+- `InitialCNNModel` (archived)
+- `InitialLSTMModel` (archived)
+- `InitialCNNLSTMModel` (archived)
 
 Purpose:
 
@@ -351,7 +357,7 @@ Purpose:
 
 It combines:
 
-- handwriting CNN
+- archived handwriting CNN
 - audio encoder
 - GRU text encoder
 - behavior encoder
@@ -367,13 +373,13 @@ Use this when sequence context matters more than the lighter GRU branch.
 
 ### 7.4 ViT multimodal model
 
-`ViTMultimodalModel` swaps the handwriting CNN for a patch-based vision transformer encoder.
+`ViTMultimodalModel` swaps the archived handwriting CNN for a patch-based vision transformer encoder.
 
-Use this when you want patch-aware handwriting representation.
+Use this when you want patch-aware archived image representation.
 
 ### 7.5 ViT + Transformer multimodal model
 
-`ViTTransformerMultimodalModel` uses transformer encoders for both handwriting and text.
+`ViTTransformerMultimodalModel` uses transformer encoders for both archived visual input and text.
 
 This is the most transformer-heavy supervised multimodal option in the repository.
 
@@ -433,7 +439,7 @@ It is designed to learn reusable representations before task-specific adaptation
 
 Core idea:
 
-- encode handwriting, audio, text, and behavior
+- encode audio, text, behavior, and any archived visual input
 - project everything into a common latent space
 - apply normalization
 - optimize with a mixture of contrastive, masked-text, and reconstruction losses
@@ -491,13 +497,13 @@ Implemented in
 
 Use:
 
-- visualizing what parts of a handwriting image influenced the prediction
+- visualizing what parts of an archived image influenced the prediction
 
 ### 10.2 Vision transformer attention heatmap
 
 Use:
 
-- patch importance visualization for ViT handwriting models
+- patch importance visualization for ViT image models
 
 ### 10.3 Text attention scores
 
@@ -570,7 +576,7 @@ builds a biomarker dataset from the manifest.
 
 ### 12.1 Feature families
 
-- handwriting biomarkers
+- archived handwriting biomarkers
 - speech biomarkers
 - reading biomarkers
 

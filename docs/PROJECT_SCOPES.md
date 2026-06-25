@@ -18,7 +18,7 @@ The repository is not a single narrow model. It is a platform with several conne
 
 Scope:
 
-- combine handwriting, reading audio, text, and reading behavior signals
+- combine reading audio, text, reading behavior, eye-tracking, and biomarker signals
 - estimate learning-disorder risk or severity, with dyslexia as the main target
 - provide confidence and explanation rather than a bare label
 
@@ -123,7 +123,7 @@ Current implementation anchors:
 Scope:
 
 - find measurable signals associated with risk labels
-- compare handwriting, speech, and reading-behavior features
+- compare audio, text, reading-behavior, and biomarker features
 - rank candidate markers for interpretation and follow-up study
 
 What this supports:
@@ -201,7 +201,7 @@ Example questions:
 
 - Which architecture performs best on the manifest schema?
 - Does attention fusion improve interpretability without hurting accuracy?
-- Does a ViT handwriting branch help more than a CNN branch?
+- Does a ViT visual branch help more than a CNN-style visual branch for archived comparisons?
 - Which model should be selected by cross-validation before the hard holdout sanity-check?
 - How much does threshold calibration change recall on strict evaluation splits?
 

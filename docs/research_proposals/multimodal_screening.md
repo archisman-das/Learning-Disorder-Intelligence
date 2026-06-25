@@ -2,18 +2,18 @@
 
 ## Title
 
-Multimodal Learning-Disorder Screening Using Handwriting, Speech, Text, and Reading-Behavior Signals
+Multimodal Learning-Disorder Screening Using Speech, Text, Reading-Behavior, and Biomarker Signals
 
 ## Problem Statement
 
 Single-signal screening can miss important educational evidence.
-This project already combines handwriting, speech, text, and behavior inputs, which makes it a strong base for a multimodal learning-disorder screening study.
+This project already combines speech, text, behavior, eye-tracking, and biomarker inputs, which makes it a strong base for a multimodal learning-disorder screening study.
 
 ## Research Scope
 
 - compare baseline models against multimodal fusion models
 - test whether attention-based fusion improves interpretability
-- evaluate whether a ViT handwriting branch improves image sensitivity
+- evaluate whether a ViT visual branch improves image sensitivity in archived comparisons
 - compare binary risk, severity classification, and regression-style scoring
 - select the best model with cross-validation, then sanity-check it on a hard holdout split
 - compare old and new threshold settings side by side when recall needs tuning
@@ -25,7 +25,7 @@ Multimodal fusion will outperform single-modality baselines, and attention fusio
 ## Data Requirements
 
 - anonymized manifest CSV
-- handwriting images
+- archived handwriting images
 - reading audio files
 - text samples
 - spelling and pronunciation counts
@@ -33,9 +33,9 @@ Multimodal fusion will outperform single-modality baselines, and attention fusio
 
 ## Candidate Methods
 
-- `InitialCNNModel`
-- `InitialLSTMModel`
-- `InitialCNNLSTMModel`
+- `InitialCNNModel` (archived)
+- `InitialLSTMModel` (archived)
+- `InitialCNNLSTMModel` (archived)
 - `MultimodalDyslexiaModel`
 - `TransformerMultimodalModel`
 - `AttentionMultimodalModel`

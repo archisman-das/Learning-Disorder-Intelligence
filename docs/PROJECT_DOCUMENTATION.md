@@ -15,7 +15,7 @@ The repository currently contains three main application surfaces:
 
 The project combines:
 
-- handwriting image analysis
+- archived handwriting image analysis for research comparison
 - reading-audio feature extraction
 - multilingual text encoding
 - reading-behavior observations
@@ -99,8 +99,10 @@ The repository is easiest to understand as five layers:
   Curated paper links and reference list for the project.
 - [`docs/RESEARCH_PAPER_DRAFT.md`](/d:/Project/Dyslexia_Detection_System/docs/RESEARCH_PAPER_DRAFT.md)
   Paper-style draft based on the current codebase and architecture.
-- [`docs/Dyslexia_Detection_System_Demo_Deck.pptx`](/d:/Project/Dyslexia_Detection_System/docs/Dyslexia_Detection_System_Demo_Deck.pptx)
-  28-slide demo presentation for walkthroughs and demonstrations.
+- [`docs/formatted_documents/index.pdf`](/d:/Project/Dyslexia_Detection_System/docs/formatted_documents/index.pdf)
+  PDF export bundle for the current documentation set.
+- [`docs/formatted_documents/index.docx`](/d:/Project/Dyslexia_Detection_System/docs/formatted_documents/index.docx)
+  DOCX export bundle for the current documentation set.
 - [`docs/research_proposals/`](/d:/Project/Dyslexia_Detection_System/docs/research_proposals)
   Optional proposal notes for multimodal screening, low-resource transfer, and explainable intervention research.
 - [`docs/further_research/`](/d:/Project/Dyslexia_Detection_System/docs/further_research)
@@ -208,7 +210,7 @@ Working principle:
 
 Working principle:
 
-- handwriting images are loaded as grayscale, contrast-normalized, padded to a fixed canvas, and converted into `1 x H x W` tensors
+- archived handwriting images are loaded as grayscale, contrast-normalized, padded to a fixed canvas, and converted into `1 x H x W` tensors
 - audio files are read as mono WAV, optionally resampled, transformed into a log-spectrogram-like feature map, and normalized
 - text is NFC-normalized, optionally lowercased for English/Latin content, tokenized at character level, and padded to a fixed length
 - behavior features are kept numeric and passed through as a small vector
@@ -267,7 +269,7 @@ Working principle:
 
 Working principle:
 
-- uses handwriting, audio, text, and behavior encoders together
+- uses audio, text, behavior, and optional archived visual encoders together
 - projects each modality into a common embedding dimension
 - normalizes modality embeddings before fusion
 - adds masked-text reconstruction and modality contrastive objectives
@@ -290,7 +292,7 @@ Working principle:
 
 Working principle:
 
-- extracts handcrafted handwriting, speech, and reading-behavior features
+- extracts handcrafted archived handwriting, speech, and reading-behavior features
 - builds a biomarker dataset from a manifest
 - estimates feature importance by combining effect size, label correlation, and a logistic regression signal
 - produces a ranked summary of candidate biomarkers
@@ -345,7 +347,7 @@ Working principle:
 Working principle:
 
 - `GradCAM` creates image heatmaps from a target convolution layer
-- `vit_patch_attention_heatmap` approximates patch importance in ViT-style handwriting models
+- `vit_patch_attention_heatmap` approximates patch importance in ViT-style visual models
 - `transformer_text_attention_scores` extracts token-level attention scores from the first transformer layer
 
 ### 5.15 Educational explanations
@@ -395,17 +397,17 @@ primary ranked set in the dashboard or main documentation.
 
 Class:
 
-- `InitialCNNModel` in [`models.py`](/d:/Project/Dyslexia_Detection_System/src/dyslexia_detection/models.py)
+- `InitialCNNModel` in [`models.py`](/d:/Project/Dyslexia_Detection_System/src/dyslexia_detection/models.py) (archived baseline)
 
 Inputs:
 
-- handwriting image
+- archived handwriting image
 - reading audio
 - spelling/pronunciation error counts
 
 Working principle:
 
-- uses the handwriting encoder and audio encoder
+- uses the archived handwriting encoder and audio encoder
 - concatenates those embeddings with the error vector
 - sends the result to a small classifier head
 
@@ -418,7 +420,7 @@ Best suited for:
 
 Class:
 
-- `InitialLSTMModel`
+- `InitialLSTMModel` (archived baseline)
 
 Inputs:
 
@@ -441,11 +443,11 @@ Best suited for:
 
 Class:
 
-- `InitialCNNLSTMModel`
+- `InitialCNNLSTMModel` (archived baseline)
 
 Inputs:
 
-- handwriting image
+- archived handwriting image
 - reading audio
 - text
 - error counts
@@ -453,7 +455,7 @@ Inputs:
 
 Working principle:
 
-- combines the CNN handwriting encoder, audio encoder, LSTM text encoder, and behavior encoder
+- combines the archived CNN handwriting encoder, audio encoder, LSTM text encoder, and behavior encoder
 - concatenates all modality embeddings plus the error features
 - classifies using a shallow dense head
 
@@ -470,7 +472,7 @@ Class:
 
 Working principle:
 
-- uses the CNN handwriting encoder
+- uses the archived CNN handwriting encoder
 - uses the audio encoder
 - uses a bidirectional GRU-based text encoder
 - uses a behavior encoder
@@ -505,12 +507,12 @@ Class:
 
 Working principle:
 
-- replaces the CNN handwriting encoder with a patch-based vision transformer encoder
+- replaces the archived CNN handwriting encoder with a patch-based vision transformer encoder
 - keeps audio, text, and behavior branches
 
 Best suited for:
 
-- handwriting tasks where patch-level attention is useful
+- image tasks where patch-level attention is useful
 
 ### 6.7 ViT + Transformer multimodal model
 
@@ -520,7 +522,7 @@ Class:
 
 Working principle:
 
-- uses a vision transformer for handwriting
+- uses a vision transformer for archived visual inputs
 - uses a transformer for text
 - keeps audio and behavior branches
 
@@ -611,7 +613,7 @@ Core fields:
 
 - `sample_id`
 - `student_hash`
-- `handwriting_path`
+- `handwriting_path` (archived research column)
 - `audio_path`
 - `text_sample`
 - `spelling_errors`
@@ -628,7 +630,7 @@ Behavior fields:
 ### 7.2 Preprocessing sequence
 
 1. Resolve file paths relative to the manifest location.
-2. Load handwriting as normalized grayscale.
+2. Load archived handwriting as normalized grayscale.
 3. Convert audio to a fixed-size spectral representation.
 4. Normalize and encode text at character level.
 5. Collect error counts and behavior counts as numeric tensors.
@@ -781,7 +783,7 @@ Common output locations in the repository include:
 ### 11.1 Multimodal design
 
 The system does not rely on a single feature source.
-It combines handwriting, audio, text, behavior, and error observations so one weak signal does not dominate the result.
+It combines audio, text, behavior, and error observations, plus any archived visual reference data where available, so one weak signal does not dominate the result.
 
 ### 11.2 Language awareness
 

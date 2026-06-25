@@ -38,21 +38,21 @@ The current docs treat this as the active three-model comparison set. The older 
 
 | Model / Component | Type | Purpose | Advantage | Gap / Limitation | Required Details |
 |---|---|---|---|---|---|
-| `HandwritingEncoder` | CNN encoder | Convert handwriting images into feature vectors | Fast, simple, local-friendly | Needs fixed-size grayscale input | Handwriting image tensor |
+| `HandwritingEncoder` | Archived CNN encoder | Convert archived handwriting images into feature vectors | Fast, simple, local-friendly | Needs fixed-size grayscale input | Archived handwriting image tensor |
 | `AudioEncoder` | 1D CNN encoder | Convert spectral audio features into embeddings | Compact and efficient | Depends on quality of audio preprocessing | Audio feature tensor |
 | `TextEncoder` | BiGRU encoder | Encode character sequences | Good baseline for short text | Less expressive than transformer text encoder | Tokenized text sequence |
 | `LSTMTextEncoder` | BiLSTM encoder | Encode text with recurrent memory | Useful baseline for sequential spelling/reading tasks | Can underperform on longer contexts | Tokenized text sequence |
 | `TransformerTextEncoder` | Transformer encoder | Encode text with attention and positional context | Stronger sequence modeling | Heavier than recurrent encoders | Tokenized text sequence + length |
-| `ViTHandwritingEncoder` | Vision transformer | Learn handwriting from image patches | Patch-level attention and layout sensitivity | Requires divisible image size and more compute | Fixed-size image tensor |
+| `ViTHandwritingEncoder` | Archived vision transformer | Learn archived handwriting from image patches | Patch-level attention and layout sensitivity | Requires divisible image size and more compute | Fixed-size image tensor |
 | `BehaviorEncoder` | MLP encoder | Encode reading-behavior numeric features | Simple and robust | Only works with numeric features already prepared | Behavior vector |
-| `FusionClassifier` | Multimodal classifier | Fuse handwriting, audio, text, behavior, and errors | Flexible and reusable | Uses simple concatenation, not adaptive fusion | All modality tensors |
+| `FusionClassifier` | Multimodal classifier | Fuse audio, text, behavior, and errors, plus any archived visual branch | Flexible and reusable | Uses simple concatenation, not adaptive fusion | All modality tensors |
 | `AttentionFusionClassifier` | Multimodal attention classifier | Learn modality importance weights | Interpretability through modality attention | Slightly more complex than plain fusion | All modality tensors |
-| `InitialCNNModel` | Legacy baseline classifier | Compact image/audio baseline | Lightweight baseline | Ignores text and behavior | Image, audio, errors |
-| `InitialLSTMModel` | Legacy baseline classifier | Text-focused baseline | Useful when text dominates | Ignores image and audio | Text, behavior, errors |
-| `InitialCNNLSTMModel` | Legacy baseline multimodal | Early multimodal baseline | Combines image, audio, text, behavior | Still shallow compared with newer models | All modality tensors |
+| `InitialCNNModel` | Archived baseline classifier | Compact image/audio baseline | Lightweight baseline | Ignores text and behavior | Image, audio, errors |
+| `InitialLSTMModel` | Archived baseline classifier | Text-focused baseline | Useful when text dominates | Ignores image and audio | Text, behavior, errors |
+| `InitialCNNLSTMModel` | Archived baseline multimodal | Early multimodal baseline | Combines image, audio, text, behavior | Still shallow compared with newer models | All modality tensors |
 | `MultimodalDyslexiaModel` | Default screening model | Main multimodal risk classifier | Balanced and practical | Uses concatenation fusion | All modality tensors |
 | `TransformerMultimodalModel` | Multimodal classifier | Transformer-based text branch | Better context handling | More compute than GRU version | All modality tensors |
-| `ViTMultimodalModel` | Multimodal classifier | Vision-transformer handwriting branch | Stronger image representation | Heavier than CNN version | All modality tensors |
+| `ViTMultimodalModel` | Multimodal classifier | Vision-transformer visual branch | Stronger image representation | Heavier than CNN version | All modality tensors |
 | `ViTTransformerMultimodalModel` | Multimodal classifier | Transformer-heavy multimodal model | Strongest sequence modeling setup | Highest compute cost among standard models | All modality tensors |
 | `AttentionMultimodalModel` | Multimodal classifier | Attention-weighted modality fusion | Exposes modality importance | More tuning-sensitive | All modality tensors |
 | `BengaliLearningDisorderFoundationModel` | Foundation model | Shared representation learning across tasks | Reusable across related disorders | Needs more data and pretraining time | Image, audio, text, behavior, errors |
@@ -68,19 +68,21 @@ The current docs treat this as the active three-model comparison set. The older 
 
 ### 3.1 HandwritingEncoder
 
+Archived reference only.
+
 Found in:
 
 - [`src/dyslexia_detection/models.py`](/d:/Project/Dyslexia_Detection_System/src/dyslexia_detection/models.py)
 
 Functionality:
 
-- takes grayscale handwriting images
+- takes grayscale archived handwriting images
 - applies stacked convolutions and pooling
 - compresses the image into a fixed-size embedding
 
 Purpose:
 
-- learn stroke and shape patterns from handwriting
+- learn stroke and shape patterns from archived handwriting
 - support dysgraphia/dyslexia-related visual cues
 
 Advantages:
@@ -96,7 +98,7 @@ Gaps:
 
 Required details:
 
-- fixed-size handwriting image
+- fixed-size archived handwriting image
 - preprocessing that normalizes size and contrast
 
 ### 3.2 AudioEncoder
@@ -220,18 +222,20 @@ Required details:
 
 ### 3.6 ViTHandwritingEncoder
 
+Archived reference only.
+
 Found in:
 
 - [`src/dyslexia_detection/models.py`](/d:/Project/Dyslexia_Detection_System/src/dyslexia_detection/models.py)
 
 Functionality:
 
-- splits handwriting images into patches
+- splits archived handwriting images into patches
 - uses transformer encoding over patch tokens
 
 Purpose:
 
-- learn handwriting layout and patch-level relationships
+- learn archived handwriting layout and patch-level relationships
 
 Advantages:
 
@@ -240,7 +244,7 @@ Advantages:
 
 Gaps:
 
-- more compute-intensive than CNN handwriting encoding
+- more compute-intensive than CNN archived handwriting encoding
 - image size must be divisible by patch size
 
 Required details:
@@ -352,13 +356,15 @@ Required details:
 
 ### 4.3 InitialCNNModel
 
+Archived baseline only.
+
 Found in:
 
 - [`src/dyslexia_detection/models.py`](/d:/Project/Dyslexia_Detection_System/src/dyslexia_detection/models.py)
 
 Functionality:
 
-- combines handwriting and audio with error counts
+- combines archived handwriting and audio with error counts
 
 Purpose:
 
@@ -382,6 +388,8 @@ Required details:
 
 ### 4.4 InitialLSTMModel
 
+Archived baseline only.
+
 Found in:
 
 - [`src/dyslexia_detection/models.py`](/d:/Project/Dyslexia_Detection_System/src/dyslexia_detection/models.py)
@@ -401,7 +409,7 @@ Advantages:
 
 Gaps:
 
-- ignores handwriting and audio
+- ignores archived handwriting and audio
 
 Required details:
 
@@ -411,13 +419,15 @@ Required details:
 
 ### 4.5 InitialCNNLSTMModel
 
+Archived baseline only.
+
 Found in:
 
 - [`src/dyslexia_detection/models.py`](/d:/Project/Dyslexia_Detection_System/src/dyslexia_detection/models.py)
 
 Functionality:
 
-- joins handwriting, audio, text, behavior, and error features
+- joins archived handwriting, audio, text, behavior, and error features
 
 Purpose:
 
@@ -445,7 +455,7 @@ Found in:
 Functionality:
 
 - the default multimodal screening model
-- uses CNN handwriting encoding, audio encoding, GRU text encoding, and behavior encoding
+- uses archived CNN handwriting encoding, audio encoding, GRU text encoding, and behavior encoding
 
 Purpose:
 
@@ -463,7 +473,7 @@ Gaps:
 
 Required details:
 
-- handwriting image
+- archived handwriting image
 - reading audio
 - text sample
 - spelling/pronunciation error counts
@@ -504,11 +514,11 @@ Found in:
 
 Functionality:
 
-- replaces the CNN handwriting branch with a vision transformer encoder
+- replaces the archived CNN handwriting branch with a vision transformer encoder
 
 Purpose:
 
-- improve handwriting structure modeling
+- improve archived handwriting structure modeling
 
 Advantages:
 
@@ -521,7 +531,7 @@ Gaps:
 
 Required details:
 
-- fixed-size handwriting image
+- fixed-size archived handwriting image
 - all other standard multimodal inputs
 
 ### 4.9 ViTTransformerMultimodalModel
@@ -532,7 +542,7 @@ Found in:
 
 Functionality:
 
-- uses ViT for handwriting and transformer for text
+- uses ViT for archived handwriting and transformer for text
 
 Purpose:
 
@@ -587,7 +597,7 @@ Found in:
 
 Functionality:
 
-- encodes handwriting, audio, text, and behavior into a shared latent space
+- encodes audio, text, behavior, and any archived visual branch into a shared latent space
 - applies multimodal projection and normalization
 - supports contrastive, reconstruction, and masked-text objectives
 
@@ -858,9 +868,9 @@ Good alternatives:
 
 Use:
 
-- `InitialCNNModel`
-- `InitialLSTMModel`
-- `InitialCNNLSTMModel`
+- `InitialCNNModel` (archived)
+- `InitialLSTMModel` (archived)
+- `InitialCNNLSTMModel` (archived)
 
 ### Cross-lingual or low-resource adaptation
 

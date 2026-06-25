@@ -8,9 +8,10 @@ For a full dataset guide, see [docs/DATASETS.md](/d:/Project/Dyslexia_Detection_
 
 For a paper-style draft based on the current implementation, see [docs/RESEARCH_PAPER_DRAFT.md](/d:/Project/Dyslexia_Detection_System/docs/RESEARCH_PAPER_DRAFT.md).
 
-For a 28-slide presentation deck for demonstrations, see [docs/Dyslexia_Detection_System_Demo_Deck.pptx](/d:/Project/Dyslexia_Detection_System/docs/Dyslexia_Detection_System_Demo_Deck.pptx).
+For the formatted PDF/DOCX export set, see [docs/formatted_documents/index.pdf](/d:/Project/Dyslexia_Detection_System/docs/formatted_documents/index.pdf) and [docs/formatted_documents/index.docx](/d:/Project/Dyslexia_Detection_System/docs/formatted_documents/index.docx).
 
-The codebase supports handwriting images, reading audio features, multilingual text samples, reading-behavior indicators, explainability hooks, and lightweight deployment through a local Streamlit dashboard.
+The deployed feature set focuses on reading audio features, multilingual text samples, reading-behavior indicators, eye-tracking, explainability hooks, and lightweight deployment through a local Streamlit dashboard.
+Handwriting-related workflows are retained only in archived research notes and are not part of the deployed feature set.
 
 For full web deployment, see [docs/DEPLOYMENT.md](/d:/Project/Dyslexia_Detection_System/docs/DEPLOYMENT.md).
 
@@ -54,7 +55,7 @@ If the site does not refresh after a push, check these Render settings:
 |---|---|
 | Core goal | Multimodal learning-disorder screening and educational support |
 | Main languages | Bengali, English, multilingual |
-| Primary inputs | Handwriting, audio, text, behavior, eye-tracking, biomarker CSVs |
+| Primary inputs | Audio, text, behavior, eye-tracking, biomarker CSVs |
 | Main outputs | Screening labels, therapy scores, reports, local records, biomarker rankings |
 | Main UIs | Streamlit dashboard, local web dashboard, React frontend |
 | Deployment style | Local-first, offline-friendly, research-friendly |
@@ -75,13 +76,13 @@ The current comparison snapshot uses three active supervised screening models:
 - `TransformerMultimodalModel`
 - `ViTMultimodalModel`
 
-Legacy baselines such as `InitialCNNModel`, `InitialLSTMModel`, and `InitialCNNLSTMModel` remain in the codebase for experimentation and historical comparison, but they are no longer the primary ranked set in the docs or dashboard.
+Legacy baselines such as `InitialCNNModel`, `InitialLSTMModel`, and `InitialCNNLSTMModel` remain in the codebase for experimentation and historical comparison, but they are no longer part of the active three-model comparison set.
 
 | Model family | Purpose | Strength | Limitation |
 |---|---|---|---|
 | `MultimodalDyslexiaModel` | Default screening model | Balanced and practical | Uses concatenation fusion |
 | `TransformerMultimodalModel` | Transformer text branch | Better context modeling | Heavier than GRU version |
-| `ViTMultimodalModel` | Patch-based handwriting branch | Better image structure modeling | More compute |
+| `ViTMultimodalModel` | Patch-based visual branch | Better spatial structure modeling | More compute |
 | `AttentionMultimodalModel` | Learned modality weights | Better interpretability | More tuning-sensitive |
 | `BengaliLearningDisorderFoundationModel` | Shared foundation encoder | Reusable across tasks | Needs more data and pretraining |
 
@@ -132,20 +133,20 @@ For now, the architecture and feature tables below give a reliable text referenc
 ## Features
 
 - Bengali, English, and multilingual dataset manifest support
-- Handwriting image preprocessing and augmentation
 - Reading-audio log-spectrogram extraction
 - Language-aware text normalization and character-level tokenization
 - Reading-behavior features for timing, hesitation, repetition, and omission patterns
-- Multimodal PyTorch model for dyslexia-risk screening
-- Grad-CAM utility for handwriting explainability
+- Multimodal PyTorch model for learning-disorder screening
 - Multilingual speech-therapy exercise tracking and adaptive recommendations
 - Reinforcement learning-based adaptive tutoring with persistent policy updates
 - Personalized intervention recommendation system for reading, pronunciation, and spelling exercises
 - Attention-based multimodal fusion with per-prediction modality importance scores
-- Digital biomarker discovery for handwriting, speech, and reading behavior signals
+- Digital biomarker discovery for speech, reading behavior, and eye-tracking signals
 - Bengali eye-tracking dataset collection with fixation/regression/gaze biometrics
 - Demo dataset generator for smoke testing
 - Offline-friendly Streamlit visualization dashboard
+
+Archived handwriting-specific collection and augmentation notes remain in the docs for research reference only.
 
 ## Project Structure
 
@@ -185,7 +186,7 @@ Required columns:
 
 - `sample_id`
 - `student_hash`
-- `handwriting_path`
+- `handwriting_path` (archived research column; not used by the deployed feature set)
 - `audio_path`
 - `text_sample`
 - `spelling_errors`
@@ -209,15 +210,15 @@ Create the collection workspace:
 python scripts/setup_dataset_workspace.py --root data/collection
 ```
 
-This creates folders for raw handwriting, raw audio, augmented files, split manifests, and a collection protocol document.
+This creates folders for archived handwriting assets, raw audio, augmented files, split manifests, and a collection protocol document.
 
-Gather one handwriting/text/audio sample from the command line:
+Gather one archived handwriting/text/audio sample from the command line:
 
 ```powershell
 python scripts/add_sample_to_manifest.py --workspace data/collection --sample-id S001 --student-hash anon_001 --handwriting-file path/to/handwriting.png --audio-file path/to/reading.wav --text-sample "ami bangla pori" --spelling-errors 1 --pronunciation-errors 1 --reading-time-seconds 28.5 --hesitation-count 2 --repetition-count 1 --omission-count 0 --label 1
 ```
 
-You can also use the dashboard's `Sample Collection` tab to upload handwriting and audio files, choose the sample language, enter text and reading observations, and append the row directly into `data/collection/manifest.csv`.
+You can also use the dashboard's `Sample Collection` tab to upload archived handwriting and audio files, choose the sample language, enter text and reading observations, and append the row directly into `data/collection/manifest.csv`.
 
 Create a blank manifest template:
 
@@ -242,9 +243,9 @@ This pipeline:
 - cleans duplicate or malformed manifest rows
 - normalizes text whitespace with language-aware Unicode handling
 - standardizes numeric error and behavior fields
-- normalizes handwriting images to fixed grayscale canvas size
+- normalizes archived handwriting images to fixed grayscale canvas size
 - normalizes reading audio to 16 kHz WAV with trimmed silence and consistent volume
-- creates handwriting and audio augmentations
+- creates archived handwriting and audio augmentations
 - writes a final `prepared_manifest.csv`
 - optionally writes train/validation/test splits
 
@@ -254,7 +255,7 @@ Anonymize user identifiers before training:
 python scripts/anonymize_manifest.py --input data/collection/manifest.csv --output data/collection/manifest_anonymized.csv --salt YOUR_PRIVATE_SALT
 ```
 
-Create handwriting augmentation:
+Archived handwriting augmentation workflow:
 
 ```powershell
 python scripts/augment_handwriting_dataset.py --manifest data/collection/manifest_anonymized.csv --output-manifest data/collection/augmented_manifest.csv
@@ -307,25 +308,21 @@ This writes:
 
 with fixation duration, regressions, reading speed, and gaze-pattern features.
 
-Train the initial CNN/LSTM baseline:
+Archived legacy training commands:
 
 ```powershell
 python scripts/train_initial_cnn_lstm.py --manifest data/demo/audio_augmented_manifest.csv --epochs 5 --batch-size 8
 ```
 
-Train all initial baselines, CNN-only, LSTM-only, and CNN/LSTM:
+Train the current 3-model comparison set:
 
 ```powershell
-python scripts/train_initial_models.py --manifest data/demo/audio_augmented_manifest.csv --epochs 5 --batch-size 8
+python scripts/train_advanced_models.py --manifest data/demo/audio_augmented_manifest.csv --epochs 3 --batch-size 8 --model multimodal_attention
+python scripts/train_advanced_models.py --manifest data/demo/audio_augmented_manifest.csv --epochs 3 --batch-size 8 --model transformer
+python scripts/train_advanced_models.py --manifest data/demo/audio_augmented_manifest.csv --epochs 3 --batch-size 8 --model vit
 ```
 
-Train Transformer, ViT, and ViT+Transformer multimodal models:
-
-```powershell
-python scripts/train_advanced_models.py --manifest data/demo/audio_augmented_manifest.csv --epochs 3 --batch-size 8
-```
-
-Train every supported model family in one pass:
+Train every supported model family, including archived baselines:
 
 ```powershell
 python scripts/train_all_models.py --manifest data/demo/audio_augmented_manifest.csv --epochs 5 --batch-size 8 --text-language multilingual
@@ -352,7 +349,7 @@ This creates a train/validation/test split with a fully untouched test set, trai
 Automatically pick the best model with repeated cross-validation, then run the hard holdout test:
 
 ```powershell
-python scripts/select_model_via_cv_and_holdout.py --manifest data/demo/audio_augmented_manifest.csv --task binary --text-language multilingual --models cnn_lstm transformer vit_transformer multimodal_attention --folds 5 --repeats 3 --epochs 10 --save-fold-checkpoints --save-splits --best-alias-path checkpoints/best_model.pt
+python scripts/select_model_via_cv_and_holdout.py --manifest data/demo/audio_augmented_manifest.csv --task binary --text-language multilingual --models multimodal_attention transformer vit --folds 5 --repeats 3 --epochs 10 --save-fold-checkpoints --save-splits --best-alias-path checkpoints/best_model.pt
 ```
 
 This ranks model families by repeated cross-validation, selects the top performer, and then evaluates that winner once on an untouched test split.
@@ -369,12 +366,6 @@ You can also run the same strict benchmark in one step:
 
 ```powershell
 python scripts/run_strict_benchmark.py
-```
-
-Train attention-based multimodal fusion:
-
-```powershell
-python -m src.dyslexia_detection.train --manifest data/demo/audio_augmented_manifest.csv --model multimodal_attention --epochs 5 --text-language multilingual --checkpoint-dir checkpoints/multimodal_attention
 ```
 
 Pretrain Bengali multimodal learning-disorder foundation model:
@@ -407,7 +398,7 @@ Cross-lingual transfer learning (English -> Bengali):
 python scripts/train_cross_lingual_transfer.py --manifest data/collection/processed/prepared_manifest.csv --english-checkpoint checkpoints/english_vit_transformer/best_model.pt --model vit_transformer --task severity --text-language bengali --epochs 5 --checkpoint-dir checkpoints/cross_lingual_bengali
 ```
 
-This transfers shared handwriting/audio/behavior/classifier knowledge from an English checkpoint, then fine-tunes on Bengali data with optional feature-level distillation for low-resource settings.
+This transfers shared multimodal/classifier knowledge from an English checkpoint, then fine-tunes on Bengali data with optional feature-level distillation for low-resource settings.
 
 Train continuous severity regression:
 
@@ -443,7 +434,7 @@ python scripts/fine_tune_from_ssl.py --manifest data/demo/audio_augmented_manife
 Or call the shared trainer directly:
 
 ```powershell
-python -m src.dyslexia_detection.train --manifest data/demo/audio_augmented_manifest.csv --model cnn_lstm --epochs 5 --batch-size 8 --checkpoint-dir checkpoints/cnn_lstm
+python -m src.dyslexia_detection.train --manifest data/demo/audio_augmented_manifest.csv --model multimodal_attention --epochs 5 --batch-size 8 --checkpoint-dir checkpoints/multimodal_attention
 ```
 
 Run the dashboard:
@@ -492,13 +483,15 @@ Speech-therapy sessions are stored in `data/mobile_collection/therapy/therapy_se
 
 The implementation follows the requested architecture as code:
 
-- Input Layer: manifest rows, handwriting image paths, reading-audio paths, multilingual text, error counts, and reading-behavior values
+- Input Layer: manifest rows, archived handwriting references where present, reading-audio paths, multilingual text, error counts, and reading-behavior values
 - Preprocessing Layer: image normalization, audio log-spectrogram extraction, language-aware text tokenization, behavior tensor creation
-- Feature Extraction Layer: CNN handwriting encoder, audio temporal encoder, behavior encoder, error features
+- Feature Extraction Layer: audio temporal encoder, behavior encoder, error features, and the active visual branch where enabled
 - Sequence Modeling Layer: GRU/Transformer-based multilingual text sequence modeling
 - Classification Layer: multimodal feature fusion and dyslexia-risk prediction
-- Explainability Module: Grad-CAM handwriting attention overlay
+- Explainability Module: image-attention overlays for the active visual branch
 - Deployment Layer: TorchScript and quantized TorchScript export
+
+The active deployed summary now excludes handwriting-specific inputs and legacy CNN/LSTM baselines; those are retained only in archived research notes.
 
 Run one sample through every architecture layer:
 
@@ -550,27 +543,27 @@ python scripts/optimize_for_deployment.py --checkpoint checkpoints/best_model.pt
 Run offline inference with the optimized artifact:
 
 ```powershell
-python scripts/run_lightweight_inference.py --model exports/deployment/pruned_30_quantized.pt --handwriting data/demo/handwriting/S001.png --audio data/demo/audio/S001.wav --text "ami bangla pori" --sample-language Bengali --model-text-language bengali
+python scripts/run_lightweight_inference.py --model exports/deployment/pruned_30_quantized.pt --audio data/demo/audio/S001.wav --text "ami bangla pori" --sample-language Bengali --model-text-language bengali
 ```
 
 Predict severity class or score from a trained checkpoint:
 
 ```powershell
-python scripts/predict_severity.py --checkpoint checkpoints/severity_vit_transformer/best_model.pt --handwriting data/demo/handwriting/S001.png --audio data/demo/audio/S001.wav --text "ami bangla pori" --sample-language Bengali --spelling-errors 2 --pronunciation-errors 1 --reading-time-seconds 30 --hesitation-count 3 --repetition-count 2 --omission-count 1
+python scripts/predict_severity.py --checkpoint checkpoints/severity_vit_transformer/best_model.pt --audio data/demo/audio/S001.wav --text "ami bangla pori" --sample-language Bengali --spelling-errors 2 --pronunciation-errors 1 --reading-time-seconds 30 --hesitation-count 3 --repetition-count 2 --omission-count 1
 ```
 
-Inspect modality importance (handwriting/speech/text/reading behavior):
+Inspect modality importance (audio/text/reading behavior and any active visual branch):
 
 ```powershell
-python scripts/predict_modality_attention.py --checkpoint checkpoints/multimodal_attention/best_model.pt --handwriting data/demo/handwriting/S001.png --audio data/demo/audio/S001.wav --text "ami bangla pori" --sample-language Bengali --spelling-errors 2 --pronunciation-errors 1 --reading-time-seconds 30 --hesitation-count 3 --repetition-count 2 --omission-count 1
+python scripts/predict_modality_attention.py --checkpoint checkpoints/multimodal_attention/best_model.pt --audio data/demo/audio/S001.wav --text "ami bangla pori" --sample-language Bengali --spelling-errors 2 --pronunciation-errors 1 --reading-time-seconds 30 --hesitation-count 3 --repetition-count 2 --omission-count 1
 ```
 
 4. Implement explainable AI:
 
 The dashboard's `Explainability` tab supports:
 
-- CNN Grad-CAM handwriting overlays for CNN-based handwriting encoders
-- ViT patch-attention handwriting overlays for ViT checkpoints
+- CNN Grad-CAM overlays for archived image-based encoders
+- ViT patch-attention overlays for ViT checkpoints
 - Transformer token-attention charts for Bengali or multilingual text checkpoints
 
 Useful checkpoint paths:
@@ -584,7 +577,7 @@ checkpoints/vit_transformer/best_model.pt
 
 5. Design an assistive educational prototype:
 
-The dashboard's `Guided Practice` tab provides Bengali, English, and mixed-language reading prompts, handwriting prompts, fluency tracking, speech-therapy prompts, and adaptive support messages.
+The dashboard's `Guided Practice` tab provides Bengali, English, and mixed-language reading prompts, fluency tracking, speech-therapy prompts, and adaptive support messages.
 
 6. Recommend personalized intervention plans:
 

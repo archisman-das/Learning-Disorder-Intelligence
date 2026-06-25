@@ -2,19 +2,19 @@
 
 ## Title
 
-Multimodal, Local-First Learning-Disorder Screening and Educational Support Using Handwriting, Speech, Text, Behavior, and Eye-Tracking Signals
+Multimodal, Local-First Learning-Disorder Screening and Educational Support Using Speech, Text, Behavior, Eye-Tracking, and Biomarker Signals
 
 ## Abstract
 
-This project presents a multimodal, local-first learning-disorder support platform designed for screening, educational feedback, and intervention planning. Dyslexia is the main use case, but the architecture is framed more broadly so the same pipeline can support related learning-disorder workflows. The system combines handwriting images, spoken reading samples, character-level text, reading-behavior features, eye-tracking metrics, and biomarker tables into a unified workflow. Rather than treating the problem as a single-feature classification task, the architecture supports multiple input branches and several fusion strategies, including concatenation and attention-based multimodal fusion. The platform also includes explainability utilities, teacher/parent/student explanation generation, speech-therapy scoring, personalized intervention planning, and browser-based record keeping. The repository is intentionally structured to support Bengali, English, and multilingual settings, with explicit support for low-resource adaptation and local deployment. This draft paper describes the project problem space, architecture, model families, training strategy, and research directions. It is intended as a foundation for a formal publication, experimental report, or thesis chapter rather than as a claim of final benchmark performance.
+This project presents a multimodal, local-first learning-disorder support platform designed for screening, educational feedback, and intervention planning. Dyslexia is the main use case, but the architecture is framed more broadly so the same pipeline can support related learning-disorder workflows. The active deployed system combines spoken reading samples, character-level text, reading-behavior features, eye-tracking metrics, and biomarker tables into a unified workflow. Archived handwriting-related materials remain available for research comparison, but they are not part of the deployed feature set. Rather than treating the problem as a single-feature classification task, the architecture supports multiple input branches and several fusion strategies, including concatenation and attention-based multimodal fusion. The platform also includes explainability utilities, teacher/parent/student explanation generation, speech-therapy scoring, personalized intervention planning, and browser-based record keeping. The repository is intentionally structured to support Bengali, English, and multilingual settings, with explicit support for low-resource adaptation and local deployment. This draft paper describes the project problem space, architecture, model families, training strategy, and research directions. It is intended as a foundation for a formal publication, experimental report, or thesis chapter rather than as a claim of final benchmark performance.
 
 ## Keywords
 
-learning disorders, dyslexia, multimodal learning, low-resource AI, explainable AI, educational technology, eye tracking, handwriting analysis, speech analysis, Bengali NLP
+learning disorders, dyslexia, multimodal learning, low-resource AI, explainable AI, educational technology, eye tracking, speech analysis, Bengali NLP
 
 ## 1. Introduction
 
-Learning-disorder related difficulty is often reflected across several educational signals rather than one isolated signal. A learner may show handwriting irregularities, reading hesitation, pronunciation errors, slower reading speed, or eye-movement patterns that suggest a need for additional support. This project was built to represent that reality directly in software.
+Learning-disorder related difficulty is often reflected across several educational signals rather than one isolated signal. A learner may show reading hesitation, pronunciation errors, slower reading speed, or eye-movement patterns that suggest a need for additional support. This project was built to represent that reality directly in software, while keeping archived handwriting materials available only for research comparison.
 
 The system is not a single model. It is a full support platform with:
 
@@ -44,7 +44,7 @@ This codebase contributes a research platform with the following practical ideas
 
 | Contribution | Description |
 |---|---|
-| Multimodal screening | Combines handwriting, audio, text, and behavior signals for learning-disorder support |
+| Multimodal screening | Combines speech, text, behavior, eye-tracking, and biomarker signals for learning-disorder support |
 | Attention-based fusion | Learns which modality is more informative for a case |
 | Low-resource support | Supports Bengali, English, and multilingual workflows |
 | Explainability | Generates heatmaps, modality scores, and educational summaries |
@@ -60,7 +60,7 @@ The current design aligns with several research directions:
 - Grad-CAM-style visual explanation
 - self-supervised audio representation learning
 - eye-tracking-based reading difficulty analysis
-- handwriting anomaly and dysgraphia analysis
+- archived handwriting anomaly and dysgraphia analysis
 - multimodal learning for health and educational signals
 
 Selected references are listed in [`docs/REFERENCES.md`](/d:/Project/Dyslexia_Detection_System/docs/REFERENCES.md).
@@ -71,7 +71,7 @@ The repository is organized into several connected components.
 
 ### 5.1 Core data sources
 
-- handwriting images
+- archived handwriting images
 - reading audio
 - text samples
 - spelling/pronunciation errors
@@ -110,7 +110,7 @@ The project uses a CSV manifest as the central data contract. Each row correspon
 
 - sample identifier
 - anonymized student hash
-- handwriting path
+- handwriting path (archived research column)
 - audio path
 - text sample
 - spelling and pronunciation error counts
@@ -120,7 +120,7 @@ Behavioral and eye-tracking features are represented separately when available.
 
 ### 6.2 Preprocessing
 
-Handwriting images are normalized to a fixed grayscale canvas. Audio is converted to a fixed-size spectral representation. Text is normalized at the character level, which is particularly important for multilingual or low-resource settings. Numeric behavior features are passed directly as a compact vector.
+Archived handwriting images are normalized to a fixed grayscale canvas. Audio is converted to a fixed-size spectral representation. Text is normalized at the character level, which is particularly important for multilingual or low-resource settings. Numeric behavior features are passed directly as a compact vector.
 
 This design was chosen because it is simple, portable, and compatible with local deployment.
 
@@ -140,7 +140,7 @@ The primary model families are summarized below.
 | Baselines | Simple CNN/LSTM combinations | Fast to train and compare | Limited modeling capacity |
 | Default multimodal | Combine all major modalities | Balanced and practical | Simple concatenation fusion |
 | Transformer multimodal | Use transformer text branch | Better sequence modeling | Higher compute cost |
-| ViT multimodal | Use patch-based handwriting encoding | Better spatial structure modeling | Needs more tuning |
+| ViT multimodal | Use patch-based visual encoding | Better spatial structure modeling | Needs more tuning |
 | Attention multimodal | Learn modality weights | More interpretable | More complex to interpret safely |
 | Foundation model | Learn reusable multimodal representations | Better for adaptation | Needs more data / pretraining |
 | SSL audio | Pretrain on unlabeled audio | Strong low-label support | Depends on augmentation and teacher quality |
@@ -149,13 +149,13 @@ The primary model families are summarized below.
 
 The default fusion method concatenates the modality embeddings and passes them through a classifier head. The attention-based variant adds a learned weighting mechanism so that each modality can contribute differently to the final prediction.
 
-In the context of this project, this is important because a learner may show a strong signal in handwriting but a weaker one in audio, or vice versa.
+In the context of this project, this is important because a learner may show a strong signal in one active modality but a weaker one in another, or vice versa.
 
 ### 6.5 Explainability
 
 Explainability is implemented through:
 
-- Grad-CAM for handwriting images
+- Grad-CAM for archived image branches
 - attention-based modality scoring
 - token-level attention for transformer text branches
 - educational summaries for teacher, parent, and student audiences

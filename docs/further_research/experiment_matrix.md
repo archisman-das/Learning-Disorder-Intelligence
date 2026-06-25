@@ -9,20 +9,20 @@ The current comparison snapshot used in the project ranks the screening models a
 1. `multimodal_attention`
 2. `transformer`
 3. `vit`
-4. `cnn`
-5. `lstm`
+
+Legacy CNN/LSTM references are retained below only as archived baselines.
 
 ## 2. Multimodal Screening Experiments
 
 | Experiment | Inputs | Model | Metric | Why It Matters |
 |---|---|---|---|---|
-| CNN baseline | handwriting + audio + errors | `InitialCNNModel` | accuracy / F1 | Smallest multimodal baseline |
+| CNN baseline | archived handwriting + audio + errors | `InitialCNNModel` | accuracy / F1 | Smallest multimodal baseline |
 | Text baseline | text + behavior + errors | `InitialLSTMModel` | accuracy / F1 | Checks text-driven signal strength |
-| Full baseline | image + audio + text + behavior + errors | `InitialCNNLSTMModel` | accuracy / F1 | Early full fusion reference |
+| Full baseline | archived image + audio + text + behavior + errors | `InitialCNNLSTMModel` | accuracy / F1 | Early full fusion reference |
 | Default multimodal | all modalities | `MultimodalDyslexiaModel` | accuracy / F1 | Main production-style baseline |
 | Transformer fusion | all modalities | `TransformerMultimodalModel` | accuracy / F1 | Tests stronger text modeling |
 | Attention fusion | all modalities | `AttentionMultimodalModel` | accuracy / F1 + attention analysis | Tests interpretability |
-| ViT fusion | all modalities | `ViTMultimodalModel` | accuracy / F1 | Tests patch-based handwriting modeling |
+| ViT fusion | all modalities | `ViTMultimodalModel` | accuracy / F1 | Tests patch-based visual modeling |
 
 ## 3. Low-Resource Transfer Experiments
 
@@ -37,7 +37,7 @@ The current comparison snapshot used in the project ranks the screening models a
 
 | Experiment | Inputs | Method | Metric | Why It Matters |
 |---|---|---|---|---|
-| Grad-CAM check | handwriting images | `GradCAM` | human plausibility review | Tests image explanation quality |
+| Grad-CAM check | archived image branches | `GradCAM` | human plausibility review | Tests image explanation quality |
 | Attention check | multimodal outputs | modality attention | agreement score | Tests if weights are sensible |
 | Text attention check | text sequences | transformer token scores | qualitative review | Tests token-level interpretability |
 | Educational summary review | prediction output | explanation text | teacher usability feedback | Tests whether explanations are readable |
@@ -47,7 +47,7 @@ The current comparison snapshot used in the project ranks the screening models a
 | Experiment | Inputs | Method | Metric | Why It Matters |
 |---|---|---|---|---|
 | Biomarker ranking | numeric manifest | `discover_digital_biomarkers` | ranking stability | Finds strongest signals |
-| Family comparison | feature families | group analysis | effect size | Compares handwriting vs speech vs reading |
+| Family comparison | feature families | group analysis | effect size | Compares archived image vs speech vs reading families |
 | Cross-language comparison | Bengali + English | split-wise analysis | rank overlap | Tests portability of markers |
 
 ## 6. Intervention Experiments

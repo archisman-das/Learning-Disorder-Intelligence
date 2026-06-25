@@ -10,7 +10,7 @@ and which files are only for demos or interface checks.
 
 | Group | Location | Main contents | Intended use |
 |---|---|---|---|
-| Demo dataset | [`data/demo/`](/d:/Project/Dyslexia_Detection_System/data/demo) | manifest CSVs, audio samples, handwriting samples, split folders | Quick testing, local experimentation, dashboard demos |
+| Demo dataset | [`data/demo/`](/d:/Project/Dyslexia_Detection_System/data/demo) | manifest CSVs, audio samples, archived handwriting samples, split folders | Quick testing, local experimentation, dashboard demos |
 | Collection dataset | [`data/collection/`](/d:/Project/Dyslexia_Detection_System/data/collection) | raw collection workspace, processed outputs, split folders, collection docs | Real sample collection and preparation workflow |
 | Collection test dataset | [`data/collection_test/`](/d:/Project/Dyslexia_Detection_System/data/collection_test) | test collection workspace and processed outputs | Secondary collection/testing workspace |
 | Benchmark datasets | [`data/benchmarks/`](/d:/Project/Dyslexia_Detection_System/data/benchmarks) | tough manifests and hard family splits | Model selection, hard holdout sanity checks, strict evaluation |
@@ -34,7 +34,7 @@ The demo dataset is the quickest way to run the project locally.
 | Folder | Contents |
 |---|---|
 | [`data/demo/audio/`](/d:/Project/Dyslexia_Detection_System/data/demo/audio) | Demo audio assets |
-| [`data/demo/handwriting/`](/d:/Project/Dyslexia_Detection_System/data/demo/handwriting) | Demo handwriting assets |
+| [`data/demo/handwriting/`](/d:/Project/Dyslexia_Detection_System/data/demo/handwriting) | Archived demo handwriting assets |
 | [`data/demo/augmented/`](/d:/Project/Dyslexia_Detection_System/data/demo/augmented) | Augmented demo samples |
 | [`data/demo/splits/`](/d:/Project/Dyslexia_Detection_System/data/demo/splits) | Train/validation/test splits |
 | [`data/demo/audio_aug_splits/`](/d:/Project/Dyslexia_Detection_System/data/demo/audio_aug_splits) | Audio-focused splits |
@@ -93,6 +93,7 @@ These CSVs are synthetic and are only intended for dashboard and UI testing.
 ## 7. Dataset Usage Notes
 
 - Use demo data for quick local checks and UI validation.
+- Treat handwriting folders as archived demo assets unless you are reproducing the older research branch.
 - Use collection data only after anonymization and manifest validation.
 - Use benchmark data for model selection and hard holdout sanity checks.
 - Treat biomarker test CSVs as synthetic interface assets, not as training evidence.
@@ -103,4 +104,3 @@ These CSVs are synthetic and are only intended for dashboard and UI testing.
 - [`docs/PROJECT_DOCUMENTATION.md`](/d:/Project/Dyslexia_Detection_System/docs/PROJECT_DOCUMENTATION.md)
 - [`docs/further_research/experiment_matrix.md`](/d:/Project/Dyslexia_Detection_System/docs/further_research/experiment_matrix.md)
 - [`docs/MODEL_CATALOG.md`](/d:/Project/Dyslexia_Detection_System/docs/MODEL_CATALOG.md)
-

@@ -332,6 +332,45 @@ def export_all(docs_root: Path, output_root: Path) -> None:
         source_to_docx(source, docx_target)
         print(f"Exported {source} -> {pdf_target} and {docx_target}")
 
+    write_index_pdf(output_root / "index.pdf", pdf_root, docx_root, font_name)
+    write_index_docx(output_root / "index.docx", pdf_root, docx_root)
+    print(f"Exported index -> {output_root / 'index.pdf'} and {output_root / 'index.docx'}")
+
+
+def write_index_docx(target: Path, pdf_root: Path, docx_root: Path) -> None:
+    doc = Document()
+    styles = doc.styles
+    styles["Normal"].font.name = "Arial"
+    styles["Normal"]._element.rPr.rFonts.set(qn("w:eastAsia"), "Arial")
+    styles["Normal"].font.size = Pt(11)
+    doc.add_heading("Formatted Documentation Export", level=1)
+    doc.add_paragraph("This folder contains the generated PDF and DOCX copies of the project documentation.")
+    doc.add_paragraph("Use the pdf/ and docx/ subfolders to open the exported files.")
+    doc.add_paragraph(f"PDF folder: {pdf_root}")
+    doc.add_paragraph(f"DOCX folder: {docx_root}")
+    doc.add_paragraph("Source Markdown files remain in their original locations.")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    doc.save(target)
+
+
+def write_index_pdf(target: Path, pdf_root: Path, docx_root: Path, font_name: str) -> None:
+    styles = getSampleStyleSheet()
+    title = ParagraphStyle("Title", parent=styles["Title"], fontName=font_name, fontSize=20, leading=24, spaceAfter=14)
+    body = ParagraphStyle("Body", parent=styles["BodyText"], fontName=font_name, fontSize=11, leading=14, spaceAfter=8)
+    frame = Frame(inch * 0.7, inch * 0.7, A4[0] - inch * 1.4, A4[1] - inch * 1.4, id="body")
+    doc = BaseDocTemplate(str(target), pagesize=A4, leftMargin=0.7 * inch, rightMargin=0.7 * inch, topMargin=0.7 * inch, bottomMargin=0.7 * inch)
+    doc.addPageTemplates([PageTemplate(id="page", frames=[frame])])
+    story = [
+        Paragraph("Formatted Documentation Export", title),
+        Paragraph("This folder contains the generated PDF and DOCX copies of the project documentation.", body),
+        Paragraph("Use the pdf/ and docx/ subfolders to open the exported files.", body),
+        Paragraph(f"PDF folder: {pdf_root}", body),
+        Paragraph(f"DOCX folder: {docx_root}", body),
+        Paragraph("Source Markdown files remain in their original locations.", body),
+    ]
+    target.parent.mkdir(parents=True, exist_ok=True)
+    doc.build(story)
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Export markdown docs to PDF and DOCX using standard libraries.")

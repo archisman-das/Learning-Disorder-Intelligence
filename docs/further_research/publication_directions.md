@@ -10,7 +10,7 @@ This file outlines how the current project can be shaped into paper-style resear
 
 Possible title:
 
-- Multimodal Dyslexia Screening Using Handwriting, Audio, Text, and Reading Behavior
+- Multimodal Learning-Disorder Screening Using Handwriting, Audio, Text, and Reading Behavior
 
 Core contribution:
 
@@ -22,7 +22,7 @@ Core contribution:
 
 Possible title:
 
-- Cross-Lingual Transfer for Bengali Dyslexia Screening in Low-Resource Educational Settings
+- Cross-Lingual Transfer for Bengali Learning-Disorder Screening in Low-Resource Educational Settings
 
 Core contribution:
 
@@ -34,7 +34,7 @@ Core contribution:
 
 Possible title:
 
-- Explainable Educational AI for Adaptive Intervention Planning in Dyslexia Support
+- Explainable Educational AI for Adaptive Intervention Planning in Learning-Disorder Support
 
 Core contribution:
 

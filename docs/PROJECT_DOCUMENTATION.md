@@ -2,9 +2,10 @@
 
 ## 1. Overview
 
-`Dyslexia_Detection_System` is a multimodal screening and support platform for dyslexia-related workflows.
+`Dyslexia_Detection_System` is a multimodal learning-disorder screening and support platform.
 It is built around educational signals rather than a single medical model, and it is designed to work well in
-low-resource, multilingual, and local/offline-friendly settings.
+low-resource, multilingual, and local/offline-friendly settings. Dyslexia is the primary use case, but the
+documentation now treats it as part of a broader learning-disorder workflow.
 
 The repository currently contains three main application surfaces:
 
@@ -126,8 +127,6 @@ Current ranking order used in the latest comparison snapshot:
 1. `multimodal_attention`
 2. `transformer`
 3. `vit`
-4. `cnn`
-5. `lstm`
 
 ## 4. User-Facing Surfaces
 
@@ -383,6 +382,14 @@ Working principle:
 ## 6. Model Catalog
 
 This repository contains multiple model families, each designed for a slightly different trade-off.
+The current primary screening trio is:
+
+- `AttentionMultimodalModel`
+- `TransformerMultimodalModel`
+- `ViTMultimodalModel`
+
+Legacy baselines remain in the codebase for experimentation and historical comparison, but they are no longer the
+primary ranked set in the dashboard or main documentation.
 
 ### 6.1 Initial CNN model
 
@@ -404,7 +411,8 @@ Working principle:
 
 Best suited for:
 
-- a compact baseline when text and behavior are not the main focus
+- historical comparison
+- compact baseline experiments
 
 ### 6.2 Initial LSTM model
 
@@ -426,7 +434,8 @@ Working principle:
 
 Best suited for:
 
-- text-centered baselines
+- historical comparison
+- text-centered baseline experiments
 
 ### 6.3 CNN-LSTM model
 
@@ -450,8 +459,8 @@ Working principle:
 
 Best suited for:
 
+- historical comparison
 - early multimodal experiments
-- compact multimodal baselines
 
 ### 6.4 Multimodal model
 
@@ -660,6 +669,7 @@ Important browser-side behavior:
 - microphone access requires localhost or HTTPS
 - local records are persisted in browser storage
 - the local server can transcribe reading audio using Whisper through the `/api/reading-transcribe` endpoint in [`run_local_web.py`](/d:/Project/Dyslexia_Detection_System/run_local_web.py)
+- the digit mode in Visual Focus Test is a matching task, not handwritten digit classification
 
 ### 8.2 Streamlit dashboard sections
 
@@ -701,7 +711,7 @@ It supports:
 - binary risk prediction
 - severity classification
 - regression-style severity scoring
-- CNN, LSTM, CNN-LSTM, Transformer, ViT, multimodal, and attention-based multimodal models
+- the current three-model screening trio plus legacy CNN/LSTM baselines for comparison
 
 ### 9.2 Cross-lingual transfer
 
@@ -818,7 +828,7 @@ The repository has multiple UIs, so a change in one surface does not automatical
 
 ## 14. Summary
 
-This project is a multimodal dyslexia screening and support ecosystem with:
+This project is a multimodal learning-disorder screening and support ecosystem with:
 
 - reusable Python model and data-processing code
 - a Streamlit research dashboard

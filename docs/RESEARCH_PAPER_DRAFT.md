@@ -2,19 +2,19 @@
 
 ## Title
 
-Multimodal, Local-First Dyslexia Screening and Educational Support Using Handwriting, Speech, Text, Behavior, and Eye-Tracking Signals
+Multimodal, Local-First Learning-Disorder Screening and Educational Support Using Handwriting, Speech, Text, Behavior, and Eye-Tracking Signals
 
 ## Abstract
 
-This project presents a multimodal, local-first learning-disorder support platform designed for dyslexia-related screening, educational feedback, and intervention planning. The system combines handwriting images, spoken reading samples, character-level text, reading-behavior features, eye-tracking metrics, and biomarker tables into a unified workflow. Rather than treating dyslexia as a single-feature classification problem, the architecture supports multiple input branches and several fusion strategies, including concatenation and attention-based multimodal fusion. The platform also includes explainability utilities, teacher/parent/student explanation generation, speech-therapy scoring, personalized intervention planning, and browser-based record keeping. The repository is intentionally structured to support Bengali, English, and multilingual settings, with explicit support for low-resource adaptation and local deployment. This draft paper describes the project problem space, architecture, model families, training strategy, and research directions. It is intended as a foundation for a formal publication, experimental report, or thesis chapter rather than as a claim of final benchmark performance.
+This project presents a multimodal, local-first learning-disorder support platform designed for screening, educational feedback, and intervention planning. Dyslexia is the main use case, but the architecture is framed more broadly so the same pipeline can support related learning-disorder workflows. The system combines handwriting images, spoken reading samples, character-level text, reading-behavior features, eye-tracking metrics, and biomarker tables into a unified workflow. Rather than treating the problem as a single-feature classification task, the architecture supports multiple input branches and several fusion strategies, including concatenation and attention-based multimodal fusion. The platform also includes explainability utilities, teacher/parent/student explanation generation, speech-therapy scoring, personalized intervention planning, and browser-based record keeping. The repository is intentionally structured to support Bengali, English, and multilingual settings, with explicit support for low-resource adaptation and local deployment. This draft paper describes the project problem space, architecture, model families, training strategy, and research directions. It is intended as a foundation for a formal publication, experimental report, or thesis chapter rather than as a claim of final benchmark performance.
 
 ## Keywords
 
-dyslexia, multimodal learning, low-resource AI, explainable AI, educational technology, eye tracking, handwriting analysis, speech analysis, Bengali NLP
+learning disorders, dyslexia, multimodal learning, low-resource AI, explainable AI, educational technology, eye tracking, handwriting analysis, speech analysis, Bengali NLP
 
 ## 1. Introduction
 
-Dyslexia-related learning difficulty is often reflected across several educational signals rather than one isolated signal. A learner may show handwriting irregularities, reading hesitation, pronunciation errors, slower reading speed, or eye-movement patterns that suggest a need for additional support. This project was built to represent that reality directly in software.
+Learning-disorder related difficulty is often reflected across several educational signals rather than one isolated signal. A learner may show handwriting irregularities, reading hesitation, pronunciation errors, slower reading speed, or eye-movement patterns that suggest a need for additional support. This project was built to represent that reality directly in software.
 
 The system is not a single model. It is a full support platform with:
 
@@ -44,7 +44,7 @@ This codebase contributes a research platform with the following practical ideas
 
 | Contribution | Description |
 |---|---|
-| Multimodal screening | Combines handwriting, audio, text, and behavior signals |
+| Multimodal screening | Combines handwriting, audio, text, and behavior signals for learning-disorder support |
 | Attention-based fusion | Learns which modality is more informative for a case |
 | Low-resource support | Supports Bengali, English, and multilingual workflows |
 | Explainability | Generates heatmaps, modality scores, and educational summaries |
@@ -128,11 +128,8 @@ This design was chosen because it is simple, portable, and compatible with local
 
 The project includes the following families:
 
-- compact CNN/LSTM baselines
-- default multimodal fusion models
-- transformer-based multimodal models
-- ViT-based handwriting models
-- attention-based modality weighting
+- compact CNN/LSTM baselines retained for historical comparison
+- three active supervised screening models: attention-based, transformer-based, and ViT-based
 - foundation and adapter models
 - self-supervised audio pretraining models
 
@@ -263,7 +260,7 @@ Because the project handles educational and potentially sensitive learning-relat
 
 ## 12. Conclusion
 
-This project is best framed as a multimodal, local-first educational AI platform for dyslexia-related screening and support. Its technical strengths are the combination of multiple signals, the support for Bengali and multilingual workflows, the presence of explainability and intervention components, and the ability to run through both Python and browser-based interfaces.
+This project is best framed as a multimodal, local-first educational AI platform for learning-disorder screening and support, with dyslexia as the primary use case. Its technical strengths are the combination of multiple signals, the support for Bengali and multilingual workflows, the presence of explainability and intervention components, and the ability to run through both Python and browser-based interfaces.
 
 The codebase is already organized in a way that can support a formal paper. The next research step is to run controlled experiments, compare model families, document the dataset carefully, and evaluate whether the explanations and intervention plans are useful to real users.
 

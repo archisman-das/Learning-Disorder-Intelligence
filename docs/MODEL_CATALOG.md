@@ -31,8 +31,8 @@ The selection value used by the dashboard ranking is a weighted score:
 | 1 | `multimodal_attention` | 95.0% | 93.3% | 100.0% | 96.0% | 95.0% |
 | 2 | `transformer` | 91.7% | 87.8% | 93.3% | 89.8% | 91.7% |
 | 3 | `vit` | 80.0% | 76.7% | 86.7% | 80.2% | 80.0% |
-| 4 | `cnn` | 91.7% | 92.2% | 96.7% | 92.9% | 91.7% |
-| 5 | `lstm` | 61.7% | 55.6% | 70.0% | 59.8% | 61.7% |
+
+The current docs treat this as the active three-model comparison set. The older CNN and LSTM baselines are kept in the catalog below as legacy references.
 
 ## 2. Quick Summary Table
 
@@ -47,9 +47,9 @@ The selection value used by the dashboard ranking is a weighted score:
 | `BehaviorEncoder` | MLP encoder | Encode reading-behavior numeric features | Simple and robust | Only works with numeric features already prepared | Behavior vector |
 | `FusionClassifier` | Multimodal classifier | Fuse handwriting, audio, text, behavior, and errors | Flexible and reusable | Uses simple concatenation, not adaptive fusion | All modality tensors |
 | `AttentionFusionClassifier` | Multimodal attention classifier | Learn modality importance weights | Interpretability through modality attention | Slightly more complex than plain fusion | All modality tensors |
-| `InitialCNNModel` | Baseline classifier | Compact image/audio baseline | Lightweight baseline | Ignores text and behavior | Image, audio, errors |
-| `InitialLSTMModel` | Baseline classifier | Text-focused baseline | Useful when text dominates | Ignores image and audio | Text, behavior, errors |
-| `InitialCNNLSTMModel` | Baseline multimodal | Early multimodal baseline | Combines image, audio, text, behavior | Still shallow compared with newer models | All modality tensors |
+| `InitialCNNModel` | Legacy baseline classifier | Compact image/audio baseline | Lightweight baseline | Ignores text and behavior | Image, audio, errors |
+| `InitialLSTMModel` | Legacy baseline classifier | Text-focused baseline | Useful when text dominates | Ignores image and audio | Text, behavior, errors |
+| `InitialCNNLSTMModel` | Legacy baseline multimodal | Early multimodal baseline | Combines image, audio, text, behavior | Still shallow compared with newer models | All modality tensors |
 | `MultimodalDyslexiaModel` | Default screening model | Main multimodal risk classifier | Balanced and practical | Uses concatenation fusion | All modality tensors |
 | `TransformerMultimodalModel` | Multimodal classifier | Transformer-based text branch | Better context handling | More compute than GRU version | All modality tensors |
 | `ViTMultimodalModel` | Multimodal classifier | Vision-transformer handwriting branch | Stronger image representation | Heavier than CNN version | All modality tensors |
@@ -280,6 +280,9 @@ Required details:
 - omissions
 
 ## 4. Multimodal Screening Models
+
+The current active supervised ranking set is the three-model trio above. The remaining models here are still useful for
+understanding the system and for historical comparison, but they are not the main ranked set in the current docs.
 
 ### 4.1 FusionClassifier
 

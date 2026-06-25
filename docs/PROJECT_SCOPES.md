@@ -14,12 +14,12 @@ The repository is not a single narrow model. It is a platform with several conne
 
 ## 2. Core Scope Areas
 
-### 2.1 Multimodal dyslexia screening
+### 2.1 Multimodal learning-disorder screening
 
 Scope:
 
 - combine handwriting, reading audio, text, and reading behavior signals
-- estimate dyslexia-related risk or severity
+- estimate learning-disorder risk or severity, with dyslexia as the main target
 - provide confidence and explanation rather than a bare label
 
 What this supports:
@@ -30,7 +30,7 @@ What this supports:
 
 Why it matters:
 
-- dyslexia signs often appear across more than one signal source
+- learning-disorder signs often appear across more than one signal source
 - a multimodal approach is more realistic than a single-feature classifier
 
 Current implementation anchors:
@@ -256,7 +256,7 @@ The project currently does not aim to be:
 
 Instead, it aims to be:
 
-- a multimodal screening and support platform
+- a multimodal learning-disorder screening and support platform
 - a research-friendly codebase
 - a local-first dashboard system
 - a foundation for multilingual educational experiments

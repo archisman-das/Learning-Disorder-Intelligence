@@ -2,7 +2,7 @@
 
 ## Title
 
-Explainable Educational AI for Adaptive Intervention Planning in Dyslexia Support
+Explainable Educational AI for Adaptive Intervention Planning in Learning-Disorder Support
 
 ## Problem Statement
 

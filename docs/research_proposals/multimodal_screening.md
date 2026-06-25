@@ -1,13 +1,13 @@
-# Research Proposal: Multimodal Dyslexia Screening
+# Research Proposal: Multimodal Learning-Disorder Screening
 
 ## Title
 
-Multimodal Dyslexia Screening Using Handwriting, Speech, Text, and Reading-Behavior Signals
+Multimodal Learning-Disorder Screening Using Handwriting, Speech, Text, and Reading-Behavior Signals
 
 ## Problem Statement
 
 Single-signal screening can miss important educational evidence.
-This project already combines handwriting, speech, text, and behavior inputs, which makes it a strong base for a multimodal screening study.
+This project already combines handwriting, speech, text, and behavior inputs, which makes it a strong base for a multimodal learning-disorder screening study.
 
 ## Research Scope
 

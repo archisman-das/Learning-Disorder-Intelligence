@@ -12,6 +12,7 @@ The repository is configured to deploy from the `main` branch when the connected
 
 ## Recent Release Highlights
 
+- Documentation now reflects the learning-disorder framing and the current three-model comparison set
 - Standalone web dashboard workflow updates
 - Bengali and English language consistency fixes
 - Speech therapy and screening flow improvements

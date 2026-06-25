@@ -12,7 +12,8 @@ It focuses on what can be tested next, what should be compared, and what can bec
 Goal:
 
 - lock down baseline results for the current multimodal screening stack
-- compare  transformer, ViT, and attention-based variants
+- compare the current three-model supervised ranking set: attention, transformer, and ViT
+- keep CNN and LSTM baselines only as legacy references
 - use cross-validation to choose the model, then confirm it on a hard holdout split
 
 Why:

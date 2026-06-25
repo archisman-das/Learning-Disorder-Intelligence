@@ -13,6 +13,7 @@ It is meant to answer:
 
 The project is multimodal and multi-surface. That means one feature may exist in more than one UI, but the backend
 logic and persistence layer can still be different. When debugging, always identify the active surface first.
+The documentation frames the system as a learning-disorder platform, with dyslexia as the primary use case.
 
 ## 2. High-Level View
 
@@ -322,6 +323,14 @@ This lets the model expose modality importance for interpretation.
 
 ## 7. Model Families
 
+The current supervised comparison trio is:
+
+- `AttentionMultimodalModel`
+- `TransformerMultimodalModel`
+- `ViTMultimodalModel`
+
+Legacy baselines remain available for historical comparison and experimentation.
+
 ### 7.1 Initial baselines
 
 The repository includes:
@@ -334,6 +343,7 @@ Purpose:
 
 - provide compact baselines
 - isolate image, text, and combined multimodal behavior
+- preserve historical comparison with the older five-model era
 
 ### 7.2 Default multimodal model
 

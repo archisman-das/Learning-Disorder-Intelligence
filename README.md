@@ -1,6 +1,6 @@
-# Dyslexia Detection System
+# Learning Disorder Detection System
 
-An early-stage, multimodal deep learning system for dyslexia screening and end-user assistance, with emphasis on Bengali, multilingual, and low-resource settings.
+An early-stage, multimodal deep learning system for learning-disorder screening and end-user assistance, with dyslexia as the primary use case and emphasis on Bengali, multilingual, and low-resource settings.
 
 For a fuller project walkthrough, see [docs/PROJECT_DOCUMENTATION.md](/d:/Project/Dyslexia_Detection_System/docs/PROJECT_DOCUMENTATION.md).
 
@@ -52,7 +52,7 @@ If the site does not refresh after a push, check these Render settings:
 
 | Area | Summary |
 |---|---|
-| Core goal | Multimodal dyslexia screening and educational support |
+| Core goal | Multimodal learning-disorder screening and educational support |
 | Main languages | Bengali, English, multilingual |
 | Primary inputs | Handwriting, audio, text, behavior, eye-tracking, biomarker CSVs |
 | Main outputs | Screening labels, therapy scores, reports, local records, biomarker rankings |
@@ -69,11 +69,16 @@ If the site does not refresh after a push, check these Render settings:
 
 ## Model Families
 
+The current comparison snapshot uses three active supervised screening models:
+
+- `AttentionMultimodalModel` via `multimodal_attention`
+- `TransformerMultimodalModel`
+- `ViTMultimodalModel`
+
+Legacy baselines such as `InitialCNNModel`, `InitialLSTMModel`, and `InitialCNNLSTMModel` remain in the codebase for experimentation and historical comparison, but they are no longer the primary ranked set in the docs or dashboard.
+
 | Model family | Purpose | Strength | Limitation |
 |---|---|---|---|
-| `InitialCNNModel` | Compact image/audio baseline | Very lightweight | Ignores text and behavior |
-| `InitialLSTMModel` | Text-centered baseline | Simple sequence modeling | Ignores image and audio |
-| `InitialCNNLSTMModel` | Early multimodal baseline | Covers more signals | Still shallow |
 | `MultimodalDyslexiaModel` | Default screening model | Balanced and practical | Uses concatenation fusion |
 | `TransformerMultimodalModel` | Transformer text branch | Better context modeling | Heavier than GRU version |
 | `ViTMultimodalModel` | Patch-based handwriting branch | Better image structure modeling | More compute |
@@ -95,8 +100,6 @@ Selection value is computed as a weighted performance score:
 | `multimodal_attention` | 95.0% | 93.3% | 100.0% | 96.0% | 95.0% | 1.202 | 1 |
 | `transformer` | 91.7% | 87.8% | 93.3% | 89.8% | 91.7% | 1.080 | 2 |
 | `vit` | 80.0% | 76.7% | 86.7% | 80.2% | 80.0% | 0.954 | 3 |
-| `cnn` | 91.7% | 92.2% | 96.7% | 92.9% | 91.7% | 0.944 | 4 |
-| `lstm` | 61.7% | 55.6% | 70.0% | 59.8% | 61.7% | 0.545 | 5 |
 
 ## Validation Matrix
 
@@ -106,17 +109,13 @@ The validation matrix below summarizes the same model families from the cross-va
 |---|---:|---:|---:|---:|---:|
 | `multimodal_attention` | 95.0% | 93.3% | 100.0% | 96.0% | 95.0% |
 | `transformer` | 91.7% | 87.8% | 93.3% | 89.8% | 91.7% |
-| `cnn` | 91.7% | 92.2% | 96.7% | 92.9% | 91.7% |
 | `vit` | 80.0% | 76.7% | 86.7% | 80.2% | 80.0% |
-| `lstm` | 61.7% | 55.6% | 70.0% | 59.8% | 61.7% |
 
 Pipeline ranking used in the current selection snapshot:
 
 1. `multimodal_attention`
 2. `transformer`
 3. `vit`
-4. `cnn`
-5. `lstm`
 
 ## Screenshot Slots
 

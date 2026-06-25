@@ -2,7 +2,7 @@
 
 ## Title
 
-Cross-Lingual Transfer Learning for Bengali Dyslexia Screening and Support
+Cross-Lingual Transfer Learning for Bengali Learning-Disorder Screening and Support
 
 ## Problem Statement
 

@@ -17,7 +17,7 @@ Needed:
 
 Useful labels:
 
-- dyslexic / non-dyslexic
+- learning-disorder / not flagged
 - mild / moderate / severe
 - dysgraphia-related handwriting difficulty
 
